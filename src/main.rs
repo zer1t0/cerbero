@@ -1,9 +1,14 @@
 use chrono::{Duration, Utc};
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerbeiros;
-use kerberos_asn1;
-use kerberos_asn1::Asn1Object;
+use kerberos_asn1::{
+    AsReq, Asn1Object, KerbPaPacRequest, KerberosTime, KrbError, PaData,
+    PrincipalName,
+};
 use kerberos_constants;
+use kerberos_constants::{
+    error_codes, etypes, kdc_options, pa_data_types, principal_names,
+};
 use rand;
 use rand::Rng;
 use std::io;
@@ -125,7 +130,7 @@ impl<'a> ArgumentsParser<'a> {
             username,
             user_key,
             kdc_ip,
-            user_password
+            user_password,
         };
     }
 
@@ -159,60 +164,10 @@ impl<'a> ArgumentsParser<'a> {
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-    let mut as_req = kerberos_asn1::AsReq::default();
-
-    let mut padatas = Vec::new();
-
-    // request PAC in response
-    padatas.push(kerberos_asn1::PaData::new(
-        kerberos_constants::pa_data_types::PA_PAC_REQUEST,
-        kerberos_asn1::KerbPaPacRequest::new(true).build(),
-    ));
-
-    // request padata
-    as_req.padata = Some(padatas);
-
-    as_req.req_body.etypes = vec![
-        kerberos_constants::etypes::RC4_HMAC,
-        kerberos_constants::etypes::AES128_CTS_HMAC_SHA1_96,
-        kerberos_constants::etypes::AES256_CTS_HMAC_SHA1_96,
-    ];
-
-    as_req.req_body.kdc_options = kerberos_asn1::KerberosFlags::from(
-        kerberos_constants::kdc_options::FORWARDABLE
-            | kerberos_constants::kdc_options::RENEWABLE
-            | kerberos_constants::kdc_options::CANONICALIZE
-            | kerberos_constants::kdc_options::RENEWABLE_OK,
-    );
-
-    // set username
-    as_req.req_body.cname = Some(kerberos_asn1::PrincipalName {
-        name_type: kerberos_constants::principal_names::NT_PRINCIPAL,
-        name_string: vec![args.username],
-    });
-
-    // set the target realm
-    as_req.req_body.realm = args.domain.clone();
-
-    // set the target service
-    as_req.req_body.sname = Some(kerberos_asn1::PrincipalName {
-        name_type: kerberos_constants::principal_names::NT_PRINCIPAL,
-        name_string: vec!["krbtgt".into(), args.domain],
-    });
-
-    as_req.req_body.rtime = Some(
-        Utc::now()
-            .checked_add_signed(Duration::weeks(20 * 52))
-            .unwrap()
-            .into(),
-    );
-
-    as_req.req_body.till = Utc::now()
-        .checked_add_signed(Duration::weeks(20 * 52))
-        .unwrap()
-        .into();
-
-    as_req.req_body.nonce = rand::thread_rng().gen::<u32>();
+    let as_req = AsReqBuilder::new(args.domain)
+        .username(args.username)
+        .request_pac()
+        .build();
 
     let socket_addr = SocketAddr::new(args.kdc_ip, 88);
     let raw_as_req = as_req.build();
@@ -220,12 +175,97 @@ fn main() {
     let raw_response = send_recv_tcp(&socket_addr, &raw_as_req)
         .expect("Error in send_recv_tcp");
 
-    let (_, krb_error) = kerberos_asn1::KrbError::parse(&raw_response)
-        .expect("Error parsing raw_response");
+    let (_, krb_error) =
+        KrbError::parse(&raw_response).expect("Error parsing raw_response");
 
-    let error_string =  kerberos_constants::error_codes::error_code_to_string(krb_error.error_code);
-        
+    let error_string = error_codes::error_code_to_string(krb_error.error_code);
+
     eprintln!(" Error {}: {}", krb_error.error_code, error_string);
+}
+
+struct AsReqBuilder {
+    realm: String,
+    sname: Option<PrincipalName>,
+    etypes: Vec<i32>,
+    kdc_options: u32,
+    cname: Option<PrincipalName>,
+    padatas: Vec<PaData>,
+    nonce: u32,
+    till: KerberosTime,
+    rtime: Option<KerberosTime>,
+}
+
+impl AsReqBuilder {
+    pub fn new(realm: String) -> Self {
+        return Self {
+            realm: realm.clone(),
+            sname: Some(PrincipalName {
+                name_type: principal_names::NT_PRINCIPAL,
+                name_string: vec!["krbtgt".into(), realm],
+            }),
+            etypes: supported_etypes(),
+            kdc_options: kdc_options::FORWARDABLE
+                | kdc_options::RENEWABLE
+                | kdc_options::CANONICALIZE
+                | kdc_options::RENEWABLE_OK,
+            cname: None,
+            padatas: Vec::new(),
+            nonce: rand::thread_rng().gen(),
+            till: Utc::now()
+                .checked_add_signed(Duration::weeks(20 * 52))
+                .unwrap()
+                .into(),
+            rtime: Some(
+                Utc::now()
+                    .checked_add_signed(Duration::weeks(20 * 52))
+                    .unwrap()
+                    .into(),
+            ),
+        };
+    }
+
+    pub fn cname(mut self, cname: Option<PrincipalName>) -> Self {
+        self.cname = cname;
+        self
+    }
+
+    pub fn username(self, username: String) -> Self {
+        self.cname(Some(PrincipalName {
+            name_type: principal_names::NT_PRINCIPAL,
+            name_string: vec![username],
+        }))
+    }
+
+    pub fn push_padata(mut self, padata: PaData) -> Self {
+        self.padatas.push(padata);
+        self
+    }
+
+    pub fn request_pac(self) -> Self {
+        self.push_padata(PaData::new(
+            pa_data_types::PA_PAC_REQUEST,
+            KerbPaPacRequest::new(true).build(),
+        ))
+    }
+
+    pub fn build(self) -> AsReq {
+        let mut as_req = AsReq::default();
+
+        as_req.req_body.kdc_options = self.kdc_options.into();
+        as_req.req_body.cname = self.cname;
+        as_req.req_body.realm = self.realm;
+        as_req.req_body.sname = self.sname;
+        as_req.req_body.till = self.till;
+        as_req.req_body.rtime = self.rtime;
+        as_req.req_body.nonce = self.nonce;
+        as_req.req_body.etypes = self.etypes;
+
+        if self.padatas.len() > 0 {
+            as_req.padata = Some(self.padatas);
+        }
+
+        return as_req;
+    }
 }
 
 fn send_recv_tcp(
@@ -268,4 +308,12 @@ fn generate_aes_salt(realm: &str, client_name: &str) -> Vec<u8> {
     salt.push_str(&lowercase_username);
 
     return salt.as_bytes().to_vec();
+}
+
+fn supported_etypes() -> Vec<i32> {
+    vec![
+        etypes::RC4_HMAC,
+        etypes::AES128_CTS_HMAC_SHA1_96,
+        etypes::AES256_CTS_HMAC_SHA1_96,
+    ]
 }
