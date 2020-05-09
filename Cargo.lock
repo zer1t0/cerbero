@@ -322,6 +322,7 @@ dependencies = [
  "kerbeiros",
  "kerberos_asn1",
  "kerberos_constants",
+ "kerberos_crypto",
  "rand 0.6.5",
 ]
 

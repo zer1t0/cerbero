@@ -3,12 +3,13 @@ use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerbeiros;
 use kerberos_asn1::{
     AsReq, Asn1Object, KerbPaPacRequest, KerberosTime, KrbError, PaData,
-    PrincipalName,
+    PrincipalName, PaEncTsEnc, EncryptedData
 };
 use kerberos_constants;
 use kerberos_constants::{
-    error_codes, etypes, kdc_options, pa_data_types, principal_names,
+    error_codes, etypes, kdc_options, pa_data_types, principal_names, key_usages
 };
+use kerberos_crypto::{AESCipher, AesSizes, KerberosCipher};
 use rand;
 use rand::Rng;
 use std::io;
@@ -164,10 +165,36 @@ impl<'a> ArgumentsParser<'a> {
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-    let as_req = AsReqBuilder::new(args.domain)
-        .username(args.username)
-        .request_pac()
-        .build();
+
+    let mut as_req_builder = AsReqBuilder::new(args.domain.clone())
+        .username(args.username.clone())
+        .request_pac();
+    
+    if let Some(password) = &args.user_password {
+    
+        let timestamp = PaEncTsEnc::from(Utc::now());
+        let aes_salt = generate_aes_salt(&args.domain, &args.username);
+        
+        let aes256_cipher = AESCipher::new(AesSizes::Aes256);
+
+        let key = aes256_cipher.generate_key_from_password(password, &aes_salt);
+
+        let encrypted_timestamp = aes256_cipher.encrypt(
+            &key,
+            key_usages::KEY_USAGE_AS_REQ_TIMESTAMP,
+            &timestamp.build()
+        );
+
+
+        as_req_builder = as_req_builder.push_padata(
+            PaData::new(
+                pa_data_types::PA_ENC_TIMESTAMP,
+                EncryptedData::new(etypes::AES256_CTS_HMAC_SHA1_96, None, encrypted_timestamp).build(),
+            )
+        );
+    }
+            
+    let as_req = as_req_builder.build();
 
     let socket_addr = SocketAddr::new(args.kdc_ip, 88);
     let raw_as_req = as_req.build();
