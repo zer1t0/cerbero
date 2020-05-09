@@ -1,0 +1,16 @@
+[package]
+name = "kerby"
+version = "0.1.0"
+authors = ["Eloy <zer1t0ps@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2.33"
+kerbeiros = "0.2"
+kerberos_asn1 = "0.0"
+kerberos_constants = "0.0"
+
+chrono = "0.4"
+rand = "0.6"
