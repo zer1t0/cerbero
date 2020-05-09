@@ -1,29 +1,25 @@
-mod as_req_builder;
 mod args;
+mod as_req_builder;
 
-use std::convert::TryInto;
-use chrono::{Utc};
+use chrono::Utc;
+use kerberos_asn1::AsReq;
 use kerberos_asn1::{
-    AsRep, Asn1Object, EncAsRepPart, EncKrbCredPart, EncryptedData,
-    KrbCred, KrbCredInfo, KrbError, PaData,
-    PaEncTsEnc,
+    AsRep, Asn1Object, EncAsRepPart, EncKrbCredPart, EncryptedData, KrbCred,
+    KrbCredInfo, KrbError, PaData, PaEncTsEnc,
 };
+use std::convert::TryInto;
 
-use kerberos_ccache::{CCache};
+use args::{args, ArgumentsParser};
+use as_req_builder::AsReqBuilder;
+use kerberos_ccache::CCache;
 use kerberos_constants;
-use kerberos_constants::{
-    error_codes, etypes, key_usages, pa_data_types,
-};
+use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
 use kerberos_crypto::{AESCipher, AesSizes, KerberosCipher};
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time;
-use as_req_builder::AsReqBuilder;
-use args::{ArgumentsParser, args};
-
-
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
@@ -60,87 +56,103 @@ fn main() {
     let as_req = as_req_builder.build();
 
     let socket_addr = SocketAddr::new(args.kdc_ip, 88);
-    let raw_as_req = as_req.build();
 
-    let raw_response = send_recv_tcp(&socket_addr, &raw_as_req)
-        .expect("Error in send_recv_tcp");
+    let rep = send_recv_as(&socket_addr, &as_req).expect("Error sending AsReq");
 
-    match KrbError::parse(&raw_response) {
-        Ok((_, krb_error)) => {
+    match rep {
+        Rep::KrbError(krb_error) => {
             let error_string =
                 error_codes::error_code_to_string(krb_error.error_code);
             eprintln!(" Error {}: {}", krb_error.error_code, error_string);
         }
-        Err(_) => {
-            match AsRep::parse(&raw_response) {
-                Ok((_, as_rep)) => {
-                    let ticket = as_rep.ticket;
-                    let krb_cred_info;
 
-                    // decrypt as_rep.enc_part
-                    if let Some(password) = &args.user_password {
-                        let aes_salt =
-                            generate_aes_salt(&args.domain, &args.username);
+        Rep::AsRep(as_rep) => {
+            let ticket = as_rep.ticket;
+            let krb_cred_info;
 
-                        let aes256_cipher = AESCipher::new(AesSizes::Aes256);
+            // decrypt as_rep.enc_part
+            if let Some(password) = &args.user_password {
+                let aes_salt = generate_aes_salt(&args.domain, &args.username);
 
-                        let key = aes256_cipher
-                            .generate_key_from_password(password, &aes_salt);
+                let aes256_cipher = AESCipher::new(AesSizes::Aes256);
 
-                        let raw_enc_as_req_part = aes256_cipher
-                            .decrypt(
-                                &key,
-                                key_usages::KEY_USAGE_AS_REP_ENC_PART,
-                                &as_rep.enc_part.cipher,
-                            )
-                            .expect("Unable to decrypt the enc_as_req_part");
+                let key = aes256_cipher
+                    .generate_key_from_password(password, &aes_salt);
 
-                        let (_, enc_as_req_part) =
-                            EncAsRepPart::parse(&raw_enc_as_req_part)
-                                .expect("Error parsing EncAsRepPart");
+                let raw_enc_as_req_part = aes256_cipher
+                    .decrypt(
+                        &key,
+                        key_usages::KEY_USAGE_AS_REP_ENC_PART,
+                        &as_rep.enc_part.cipher,
+                    )
+                    .expect("Unable to decrypt the enc_as_req_part");
 
-                        krb_cred_info = KrbCredInfo {
-                            key: enc_as_req_part.key,
-                            prealm: Some(as_req.req_body.realm),
-                            pname: as_req.req_body.cname,
-                            flags: Some(enc_as_req_part.flags),
-                            authtime: Some(enc_as_req_part.authtime),
-                            starttime: enc_as_req_part.starttime,
-                            endtime: Some(enc_as_req_part.endtime),
-                            renew_till: enc_as_req_part.renew_till,
-                            srealm: Some(enc_as_req_part.srealm),
-                            sname: Some(enc_as_req_part.sname),
-                            caddr: enc_as_req_part.caddr,
-                        };
-                    } else {
-                        eprintln!("No way to decrypt the response without credentials");
-                        return;
-                    }
+                let (_, enc_as_req_part) =
+                    EncAsRepPart::parse(&raw_enc_as_req_part)
+                        .expect("Error parsing EncAsRepPart");
 
-                    let mut enc_krb_cred_part = EncKrbCredPart::default();
-                    enc_krb_cred_part.ticket_info.push(krb_cred_info);
-
-                    let mut krb_cred = KrbCred::default();
-                    krb_cred.tickets.push(ticket);
-                    krb_cred.enc_part = EncryptedData {
-                        etype: etypes::NO_ENCRYPTION,
-                        kvno: None,
-                        cipher: enc_krb_cred_part.build(),
-                    };
-
-                    let ccache: CCache = krb_cred.try_into().expect("Error converting KrbCred to CCache");
-
-                    fs::write("tatata.ccache", ccache.build())
-                        .expect("Unable to write file");
-                }
-                Err(err) => {
-                    eprintln!("Error parsing server responsed: {}", err);
-                }
+                krb_cred_info = KrbCredInfo {
+                    key: enc_as_req_part.key,
+                    prealm: Some(as_req.req_body.realm),
+                    pname: as_req.req_body.cname,
+                    flags: Some(enc_as_req_part.flags),
+                    authtime: Some(enc_as_req_part.authtime),
+                    starttime: enc_as_req_part.starttime,
+                    endtime: Some(enc_as_req_part.endtime),
+                    renew_till: enc_as_req_part.renew_till,
+                    srealm: Some(enc_as_req_part.srealm),
+                    sname: Some(enc_as_req_part.sname),
+                    caddr: enc_as_req_part.caddr,
+                };
+            } else {
+                eprintln!("No way to decrypt the response without credentials");
+                return;
             }
+
+            let mut enc_krb_cred_part = EncKrbCredPart::default();
+            enc_krb_cred_part.ticket_info.push(krb_cred_info);
+
+            let mut krb_cred = KrbCred::default();
+            krb_cred.tickets.push(ticket);
+            krb_cred.enc_part = EncryptedData {
+                etype: etypes::NO_ENCRYPTION,
+                kvno: None,
+                cipher: enc_krb_cred_part.build(),
+            };
+
+            let ccache: CCache = krb_cred
+                .try_into()
+                .expect("Error converting KrbCred to CCache");
+
+            fs::write("tatata.ccache", ccache.build())
+                .expect("Unable to write file");
+        }
+
+        _ => {
+            eprintln!("Error parsing response");
         }
     }
 }
 
+enum Rep {
+    AsRep(AsRep),
+    KrbError(KrbError),
+    Raw(Vec<u8>),
+}
+
+fn send_recv_as(dst_addr: &SocketAddr, as_req: &AsReq) -> io::Result<Rep> {
+    let raw_rep = send_recv_tcp(dst_addr, &as_req.build())?;
+
+    if let Ok((_, krb_error)) = KrbError::parse(&raw_rep) {
+        return Ok(Rep::KrbError(krb_error));
+    }
+
+    if let Ok((_, as_rep)) = AsRep::parse(&raw_rep) {
+        return Ok(Rep::AsRep(as_rep));
+    }
+
+    return Ok(Rep::Raw(raw_rep));
+}
 
 fn send_recv_tcp(
     dst_addr: &SocketAddr,
@@ -183,5 +195,3 @@ fn generate_aes_salt(realm: &str, client_name: &str) -> Vec<u8> {
 
     return salt.as_bytes().to_vec();
 }
-
-
