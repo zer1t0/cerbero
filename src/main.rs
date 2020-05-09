@@ -1,13 +1,14 @@
 use chrono::{Duration, Utc};
 use clap::{App, Arg, ArgGroup, ArgMatches};
-use kerbeiros;
 use kerberos_asn1::{
-    AsReq, Asn1Object, KerbPaPacRequest, KerberosTime, KrbError, PaData,
-    PrincipalName, PaEncTsEnc, EncryptedData
+    AsRep, AsReq, Asn1Object, EncAsRepPart, EncryptedData, KerbPaPacRequest,
+    KerberosTime, KrbError, PaData, PaEncTsEnc, PrincipalName, KrbCredInfo,
+    KrbCred, EncKrbCredPart
 };
 use kerberos_constants;
 use kerberos_constants::{
-    error_codes, etypes, kdc_options, pa_data_types, principal_names, key_usages
+    error_codes, etypes, kdc_options, key_usages, pa_data_types,
+    principal_names,
 };
 use kerberos_crypto::{AESCipher, AesSizes, KerberosCipher};
 use rand;
@@ -17,6 +18,7 @@ use std::io::{Read, Write};
 use std::net::IpAddr;
 use std::net::{SocketAddr, TcpStream};
 use std::time;
+use std::fs;
 
 fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -165,16 +167,14 @@ impl<'a> ArgumentsParser<'a> {
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-
     let mut as_req_builder = AsReqBuilder::new(args.domain.clone())
         .username(args.username.clone())
         .request_pac();
-    
+
     if let Some(password) = &args.user_password {
-    
         let timestamp = PaEncTsEnc::from(Utc::now());
         let aes_salt = generate_aes_salt(&args.domain, &args.username);
-        
+
         let aes256_cipher = AESCipher::new(AesSizes::Aes256);
 
         let key = aes256_cipher.generate_key_from_password(password, &aes_salt);
@@ -182,18 +182,20 @@ fn main() {
         let encrypted_timestamp = aes256_cipher.encrypt(
             &key,
             key_usages::KEY_USAGE_AS_REQ_TIMESTAMP,
-            &timestamp.build()
+            &timestamp.build(),
         );
 
-
-        as_req_builder = as_req_builder.push_padata(
-            PaData::new(
-                pa_data_types::PA_ENC_TIMESTAMP,
-                EncryptedData::new(etypes::AES256_CTS_HMAC_SHA1_96, None, encrypted_timestamp).build(),
+        as_req_builder = as_req_builder.push_padata(PaData::new(
+            pa_data_types::PA_ENC_TIMESTAMP,
+            EncryptedData::new(
+                etypes::AES256_CTS_HMAC_SHA1_96,
+                None,
+                encrypted_timestamp,
             )
-        );
+            .build(),
+        ));
     }
-            
+
     let as_req = as_req_builder.build();
 
     let socket_addr = SocketAddr::new(args.kdc_ip, 88);
@@ -202,12 +204,77 @@ fn main() {
     let raw_response = send_recv_tcp(&socket_addr, &raw_as_req)
         .expect("Error in send_recv_tcp");
 
-    let (_, krb_error) =
-        KrbError::parse(&raw_response).expect("Error parsing raw_response");
+    match KrbError::parse(&raw_response) {
+        Ok((_, krb_error)) => {
+            let error_string =
+                error_codes::error_code_to_string(krb_error.error_code);
+            eprintln!(" Error {}: {}", krb_error.error_code, error_string);
+        }
+        Err(_) => match AsRep::parse(&raw_response) {
+            Ok((_, as_rep)) => {
+                let ticket = as_rep.ticket;
+                let krb_cred_info;
 
-    let error_string = error_codes::error_code_to_string(krb_error.error_code);
+                // decrypt as_rep.enc_part
+                if let Some(password) = &args.user_password {
+                    let aes_salt =
+                        generate_aes_salt(&args.domain, &args.username);
 
-    eprintln!(" Error {}: {}", krb_error.error_code, error_string);
+                    let aes256_cipher = AESCipher::new(AesSizes::Aes256);
+
+                    let key = aes256_cipher
+                        .generate_key_from_password(password, &aes_salt);
+
+                    let raw_enc_as_req_part = aes256_cipher
+                        .decrypt(
+                            &key,
+                            key_usages::KEY_USAGE_AS_REP_ENC_PART,
+                            &as_rep.enc_part.cipher,
+                        )
+                        .expect("Unable to decrypt the enc_as_req_part");
+
+                    let (_, enc_as_req_part) =
+                        EncAsRepPart::parse(&raw_enc_as_req_part)
+                        .expect("Error parsing EncAsRepPart");
+
+                    krb_cred_info = KrbCredInfo {
+                        key: enc_as_req_part.key,
+                        prealm: Some(as_req.req_body.realm),
+                        pname: as_req.req_body.cname,
+                        flags: Some(enc_as_req_part.flags),
+                        authtime: Some(enc_as_req_part.authtime),
+                        starttime: enc_as_req_part.starttime,
+                        endtime: Some(enc_as_req_part.endtime),
+                        renew_till: enc_as_req_part.renew_till,
+                        srealm: Some(enc_as_req_part.srealm),
+                        sname: Some(enc_as_req_part.sname),
+                        caddr: enc_as_req_part.caddr,
+                    };
+                    
+                } else {
+                    eprintln!("No way to decrypt the response without credentials");
+                    return;
+                }
+
+                let mut enc_krb_cred_part = EncKrbCredPart::default();
+                enc_krb_cred_part.ticket_info.push(krb_cred_info);
+                
+                let mut krb_cred = KrbCred::default();
+                krb_cred.tickets.push(ticket);
+                krb_cred.enc_part = EncryptedData {
+                    etype: etypes::NO_ENCRYPTION,
+                    kvno: None,
+                    cipher: enc_krb_cred_part.build()
+                };
+
+                fs::write("tatata.krb", krb_cred.build()).expect("Unable to write file");
+                
+            }
+            Err(err) => {
+                eprintln!("Error parsing server responsed: {}", err);
+            }
+        },
+    }
 }
 
 struct AsReqBuilder {
