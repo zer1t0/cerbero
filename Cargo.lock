@@ -284,10 +284,14 @@ dependencies = [
 
 [[package]]
 name = "kerberos_ccache"
-version = "0.0.4"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f549c22d98dac2d384e39e12681a56e38758e53c699f2ce42951a1758cc9cd1"
+checksum = "f9321c8fe98376e5f0eb9ffa00db5bcc90285a712fe0fddd5353d1a9023850cf"
 dependencies = [
+ "chrono",
+ "failure",
+ "failure_derive",
+ "kerberos_asn1",
  "kerberos_constants",
  "nom",
 ]
@@ -321,6 +325,7 @@ dependencies = [
  "clap",
  "kerbeiros",
  "kerberos_asn1",
+ "kerberos_ccache",
  "kerberos_constants",
  "kerberos_crypto",
  "rand 0.6.5",
