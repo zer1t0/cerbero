@@ -12,7 +12,12 @@ pub enum Rep {
 }
 
 pub fn send_recv_as(dst_addr: &SocketAddr, as_req: &AsReq) -> io::Result<Rep> {
-    let raw_rep = send_recv_tcp(dst_addr, &as_req.build())?;
+    return send_recv(dst_addr, &as_req.build());
+}
+
+
+pub fn send_recv(dst_addr: &SocketAddr, raw: &[u8]) -> io::Result<Rep> {
+    let raw_rep = send_recv_tcp(dst_addr, raw)?;
 
     if let Ok((_, krb_error)) = KrbError::parse(&raw_rep) {
         return Ok(Rep::KrbError(krb_error));

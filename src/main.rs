@@ -30,7 +30,6 @@ fn main() {
         .etypes(args.user_key.etypes())
         .request_pac();
 
-    println!("{:?}", args);
     if args.preauth {
         let padata = generate_padata_encrypted_timestamp(
             &args.user_key,
@@ -42,7 +41,7 @@ fn main() {
 
     let as_req = as_req_builder.build();
 
-    let socket_addr = SocketAddr::new(args.kdc_ip, 88);
+    let socket_addr = SocketAddr::new(args.kdc_ip, args.kdc_port);
 
     let rep = send_recv_as(&socket_addr, &as_req).expect("Error sending AsReq");
 

@@ -1,5 +1,5 @@
 [package]
-name = "kerby"
+name = "askticket"
 version = "0.1.0"
 authors = ["Eloy <zer1t0ps@protonmail.com>"]
 edition = "2018"

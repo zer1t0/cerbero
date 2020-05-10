@@ -152,6 +152,7 @@ pub struct Arguments {
     pub username: String,
     pub user_key: Key,
     pub kdc_ip: IpAddr,
+    pub kdc_port: u16,
     pub ticket_format: TicketFormat,
     pub preauth: bool,
     pub out_file: String
@@ -180,6 +181,7 @@ impl<'a> ArgumentsParser<'a> {
             username,
             user_key,
             kdc_ip,
+            kdc_port: 88,
             ticket_format,
             preauth: !self.matches.is_present("no-preauth"),
             out_file
