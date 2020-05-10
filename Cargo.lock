@@ -266,7 +266,7 @@ dependencies = [
  "kerberos_asn1",
  "kerberos_ccache",
  "kerberos_constants",
- "kerberos_crypto",
+ "kerberos_crypto 0.0.2",
  "rand 0.6.5",
 ]
 
@@ -318,6 +318,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "kerberos_crypto"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70d3cb5fdd52fbf264c1ac6d5cc6482366e0f2ae3bdd251def6253e0a2d08510"
+dependencies = [
+ "chrono",
+ "failure",
+ "kerberos_constants",
+ "md4",
+ "num",
+ "rand 0.6.5",
+ "rust-crypto",
+]
+
+[[package]]
 name = "kerby"
 version = "0.1.0"
 dependencies = [
@@ -327,7 +342,7 @@ dependencies = [
  "kerberos_asn1",
  "kerberos_ccache",
  "kerberos_constants",
- "kerberos_crypto",
+ "kerberos_crypto 0.1.0",
  "rand 0.6.5",
 ]
 

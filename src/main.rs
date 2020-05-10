@@ -1,11 +1,11 @@
 mod args;
 mod as_req_builder;
+mod senders;
 
 use chrono::Utc;
-use kerberos_asn1::AsReq;
 use kerberos_asn1::{
-    AsRep, Asn1Object, EncAsRepPart, EncKrbCredPart, EncryptedData, KrbCred,
-    KrbCredInfo, KrbError, PaData, PaEncTsEnc,
+    Asn1Object, EncAsRepPart, EncKrbCredPart, EncryptedData, KrbCred,
+    KrbCredInfo, PaData, PaEncTsEnc,
 };
 use std::convert::TryInto;
 
@@ -14,12 +14,11 @@ use as_req_builder::AsReqBuilder;
 use kerberos_ccache::CCache;
 use kerberos_constants;
 use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
-use kerberos_crypto::{AESCipher, AesSizes, KerberosCipher};
+use kerberos_crypto::{AesCipher, AesSizes, KerberosCipher};
 use std::fs;
-use std::io;
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
-use std::time;
+use std::net::SocketAddr;
+
+use senders::{send_recv_as, Rep};
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
@@ -30,12 +29,10 @@ fn main() {
 
     if let Some(password) = &args.user_password {
         let timestamp = PaEncTsEnc::from(Utc::now());
-        let aes_salt = generate_aes_salt(&args.domain, &args.username);
 
-        let aes256_cipher = AESCipher::new(AesSizes::Aes256);
-
-        let key = aes256_cipher.generate_key_from_password(password, &aes_salt);
-
+        let aes256_cipher = AesCipher::new(AesSizes::Aes256);
+        let salt = aes256_cipher.generate_salt(&args.domain, &args.username);
+        let key = aes256_cipher.generate_key_from_string(password, &salt);
         let encrypted_timestamp = aes256_cipher.encrypt(
             &key,
             key_usages::KEY_USAGE_AS_REQ_TIMESTAMP,
@@ -72,12 +69,11 @@ fn main() {
 
             // decrypt as_rep.enc_part
             if let Some(password) = &args.user_password {
-                let aes_salt = generate_aes_salt(&args.domain, &args.username);
+                let aes256_cipher = AesCipher::new(AesSizes::Aes256);
+                let salt = aes256_cipher.generate_salt(&args.domain, &args.username);
 
-                let aes256_cipher = AESCipher::new(AesSizes::Aes256);
-
-                let key = aes256_cipher
-                    .generate_key_from_password(password, &aes_salt);
+                let key =
+                    aes256_cipher.generate_key_from_string(password, &salt);
 
                 let raw_enc_as_req_part = aes256_cipher
                     .decrypt(
@@ -132,66 +128,4 @@ fn main() {
             eprintln!("Error parsing response");
         }
     }
-}
-
-enum Rep {
-    AsRep(AsRep),
-    KrbError(KrbError),
-    Raw(Vec<u8>),
-}
-
-fn send_recv_as(dst_addr: &SocketAddr, as_req: &AsReq) -> io::Result<Rep> {
-    let raw_rep = send_recv_tcp(dst_addr, &as_req.build())?;
-
-    if let Ok((_, krb_error)) = KrbError::parse(&raw_rep) {
-        return Ok(Rep::KrbError(krb_error));
-    }
-
-    if let Ok((_, as_rep)) = AsRep::parse(&raw_rep) {
-        return Ok(Rep::AsRep(as_rep));
-    }
-
-    return Ok(Rep::Raw(raw_rep));
-}
-
-fn send_recv_tcp(
-    dst_addr: &SocketAddr,
-    raw_request: &[u8],
-) -> io::Result<Vec<u8>> {
-    let mut tcp_stream =
-        TcpStream::connect_timeout(dst_addr, time::Duration::new(5, 0))?;
-
-    let raw_sized_request = set_size_header_to_request(raw_request);
-    tcp_stream.write(&raw_sized_request)?;
-
-    let mut len_data_bytes = [0 as u8; 4];
-    tcp_stream.read_exact(&mut len_data_bytes)?;
-    let data_length = u32::from_be_bytes(len_data_bytes);
-
-    let mut raw_response: Vec<u8> = vec![0; data_length as usize];
-    tcp_stream.read_exact(&mut raw_response)?;
-
-    return Ok(raw_response);
-}
-
-fn set_size_header_to_request(raw_request: &[u8]) -> Vec<u8> {
-    let request_length = raw_request.len() as u32;
-    let mut raw_sized_request: Vec<u8> = request_length.to_be_bytes().to_vec();
-    raw_sized_request.append(&mut raw_request.to_vec());
-
-    return raw_sized_request;
-}
-
-// añadir esta y funcion que devuelva los supported etypes en kerberos cryptox
-fn generate_aes_salt(realm: &str, client_name: &str) -> Vec<u8> {
-    let mut salt = realm.to_uppercase();
-    let mut lowercase_username = client_name.to_lowercase();
-
-    if lowercase_username.ends_with("$") {
-        salt.push_str("host");
-        lowercase_username.pop();
-    }
-    salt.push_str(&lowercase_username);
-
-    return salt.as_bytes().to_vec();
 }
