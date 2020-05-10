@@ -319,9 +319,9 @@ dependencies = [
 
 [[package]]
 name = "kerberos_crypto"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cde973e7ee3ac6a3c1cd496e4ab7e7464ffeb1ee89708f0ba058ae74ed01202"
+checksum = "15120c67d297c2304e3ddbc9beae86be51888f89ec18e474f5c665d11c4c5820"
 dependencies = [
  "chrono",
  "failure",
@@ -342,7 +342,7 @@ dependencies = [
  "kerberos_asn1",
  "kerberos_ccache",
  "kerberos_constants",
- "kerberos_crypto 0.2.0",
+ "kerberos_crypto 0.3.0",
  "rand 0.6.5",
 ]
 

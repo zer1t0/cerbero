@@ -1,6 +1,7 @@
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
+use std::fmt;
 
 pub fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -8,11 +9,12 @@ pub fn args() -> App<'static, 'static> {
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
         .arg(
-            Arg::with_name("domain")
-                .long("domain")
+            Arg::with_name("realm")
+                .long("realm")
+                .alias("domain")
                 .short("d")
                 .takes_value(true)
-                .help("Domain for request the ticket")
+                .help("Domain/Realm for request the ticket")
                 .required(true),
         )
         .arg(
@@ -55,7 +57,8 @@ pub fn args() -> App<'static, 'static> {
         .group(
             ArgGroup::with_name("user_key")
                 .args(&["password", "rc4", "aes-128", "aes-256"])
-                .multiple(false),
+                .multiple(false)
+                .required(true),
         )
         .arg(
             Arg::with_name("kdc-ip")
@@ -81,7 +84,12 @@ pub fn args() -> App<'static, 'static> {
                 .long("out-file")
                 .takes_value(true)
                 .value_name("file")
-                .help("File to save TGT."),
+                .help("File to save ticket"),
+        )
+        .arg(
+            Arg::with_name("no-preauth")
+                .long("no-preauth")
+                .help("Request ticket without send preauthentication data")
         )
 }
 
@@ -129,12 +137,24 @@ pub enum TicketFormat {
     Ccache,
 }
 
+impl fmt::Display for TicketFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ccache => write!(f, "ccache"),
+            Self::Krb => write!(f, "krb")
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Arguments {
-    pub domain: String,
+    pub realm: String,
     pub username: String,
-    pub user_key: Option<Key>,
+    pub user_key: Key,
     pub kdc_ip: IpAddr,
     pub ticket_format: TicketFormat,
+    pub preauth: bool,
+    pub out_file: String
 }
 
 pub struct ArgumentsParser<'a> {
@@ -148,17 +168,21 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn _parse(&self) -> Arguments {
-        let domain = self.matches.value_of("domain").unwrap().into();
-        let username = self.matches.value_of("user").unwrap().into();
+        let realm = self.matches.value_of("realm").unwrap().into();
+        let username: String = self.matches.value_of("user").unwrap().into();
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
-
+        let ticket_format = self.parse_ticket_format();
+        let out_file = self.parse_out_file(&username, &ticket_format);
+        
         return Arguments {
-            domain,
+            realm,
             username,
             user_key,
             kdc_ip,
-            ticket_format: self.parse_ticket_format(),
+            ticket_format,
+            preauth: !self.matches.is_present("no-preauth"),
+            out_file
         };
     }
 
@@ -167,17 +191,18 @@ impl<'a> ArgumentsParser<'a> {
         return kdc_ip.parse::<IpAddr>().unwrap();
     }
 
-    fn parse_user_key(&self) -> Option<Key> {
+    fn parse_user_key(&self) -> Key {
         if let Some(password) = self.matches.value_of("password") {
-            return Some(Key::Secret(password.to_string()));
+            return Key::Secret(password.to_string());
         } else if let Some(ntlm) = self.matches.value_of("rc4") {
-            return Some(Key::from_rc4_key_string(ntlm).unwrap());
+            return Key::from_rc4_key_string(ntlm).unwrap();
         } else if let Some(aes_128_key) = self.matches.value_of("aes-128") {
-            return Some(Key::from_aes_128_key_string(aes_128_key).unwrap());
+            return Key::from_aes_128_key_string(aes_128_key).unwrap();
         } else if let Some(aes_256_key) = self.matches.value_of("aes-256") {
-            return Some(Key::from_aes_256_key_string(aes_256_key).unwrap());
+            return Key::from_aes_256_key_string(aes_256_key).unwrap();
         }
-        return None;
+
+        unreachable!("No key specified");
     }
 
     fn parse_ticket_format(&self) -> TicketFormat {
@@ -188,5 +213,13 @@ impl<'a> ArgumentsParser<'a> {
         }
 
         return TicketFormat::Ccache;
+    }
+
+    fn parse_out_file(&self, username: &str, ticket_format: &TicketFormat) -> String {
+        if let Some(filename) = self.matches.value_of("out-file") {
+            return filename.into()
+        }
+
+        return format!("{}.{}", username, ticket_format);
     }
 }

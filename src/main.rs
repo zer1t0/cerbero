@@ -9,13 +9,13 @@ use kerberos_asn1::{
 };
 use std::convert::TryInto;
 
-use args::{args, ArgumentsParser};
+use args::{args, ArgumentsParser, TicketFormat};
 use as_req_builder::AsReqBuilder;
 use kerberos_ccache::CCache;
 use kerberos_constants;
 use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
 use kerberos_crypto::{
-    supported_etypes, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
+    new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
 use std::fs;
 use std::net::SocketAddr;
@@ -25,24 +25,19 @@ use senders::{send_recv_as, Rep};
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-    let mut as_req_builder = AsReqBuilder::new(args.domain.clone())
+    let mut as_req_builder = AsReqBuilder::new(args.realm.clone())
         .username(args.username.clone())
+        .etypes(args.user_key.etypes())
         .request_pac();
 
-    if let Some(user_key) = &args.user_key {
-        println!("{:?}", user_key);
+    println!("{:?}", args);
+    if args.preauth {
         let padata = generate_padata_encrypted_timestamp(
-            user_key,
-            &args.domain,
+            &args.user_key,
+            &args.realm,
             &args.username,
         );
-
-        let etypes = match user_key {
-            Key::Secret(_) => supported_etypes(),
-            _ => vec![user_key.etype()],
-        };
-
-        as_req_builder = as_req_builder.push_padata(padata).etypes(etypes);
+        as_req_builder = as_req_builder.push_padata(padata);
     }
 
     let as_req = as_req_builder.build();
@@ -51,80 +46,83 @@ fn main() {
 
     let rep = send_recv_as(&socket_addr, &as_req).expect("Error sending AsReq");
 
-    match rep {
-        Rep::KrbError(krb_error) => {
-            let error_string =
-                error_codes::error_code_to_string(krb_error.error_code);
-            eprintln!(" Error {}: {}", krb_error.error_code, error_string);
+    if let Rep::KrbError(krb_error) = rep {
+        let error_string =
+            error_codes::error_code_to_string(krb_error.error_code);
+        eprintln!(" Error {}: {}", krb_error.error_code, error_string);
+        return;
+    }
+
+    if let Rep::Raw(_) = rep {
+        eprintln!("Error parsing response");
+        return;
+    }
+
+    if let Rep::AsRep(as_rep) = rep {
+        let resp_etype = as_rep.enc_part.etype;
+
+        if !args.user_key.etypes().contains(&resp_etype) {
+            eprintln!("Unable to decrypt response AS-REP: mistmach etypes");
+            return;
         }
 
-        Rep::AsRep(as_rep) => {
-            let ticket = as_rep.ticket;
-            /*
-            let krb_cred_info;
+        let cipher = new_kerberos_cipher(resp_etype).unwrap();
 
-            // decrypt as_rep.enc_part
-            if let Some(password) = &args.user_password {
-                let aes256_cipher = AesCipher::new(AesSizes::Aes256);
-                let salt =
-                    aes256_cipher.generate_salt(&args.domain, &args.username);
-
-                let key =
-                    aes256_cipher.generate_key_from_string(password, &salt);
-
-                let raw_enc_as_req_part = aes256_cipher
-                    .decrypt(
-                        &key,
-                        key_usages::KEY_USAGE_AS_REP_ENC_PART,
-                        &as_rep.enc_part.cipher,
-                    )
-                    .expect("Unable to decrypt the enc_as_req_part");
-
-                let (_, enc_as_req_part) =
-                    EncAsRepPart::parse(&raw_enc_as_req_part)
-                        .expect("Error parsing EncAsRepPart");
-
-                krb_cred_info = KrbCredInfo {
-                    key: enc_as_req_part.key,
-                    prealm: Some(as_req.req_body.realm),
-                    pname: as_req.req_body.cname,
-                    flags: Some(enc_as_req_part.flags),
-                    authtime: Some(enc_as_req_part.authtime),
-                    starttime: enc_as_req_part.starttime,
-                    endtime: Some(enc_as_req_part.endtime),
-                    renew_till: enc_as_req_part.renew_till,
-                    srealm: Some(enc_as_req_part.srealm),
-                    sname: Some(enc_as_req_part.sname),
-                    caddr: enc_as_req_part.caddr,
-                };
-            } else {
-                eprintln!("No way to decrypt the response without credentials");
-                return;
+        let key = match &args.user_key {
+            Key::Secret(secret) => {
+                let salt = cipher.generate_salt(&args.realm, &args.username);
+                cipher.generate_key_from_string(&secret, &salt)
             }
+            _ => (&args.user_key.as_bytes()).to_vec(),
+        };
 
-            let mut enc_krb_cred_part = EncKrbCredPart::default();
-            enc_krb_cred_part.ticket_info.push(krb_cred_info);
+        let raw_enc_as_req_part = cipher
+            .decrypt(
+                &key,
+                key_usages::KEY_USAGE_AS_REP_ENC_PART,
+                &as_rep.enc_part.cipher,
+            )
+            .expect("Unable to decrypt the enc_as_req_part");
 
-            let mut krb_cred = KrbCred::default();
-            krb_cred.tickets.push(ticket);
-            krb_cred.enc_part = EncryptedData {
-                etype: etypes::NO_ENCRYPTION,
-                kvno: None,
-                cipher: enc_krb_cred_part.build(),
-            };
+        let (_, enc_as_req_part) = EncAsRepPart::parse(&raw_enc_as_req_part)
+            .expect("Error parsing EncAsRepPart");
 
-            let ccache: CCache = krb_cred
-                .try_into()
-                .expect("Error converting KrbCred to CCache");
+        let krb_cred_info = KrbCredInfo {
+            key: enc_as_req_part.key,
+            prealm: Some(as_req.req_body.realm),
+            pname: as_req.req_body.cname,
+            flags: Some(enc_as_req_part.flags),
+            authtime: Some(enc_as_req_part.authtime),
+            starttime: enc_as_req_part.starttime,
+            endtime: Some(enc_as_req_part.endtime),
+            renew_till: enc_as_req_part.renew_till,
+            srealm: Some(enc_as_req_part.srealm),
+            sname: Some(enc_as_req_part.sname),
+            caddr: enc_as_req_part.caddr,
+        };
 
-            fs::write("tatata.ccache", ccache.build())
-                .expect("Unable to write file");
-            */
-        }
+        let mut enc_krb_cred_part = EncKrbCredPart::default();
+        enc_krb_cred_part.ticket_info.push(krb_cred_info);
 
-        _ => {
-            eprintln!("Error parsing response");
-        }
+        let mut krb_cred = KrbCred::default();
+        krb_cred.tickets.push(as_rep.ticket);
+        krb_cred.enc_part = EncryptedData {
+            etype: etypes::NO_ENCRYPTION,
+            kvno: None,
+            cipher: enc_krb_cred_part.build(),
+        };
+
+        let raw_cred = match args.ticket_format {
+            TicketFormat::Krb => krb_cred.build(),
+            TicketFormat::Ccache => {
+                let ccache: CCache = krb_cred
+                    .try_into()
+                    .expect("Error converting KrbCred to CCache");
+                ccache.build()
+            }
+        };
+
+        fs::write(args.out_file, raw_cred).expect("Unable to write file");
     }
 }
 
@@ -138,12 +136,7 @@ fn generate_padata_encrypted_timestamp(
 
     let padata = PaData::new(
         pa_data_types::PA_ENC_TIMESTAMP,
-        EncryptedData::new(
-            etype,
-            None,
-            encrypted_timestamp,
-        )
-        .build(),
+        EncryptedData::new(etype, None, encrypted_timestamp).build(),
     );
 
     return padata;
