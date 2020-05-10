@@ -14,7 +14,9 @@ use as_req_builder::AsReqBuilder;
 use kerberos_ccache::CCache;
 use kerberos_constants;
 use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
-use kerberos_crypto::{AesCipher, AesSizes, KerberosCipher};
+use kerberos_crypto::{
+    supported_etypes, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
+};
 use std::fs;
 use std::net::SocketAddr;
 
@@ -27,27 +29,20 @@ fn main() {
         .username(args.username.clone())
         .request_pac();
 
-    if let Some(password) = &args.user_password {
-        let timestamp = PaEncTsEnc::from(Utc::now());
-
-        let aes256_cipher = AesCipher::new(AesSizes::Aes256);
-        let salt = aes256_cipher.generate_salt(&args.domain, &args.username);
-        let key = aes256_cipher.generate_key_from_string(password, &salt);
-        let encrypted_timestamp = aes256_cipher.encrypt(
-            &key,
-            key_usages::KEY_USAGE_AS_REQ_TIMESTAMP,
-            &timestamp.build(),
+    if let Some(user_key) = &args.user_key {
+        println!("{:?}", user_key);
+        let padata = generate_padata_encrypted_timestamp(
+            user_key,
+            &args.domain,
+            &args.username,
         );
 
-        as_req_builder = as_req_builder.push_padata(PaData::new(
-            pa_data_types::PA_ENC_TIMESTAMP,
-            EncryptedData::new(
-                etypes::AES256_CTS_HMAC_SHA1_96,
-                None,
-                encrypted_timestamp,
-            )
-            .build(),
-        ));
+        let etypes = match user_key {
+            Key::Secret(_) => supported_etypes(),
+            _ => vec![user_key.etype()],
+        };
+
+        as_req_builder = as_req_builder.push_padata(padata).etypes(etypes);
     }
 
     let as_req = as_req_builder.build();
@@ -65,12 +60,14 @@ fn main() {
 
         Rep::AsRep(as_rep) => {
             let ticket = as_rep.ticket;
+            /*
             let krb_cred_info;
 
             // decrypt as_rep.enc_part
             if let Some(password) = &args.user_password {
                 let aes256_cipher = AesCipher::new(AesSizes::Aes256);
-                let salt = aes256_cipher.generate_salt(&args.domain, &args.username);
+                let salt =
+                    aes256_cipher.generate_salt(&args.domain, &args.username);
 
                 let key =
                     aes256_cipher.generate_key_from_string(password, &salt);
@@ -122,10 +119,75 @@ fn main() {
 
             fs::write("tatata.ccache", ccache.build())
                 .expect("Unable to write file");
+            */
         }
 
         _ => {
             eprintln!("Error parsing response");
         }
     }
+}
+
+fn generate_padata_encrypted_timestamp(
+    user_key: &Key,
+    realm: &str,
+    client_name: &str,
+) -> PaData {
+    let (encrypted_timestamp, etype) =
+        generate_encrypted_timestamp(user_key, realm, client_name);
+
+    let padata = PaData::new(
+        pa_data_types::PA_ENC_TIMESTAMP,
+        EncryptedData::new(
+            etype,
+            None,
+            encrypted_timestamp,
+        )
+        .build(),
+    );
+
+    return padata;
+}
+
+fn generate_encrypted_timestamp(
+    user_key: &Key,
+    realm: &str,
+    client_name: &str,
+) -> (Vec<u8>, i32) {
+    let timestamp = PaEncTsEnc::from(Utc::now());
+    let (cipher, key) = get_cipher_and_key(user_key, realm, client_name);
+    let encrypted_timestamp = cipher.encrypt(
+        &key,
+        key_usages::KEY_USAGE_AS_REQ_TIMESTAMP,
+        &timestamp.build(),
+    );
+
+    return (encrypted_timestamp, cipher.etype());
+}
+
+fn get_cipher_and_key(
+    user_key: &Key,
+    realm: &str,
+    client_name: &str,
+) -> (Box<dyn KerberosCipher>, Vec<u8>) {
+    match user_key {
+        Key::Secret(secret) => {
+            let cipher = AesCipher::new(AesSizes::Aes256);
+            let salt = cipher.generate_salt(realm, client_name);
+            let key = cipher.generate_key_from_string(&secret, &salt);
+            return (Box::new(cipher), key);
+        }
+        Key::RC4Key(key) => {
+            let cipher = Rc4Cipher::new();
+            return (Box::new(cipher), key.to_vec());
+        }
+        Key::AES128Key(key) => {
+            let cipher = AesCipher::new(AesSizes::Aes128);
+            return (Box::new(cipher), key.to_vec());
+        }
+        Key::AES256Key(key) => {
+            let cipher = AesCipher::new(AesSizes::Aes256);
+            return (Box::new(cipher), key.to_vec());
+        }
+    };
 }

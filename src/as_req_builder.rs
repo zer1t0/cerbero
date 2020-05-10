@@ -47,6 +47,11 @@ impl AsReqBuilder {
         };
     }
 
+    pub fn etypes(mut self, etypes: Vec<i32>) -> Self {
+        self.etypes = etypes;
+        self
+    }
+
     pub fn cname(mut self, cname: Option<PrincipalName>) -> Self {
         self.cname = cname;
         self

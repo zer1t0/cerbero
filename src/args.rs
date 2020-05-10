@@ -1,6 +1,6 @@
 use clap::{App, Arg, ArgGroup, ArgMatches};
+use kerberos_crypto::Key;
 use std::net::IpAddr;
-
 
 pub fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -31,36 +31,42 @@ pub fn args() -> App<'static, 'static> {
                 .help("Password of user"),
         )
         .arg(
-            Arg::with_name("ntlm")
-                .long("ntlm")
+            Arg::with_name("rc4")
+                .long("rc4")
+                .alias("ntlm")
                 .takes_value(true)
-                .help("NTLM hash of user"),
+                .help("RC4 Kerberos key (NTLM hash of user)")
+                .validator(is_rc4_key),
         )
         .arg(
             Arg::with_name("aes-128")
                 .long("aes-128")
                 .takes_value(true)
-                .help("AES 128 Kerberos key of user"),
+                .help("AES 128 Kerberos key of user")
+                .validator(is_aes_128_key),
         )
         .arg(
             Arg::with_name("aes-256")
                 .long("aes-256")
                 .takes_value(true)
-                .help("AES 256 Kerberos key of user"),
+                .help("AES 256 Kerberos key of user")
+                .validator(is_aes_256_key),
         )
         .group(
             ArgGroup::with_name("user_key")
-                .args(&["password", "ntlm", "aes-128", "aes-256"])
+                .args(&["password", "rc4", "aes-128", "aes-256"])
                 .multiple(false),
         )
         .arg(
             Arg::with_name("kdc-ip")
                 .long("kdc-ip")
+                .alias("dc-ip")
                 .short("k")
                 .value_name("ip")
                 .takes_value(true)
                 .required(true)
-                .help("The address of the KDC"),
+                .help("The address of the KDC (usually the Domain Controller)")
+                .validator(is_ip),
         )
         .arg(
             Arg::with_name("ticket-format")
@@ -79,6 +85,44 @@ pub fn args() -> App<'static, 'static> {
         )
 }
 
+fn is_rc4_key(v: String) -> Result<(), String> {
+    Key::from_rc4_key_string(&v).map_err(|_| {
+        format!(
+            "Invalid RC4 key '{}', must be a string of 32 hexadecimals",
+            v
+        )
+    })?;
+
+    return Ok(());
+}
+
+fn is_aes_128_key(v: String) -> Result<(), String> {
+    Key::from_aes_128_key_string(&v).map_err(|_| {
+        format!(
+            "Invalid AES-128 key '{}', must be a string of 32 hexadecimals",
+            v
+        )
+    })?;
+
+    return Ok(());
+}
+
+fn is_aes_256_key(v: String) -> Result<(), String> {
+    Key::from_aes_256_key_string(&v).map_err(|_| {
+        format!(
+            "Invalid AES-256 key '{}', must be a string of 64 hexadecimals",
+            v
+        )
+    })?;
+
+    return Ok(());
+}
+
+fn is_ip(v: String) -> Result<(), String> {
+    v.parse::<IpAddr>().map_err(|_| format!("Invalid IP address '{}'", v))?;
+    return Ok(());
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TicketFormat {
     Krb,
@@ -88,10 +132,9 @@ pub enum TicketFormat {
 pub struct Arguments {
     pub domain: String,
     pub username: String,
-    pub user_password: Option<String>,
-    pub user_key: Option<kerbeiros::Key>,
+    pub user_key: Option<Key>,
     pub kdc_ip: IpAddr,
-    pub ticket_format: TicketFormat
+    pub ticket_format: TicketFormat,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -109,15 +152,13 @@ impl<'a> ArgumentsParser<'a> {
         let username = self.matches.value_of("user").unwrap().into();
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
-        let user_password = self.parse_user_password();
 
         return Arguments {
             domain,
             username,
             user_key,
             kdc_ip,
-            user_password,
-            ticket_format: self.parse_ticket_format()
+            ticket_format: self.parse_ticket_format(),
         };
     }
 
@@ -126,23 +167,15 @@ impl<'a> ArgumentsParser<'a> {
         return kdc_ip.parse::<IpAddr>().unwrap();
     }
 
-    fn parse_user_password(&self) -> Option<String> {
-        return Some(self.matches.value_of("password")?.into());
-    }
-
-    fn parse_user_key(&self) -> Option<kerbeiros::Key> {
+    fn parse_user_key(&self) -> Option<Key> {
         if let Some(password) = self.matches.value_of("password") {
-            return Some(kerbeiros::Key::Password(password.to_string()));
-        } else if let Some(ntlm) = self.matches.value_of("ntml") {
-            return Some(kerbeiros::Key::from_rc4_key_string(ntlm).unwrap());
+            return Some(Key::Secret(password.to_string()));
+        } else if let Some(ntlm) = self.matches.value_of("rc4") {
+            return Some(Key::from_rc4_key_string(ntlm).unwrap());
         } else if let Some(aes_128_key) = self.matches.value_of("aes-128") {
-            return Some(
-                kerbeiros::Key::from_aes_128_key_string(aes_128_key).unwrap(),
-            );
+            return Some(Key::from_aes_128_key_string(aes_128_key).unwrap());
         } else if let Some(aes_256_key) = self.matches.value_of("aes-256") {
-            return Some(
-                kerbeiros::Key::from_aes_256_key_string(aes_256_key).unwrap(),
-            );
+            return Some(Key::from_aes_256_key_string(aes_256_key).unwrap());
         }
         return None;
     }
