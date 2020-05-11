@@ -1,12 +1,13 @@
 use kerberos_asn1::{
     AsReq, Asn1Object, KerbPaPacRequest, KerberosTime, PaData, PrincipalName,
+    KdcReq, TgsReq
 };
 use kerberos_constants::{kdc_options, pa_data_types, principal_names, etypes};
 use rand;
 use rand::Rng;
 use chrono::{Duration, Utc};
 
-pub struct AsReqBuilder {
+pub struct KdcReqBuilder {
     realm: String,
     sname: Option<PrincipalName>,
     etypes: Vec<i32>,
@@ -18,7 +19,7 @@ pub struct AsReqBuilder {
     rtime: Option<KerberosTime>,
 }
 
-impl AsReqBuilder {
+impl KdcReqBuilder {
     pub fn new(realm: String) -> Self {
         return Self {
             realm: realm.clone(),
@@ -57,6 +58,11 @@ impl AsReqBuilder {
         self
     }
 
+    pub fn sname(mut self, sname: Option<PrincipalName>) -> Self {
+        self.sname = sname;
+        self
+    }
+
     pub fn username(self, username: String) -> Self {
         self.cname(Some(PrincipalName {
             name_type: principal_names::NT_PRINCIPAL,
@@ -76,23 +82,31 @@ impl AsReqBuilder {
         ))
     }
 
-    pub fn build(self) -> AsReq {
-        let mut as_req = AsReq::default();
+    pub fn build(self) -> KdcReq {
+        let mut req = KdcReq::default();
 
-        as_req.req_body.kdc_options = self.kdc_options.into();
-        as_req.req_body.cname = self.cname;
-        as_req.req_body.realm = self.realm;
-        as_req.req_body.sname = self.sname;
-        as_req.req_body.till = self.till;
-        as_req.req_body.rtime = self.rtime;
-        as_req.req_body.nonce = self.nonce;
-        as_req.req_body.etypes = self.etypes;
+        req.req_body.kdc_options = self.kdc_options.into();
+        req.req_body.cname = self.cname;
+        req.req_body.realm = self.realm;
+        req.req_body.sname = self.sname;
+        req.req_body.till = self.till;
+        req.req_body.rtime = self.rtime;
+        req.req_body.nonce = self.nonce;
+        req.req_body.etypes = self.etypes;
 
         if self.padatas.len() > 0 {
-            as_req.padata = Some(self.padatas);
+            req.padata = Some(self.padatas);
         }
 
-        return as_req;
+        return req;
+    }
+    
+    pub fn build_as_req(self) -> AsReq {
+        self.build().into()
+    }
+
+    pub fn build_tgs_req(self) -> TgsReq {
+        self.build().into()
     }
 }
 

@@ -7,7 +7,7 @@ use kerberos_asn1::{
 use std::convert::TryInto;
 
 use crate::args::{Arguments, TicketFormat};
-use crate::as_req_builder::AsReqBuilder;
+use crate::as_req_builder::KdcReqBuilder;
 use kerberos_ccache::CCache;
 use kerberos_constants;
 use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
@@ -48,7 +48,7 @@ fn build_as_req(
     user_key: &Key,
     preauth: bool,
 ) -> AsReq {
-    let mut as_req_builder = AsReqBuilder::new(realm.clone())
+    let mut as_req_builder = KdcReqBuilder::new(realm.clone())
         .username(username.clone())
         .etypes(user_key.etypes())
         .request_pac();
@@ -59,7 +59,7 @@ fn build_as_req(
         as_req_builder = as_req_builder.push_padata(padata);
     }
 
-    return as_req_builder.build();
+    return as_req_builder.build_as_req();
 }
 
 fn handle_krb_error(krb_error: &KrbError) -> Result<(), String> {

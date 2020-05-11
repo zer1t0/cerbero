@@ -8,9 +8,3 @@ pub fn username_to_principal_name(username: String) -> PrincipalName {
     };
 }
 
-pub fn compose_tgt_service(realm: String) -> PrincipalName {
-    PrincipalName {
-        name_type: principal_names::NT_PRINCIPAL,
-        name_string: vec!["krbtgt".into(), realm],
-    }
-}

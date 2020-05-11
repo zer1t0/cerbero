@@ -74,6 +74,7 @@ pub fn args() -> App<'static, 'static> {
         .arg(
             Arg::with_name("service")
                 .long("service")
+                .alias("spn")
                 .takes_value(true)
                 .value_name("spn")
                 .help("SPN of the desired service"),

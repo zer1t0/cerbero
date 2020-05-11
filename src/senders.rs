@@ -3,12 +3,16 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time;
 
-use kerberos_asn1::{AsReq, KrbError, AsRep, Asn1Object};
+use kerberos_asn1::{AsReq, KrbError, AsRep, Asn1Object, TgsReq};
 
 pub enum Rep {
     AsRep(AsRep),
     KrbError(KrbError),
     Raw(Vec<u8>),
+}
+
+pub fn send_recv_tgs(dst_addr: &SocketAddr, req: &TgsReq) -> io::Result<Rep> {
+    return send_recv(dst_addr, &req.build());
 }
 
 pub fn send_recv_as(dst_addr: &SocketAddr, as_req: &AsReq) -> io::Result<Rep> {
