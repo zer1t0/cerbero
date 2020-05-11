@@ -72,6 +72,13 @@ pub fn args() -> App<'static, 'static> {
                 .validator(is_ip),
         )
         .arg(
+            Arg::with_name("service")
+                .long("service")
+                .takes_value(true)
+                .value_name("spn")
+                .help("SPN of the desired service"),
+        )
+        .arg(
             Arg::with_name("ticket-format")
                 .long("ticket-format")
                 .takes_value(true)
@@ -155,7 +162,8 @@ pub struct Arguments {
     pub kdc_port: u16,
     pub ticket_format: TicketFormat,
     pub preauth: bool,
-    pub out_file: String
+    pub out_file: String,
+    pub service: Option<String>,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -175,6 +183,7 @@ impl<'a> ArgumentsParser<'a> {
         let kdc_ip = self.parse_kdc_ip();
         let ticket_format = self.parse_ticket_format();
         let out_file = self.parse_out_file(&username, &ticket_format);
+        let service = self.parse_service();
         
         return Arguments {
             realm,
@@ -184,7 +193,8 @@ impl<'a> ArgumentsParser<'a> {
             kdc_port: 88,
             ticket_format,
             preauth: !self.matches.is_present("no-preauth"),
-            out_file
+            out_file,
+            service,
         };
     }
 
@@ -223,5 +233,9 @@ impl<'a> ArgumentsParser<'a> {
         }
 
         return format!("{}.{}", username, ticket_format);
+    }
+
+    fn parse_service(&self) -> Option<String> {
+        return self.matches.value_of("service").map(|s| s.into());
     }
 }
