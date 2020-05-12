@@ -1,17 +1,17 @@
 mod args;
-mod kdc_req_builder;
 mod ask_tgs;
 mod ask_tgt;
-mod senders;
-mod utils;
-mod krb_cred_plain;
 mod cred_format;
 mod error;
+mod kdc_req_builder;
+mod krb_cred_plain;
+mod senders;
 mod transporter;
+mod utils;
 
 use args::{args, ArgumentsParser};
-use ask_tgt::ask_tgt;
 use ask_tgs::ask_tgs;
+use ask_tgt::ask_tgt;
 use std::net::SocketAddr;
 use transporter::new_transporter;
 
@@ -32,7 +32,15 @@ fn main() {
             eprintln!("{}", error);
         }
     } else {
-        if let Err(error) = ask_tgt(args, &*transporter) {
+        if let Err(error) = ask_tgt(
+            &args.realm,
+            &args.username,
+            &args.user_key,
+            args.preauth,
+            &*transporter,
+            &args.ticket_format,
+            &args.out_file,
+        ) {
             eprintln!("{}", error);
         }
     }

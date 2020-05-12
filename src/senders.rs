@@ -1,6 +1,6 @@
 use crate::transporter::KerberosTransporter;
-use std::io;
 use kerberos_asn1::{AsRep, Asn1Object, KrbError, TgsRep};
+use std::io;
 
 pub enum Rep {
     AsRep(AsRep),

@@ -4,7 +4,6 @@ use kerberos_asn1::{
     PaEncTsEnc,
 };
 
-use crate::args::Arguments;
 use crate::kdc_req_builder::KdcReqBuilder;
 use kerberos_constants;
 use kerberos_constants::{key_usages, pa_data_types};
@@ -12,24 +11,50 @@ use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
 
+use crate::cred_format::CredentialFormat;
 use crate::error::Result;
 use crate::senders::{send_recv, Rep};
-use crate::utils::{create_krb_cred, create_krb_error_msg, save_cred_in_file};
 use crate::transporter::KerberosTransporter;
+use crate::utils::{create_krb_cred, create_krb_error_msg, save_cred_in_file};
 
-pub fn ask_tgt(args: Arguments, transporter: &dyn KerberosTransporter) -> Result<()> {
-    let as_req =
-        build_as_req(&args.realm, &args.username, &args.user_key, args.preauth);
+pub fn ask_tgt(
+    realm: &String,
+    username: &String,
+    user_key: &Key,
+    preauth: bool,
+    transporter: &dyn KerberosTransporter,
+    cred_format: &CredentialFormat,
+    out_file: &str,
+) -> Result<()> {
+    let krb_cred =
+        request_tgt(realm, username, user_key, preauth, transporter)?;
+
+    save_cred_in_file(krb_cred, cred_format, out_file)?;
+
+    return Ok(());
+}
+
+fn request_tgt(
+    realm: &String,
+    username: &String,
+    user_key: &Key,
+    preauth: bool,
+    transporter: &dyn KerberosTransporter,
+) -> Result<KrbCred> {
+    let as_req = build_as_req(realm, username, user_key, preauth);
 
     let rep = send_recv_as(transporter, &as_req)?;
 
-    return handle_as_rep(rep, &args);    
+    return handle_as_rep(rep, realm, username, user_key);
 }
 
-fn send_recv_as(transporter: &dyn KerberosTransporter, req: &AsReq) -> Result<AsRep> {
+fn send_recv_as(
+    transporter: &dyn KerberosTransporter,
+    req: &AsReq,
+) -> Result<AsRep> {
     let rep = send_recv(transporter, &req.build())
         .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
-    
+
     match rep {
         Rep::KrbError(krb_error) => {
             return Err(create_krb_error_msg(&krb_error))?;
@@ -71,15 +96,13 @@ fn build_as_req(
     return as_req_builder.build_as_req();
 }
 
-fn handle_as_rep(as_rep: AsRep, args: &Arguments) -> Result<()> {
-    let krb_cred = extract_krb_cred_from_as_rep(
-        as_rep,
-        &args.user_key,
-        &args.username,
-        &args.realm,
-    )?;
-    save_cred_in_file(krb_cred, &args.ticket_format, &args.out_file)?;
-    return Ok(());
+fn handle_as_rep(
+    as_rep: AsRep,
+    realm: &String,
+    username: &String,
+    user_key: &Key,
+) -> Result<KrbCred> {
+    return extract_krb_cred_from_as_rep(as_rep, user_key, username, realm);
 }
 
 fn extract_krb_cred_from_as_rep(

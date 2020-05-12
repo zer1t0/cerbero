@@ -7,10 +7,10 @@ mod transporter_trait;
 pub use transporter_trait::KerberosTransporter;
 
 mod tcp_transporter;
-use tcp_transporter::{TcpTransporter};
+use tcp_transporter::TcpTransporter;
 
 mod udp_transporter;
-use udp_transporter::{UdpTransporter};
+use udp_transporter::UdpTransporter;
 
 /// Transport protocols available to send Kerberos messages
 #[derive(Debug, PartialEq, Clone, Copy)]

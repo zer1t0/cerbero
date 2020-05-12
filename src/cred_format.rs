@@ -10,7 +10,7 @@ impl fmt::Display for CredentialFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Ccache => write!(f, "ccache"),
-            Self::Krb => write!(f, "krb")
+            Self::Krb => write!(f, "krb"),
         }
     }
 }

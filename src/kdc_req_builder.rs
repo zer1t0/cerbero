@@ -1,11 +1,11 @@
+use chrono::{Duration, Utc};
 use kerberos_asn1::{
-    AsReq, Asn1Object, KerbPaPacRequest, KerberosTime, PaData, PrincipalName,
-    KdcReq, TgsReq
+    AsReq, Asn1Object, KdcReq, KerbPaPacRequest, KerberosTime, PaData,
+    PrincipalName, TgsReq,
 };
-use kerberos_constants::{kdc_options, pa_data_types, principal_names, etypes};
+use kerberos_constants::{etypes, kdc_options, pa_data_types, principal_names};
 use rand;
 use rand::Rng;
-use chrono::{Duration, Utc};
 
 pub struct KdcReqBuilder {
     realm: String,
@@ -100,7 +100,7 @@ impl KdcReqBuilder {
 
         return req;
     }
-    
+
     pub fn build_as_req(self) -> AsReq {
         self.build().into()
     }
@@ -109,7 +109,6 @@ impl KdcReqBuilder {
         self.build().into()
     }
 }
-
 
 fn supported_etypes() -> Vec<i32> {
     vec![

@@ -1,8 +1,8 @@
 use crate::cred_format::CredentialFormat;
+use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
-use crate::transporter::TransportProtocol;
 
 pub fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -157,7 +157,7 @@ pub struct Arguments {
     pub preauth: bool,
     pub out_file: String,
     pub service: Option<String>,
-    pub transport_protocol: TransportProtocol
+    pub transport_protocol: TransportProtocol,
 }
 
 pub struct ArgumentsParser<'a> {

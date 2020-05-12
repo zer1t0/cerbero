@@ -1,5 +1,5 @@
 use std::io;
-use std::net::{SocketAddr,UdpSocket};
+use std::net::{SocketAddr, UdpSocket};
 
 use super::transporter_trait::KerberosTransporter;
 
