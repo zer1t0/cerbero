@@ -12,14 +12,6 @@ pub enum Rep {
     Raw(Vec<u8>),
 }
 
-pub fn send_recv_tgs(dst_addr: &SocketAddr, req: &TgsReq) -> io::Result<Rep> {
-    return send_recv(dst_addr, &req.build());
-}
-
-pub fn send_recv_as(dst_addr: &SocketAddr, as_req: &AsReq) -> io::Result<Rep> {
-    return send_recv(dst_addr, &as_req.build());
-}
-
 
 pub fn send_recv(dst_addr: &SocketAddr, raw: &[u8]) -> io::Result<Rep> {
     let raw_rep = send_recv_tcp(dst_addr, raw)?;

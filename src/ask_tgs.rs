@@ -1,6 +1,6 @@
 use kerberos_asn1::{
-    ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData, PaData,
-    PrincipalName, Realm, KrbCredInfo, Ticket, TgsReq
+    ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
+    KrbCredInfo, PaData, PrincipalName, Realm, TgsRep, TgsReq, Ticket,
 };
 
 use kerberos_constants::key_usages;
@@ -10,12 +10,13 @@ use kerberos_constants::principal_names::NT_SRV_INST;
 use kerberos_crypto::new_kerberos_cipher;
 
 use crate::kdc_req_builder::KdcReqBuilder;
-use crate::senders::{send_recv_tgs, Rep};
+use crate::senders::{send_recv, Rep};
 use std::net::SocketAddr;
 
+use crate::error::Result;
 use crate::krb_cred_plain::KrbCredPlain;
 use crate::utils::{
-    create_krb_cred_info, handle_krb_error, parse_creds_file,
+    create_krb_cred_info, create_krb_error_msg, parse_creds_file,
     save_cred_in_file, username_to_principal_name,
 };
 
@@ -25,11 +26,10 @@ pub fn ask_tgs(
     username: String,
     realm: String,
     kdc_addr: &SocketAddr,
-) -> Result<(), String> {
+) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
     let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
-    
     let cname = username_to_principal_name(username.clone());
     let tgt_service = PrincipalName {
         name_type: NT_SRV_INST,
@@ -41,48 +41,52 @@ pub fn ask_tgs(
         .ok_or(format!("No TGT found for '{}", username))?;
 
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_tgs_req(realm, cname, service, krb_cred_info, ticket.clone())?;
+    let tgs_req =
+        build_tgs_req(realm, cname, service, krb_cred_info, ticket.clone())?;
 
-    let rep = send_recv_tgs(kdc_addr, &tgs_req)
+    let tgs_rep = send_recv_tgs(kdc_addr, &tgs_req)?;
+
+    let enc_tgs_as_rep_raw =
+        decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
+
+    let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
+        .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
+
+    let krb_cred_info = create_krb_cred_info(
+        enc_tgs_rep_part.into(),
+        tgs_rep.crealm,
+        tgs_rep.cname,
+    );
+
+    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info);
+    krb_cred_plain.tickets.push(tgs_rep.ticket);
+
+    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+
+    return Ok(());
+}
+
+fn send_recv_tgs(dst_addr: &SocketAddr, req: &TgsReq) -> Result<TgsRep> {
+    let rep = send_recv(dst_addr, &req.build())
         .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
-            return handle_krb_error(&krb_error);
+            return Err(create_krb_error_msg(&krb_error))?;
         }
 
         Rep::Raw(_) => {
-            return Err(format!("Error parsing response"));
+            return Err("Error parsing response")?;
         }
 
         Rep::AsRep(_) => {
-            return Err(format!(
-                "Unexpected: server responded with AS-REP to TGS-REQ"
-            ));
+            return Err("Unexpected: server responded with AS-REP to TGS-REQ")?;
         }
 
         Rep::TgsRep(tgs_rep) => {
-            let enc_tgs_as_rep_raw =
-                decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
-
-            let (_, enc_tgs_rep_part) =
-                EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
-                    .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
-
-            let krb_cred_info = create_krb_cred_info(
-                enc_tgs_rep_part.into(),
-                tgs_rep.crealm,
-                tgs_rep.cname,
-            );
-
-            krb_cred_plain.cred_part.ticket_info.push(krb_cred_info);
-            krb_cred_plain.tickets.push(tgs_rep.ticket);
-
-            save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+            return Ok(tgs_rep);
         }
     }
-
-    return Ok(());
 }
 
 fn build_tgs_req(
@@ -91,8 +95,7 @@ fn build_tgs_req(
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
-) -> Result<TgsReq, String> {
-
+) -> Result<TgsReq> {
     let mut authenticator = Authenticator::default();
     authenticator.crealm = crealm.clone();
     authenticator.cname = cname;
@@ -138,7 +141,7 @@ fn build_tgs_req(
 fn decrypt_tgs_rep_enc_part(
     session_key: &[u8],
     enc_part: &EncryptedData,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>> {
     let cipher = new_kerberos_cipher(enc_part.etype)
         .map_err(|_| format!("Not supported etype: '{}'", enc_part.etype))?;
 

@@ -65,9 +65,9 @@ pub fn save_cred_in_file(
     return Ok(());
 }
 
-pub fn handle_krb_error(krb_error: &KrbError) -> Result<(), String> {
+pub fn create_krb_error_msg(krb_error: &KrbError) -> String {
     let error_string = error_codes::error_code_to_string(krb_error.error_code);
-    return Err(format!("Error {}: {}", krb_error.error_code, error_string));
+    return format!("Error {}: {}", krb_error.error_code, error_string);
 }
 
 pub fn create_krb_cred(

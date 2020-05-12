@@ -14,33 +14,41 @@ use kerberos_crypto::{
 
 use std::net::SocketAddr;
 
-use crate::senders::{send_recv_as, Rep};
-use crate::utils::{create_krb_cred, handle_krb_error, save_cred_in_file};
+use crate::error::Result;
+use crate::senders::{send_recv, Rep};
+use crate::utils::{create_krb_cred, create_krb_error_msg, save_cred_in_file};
 
-pub fn ask_tgt(args: Arguments) -> Result<(), String> {
+pub fn ask_tgt(args: Arguments) -> Result<()> {
     let as_req =
         build_as_req(&args.realm, &args.username, &args.user_key, args.preauth);
 
     let socket_addr = SocketAddr::new(args.kdc_ip, args.kdc_port);
-    let rep = send_recv_as(&socket_addr, &as_req).expect("Error sending AsReq");
+    let rep = send_recv_as(&socket_addr, &as_req)?;
 
+    return handle_as_rep(rep, &args);    
+}
+
+fn send_recv_as(dst_addr: &SocketAddr, req: &AsReq) -> Result<AsRep> {
+    let rep = send_recv(dst_addr, &req.build())
+        .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
+    
     match rep {
         Rep::KrbError(krb_error) => {
-            return handle_krb_error(&krb_error);
+            return Err(create_krb_error_msg(&krb_error))?;
         }
 
         Rep::Raw(_) => {
-            return Err(format!("Error parsing response"));
+            return Err("Error parsing response")?;
         }
 
         Rep::AsRep(as_rep) => {
-            return handle_as_rep(as_rep, &args);
+            return Ok(as_rep);
         }
 
         Rep::TgsRep(_) => {
-            return Err(format!(
-                "Unexpected: server responded with a TGS-REQ to an AS-REP"
-            ));
+            return Err(
+                "Unexpected: server responded with a TGS-REQ to an AS-REP",
+            )?;
         }
     }
 }
@@ -65,7 +73,7 @@ fn build_as_req(
     return as_req_builder.build_as_req();
 }
 
-fn handle_as_rep(as_rep: AsRep, args: &Arguments) -> Result<(), String> {
+fn handle_as_rep(as_rep: AsRep, args: &Arguments) -> Result<()> {
     let krb_cred = extract_krb_cred_from_as_rep(
         as_rep,
         &args.user_key,
@@ -81,7 +89,7 @@ fn extract_krb_cred_from_as_rep(
     user_key: &Key,
     username: &String,
     realm: &String,
-) -> Result<KrbCred, String> {
+) -> Result<KrbCred> {
     let raw_enc_as_rep_part =
         decrypt_as_rep_enc_part(user_key, username, realm, &as_rep.enc_part)?;
 
@@ -101,11 +109,9 @@ fn decrypt_as_rep_enc_part(
     username: &str,
     realm: &str,
     enc_part: &EncryptedData,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>> {
     if !user_key.etypes().contains(&enc_part.etype) {
-        return Err(format!(
-            "Unable to decrypt KDC response AS-REP: mistmach etypes"
-        ));
+        return Err("Unable to decrypt KDC response AS-REP: mistmach etypes")?;
     }
 
     let cipher = new_kerberos_cipher(enc_part.etype).unwrap();

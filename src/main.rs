@@ -6,6 +6,7 @@ mod senders;
 mod utils;
 mod krb_cred_plain;
 mod cred_format;
+mod error;
 
 use args::{args, ArgumentsParser};
 use ask_tgt::ask_tgt;
