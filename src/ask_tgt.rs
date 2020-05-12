@@ -12,24 +12,22 @@ use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
 
-use std::net::SocketAddr;
-
 use crate::error::Result;
 use crate::senders::{send_recv, Rep};
 use crate::utils::{create_krb_cred, create_krb_error_msg, save_cred_in_file};
+use crate::transporter::KerberosTransporter;
 
-pub fn ask_tgt(args: Arguments) -> Result<()> {
+pub fn ask_tgt(args: Arguments, transporter: &dyn KerberosTransporter) -> Result<()> {
     let as_req =
         build_as_req(&args.realm, &args.username, &args.user_key, args.preauth);
 
-    let socket_addr = SocketAddr::new(args.kdc_ip, args.kdc_port);
-    let rep = send_recv_as(&socket_addr, &as_req)?;
+    let rep = send_recv_as(transporter, &as_req)?;
 
     return handle_as_rep(rep, &args);    
 }
 
-fn send_recv_as(dst_addr: &SocketAddr, req: &AsReq) -> Result<AsRep> {
-    let rep = send_recv(dst_addr, &req.build())
+fn send_recv_as(transporter: &dyn KerberosTransporter, req: &AsReq) -> Result<AsRep> {
+    let rep = send_recv(transporter, &req.build())
         .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
     
     match rep {

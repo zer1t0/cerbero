@@ -2,6 +2,7 @@ use crate::cred_format::CredentialFormat;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
+use crate::transporter::TransportProtocol;
 
 pub fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -99,6 +100,11 @@ pub fn args() -> App<'static, 'static> {
                 .long("no-preauth")
                 .help("Request ticket without send preauthentication data"),
         )
+        .arg(
+            Arg::with_name("udp")
+                .long("udp")
+                .help("Use udp as transport protocol"),
+        )
 }
 
 fn is_rc4_key(v: String) -> Result<(), String> {
@@ -151,6 +157,7 @@ pub struct Arguments {
     pub preauth: bool,
     pub out_file: String,
     pub service: Option<String>,
+    pub transport_protocol: TransportProtocol
 }
 
 pub struct ArgumentsParser<'a> {
@@ -182,6 +189,7 @@ impl<'a> ArgumentsParser<'a> {
             preauth: !self.matches.is_present("no-preauth"),
             out_file,
             service,
+            transport_protocol: self.parse_transport_protocol(),
         };
     }
 
@@ -228,5 +236,13 @@ impl<'a> ArgumentsParser<'a> {
 
     fn parse_service(&self) -> Option<String> {
         return self.matches.value_of("service").map(|s| s.into());
+    }
+
+    fn parse_transport_protocol(&self) -> TransportProtocol {
+        if self.matches.is_present("udp") {
+            return TransportProtocol::UDP;
+        }
+
+        return TransportProtocol::TCP;
     }
 }

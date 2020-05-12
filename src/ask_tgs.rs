@@ -11,10 +11,10 @@ use kerberos_crypto::new_kerberos_cipher;
 
 use crate::kdc_req_builder::KdcReqBuilder;
 use crate::senders::{send_recv, Rep};
-use std::net::SocketAddr;
 
 use crate::error::Result;
 use crate::krb_cred_plain::KrbCredPlain;
+use crate::transporter::KerberosTransporter;
 use crate::utils::{
     create_krb_cred_info, create_krb_error_msg, parse_creds_file,
     save_cred_in_file, username_to_principal_name,
@@ -25,7 +25,7 @@ pub fn ask_tgs(
     service: String,
     username: String,
     realm: String,
-    kdc_addr: &SocketAddr,
+    transporter: &dyn KerberosTransporter,
 ) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
     let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
@@ -44,7 +44,7 @@ pub fn ask_tgs(
     let tgs_req =
         build_tgs_req(realm, cname, service, krb_cred_info, ticket.clone())?;
 
-    let tgs_rep = send_recv_tgs(kdc_addr, &tgs_req)?;
+    let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
     let enc_tgs_as_rep_raw =
         decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
@@ -66,8 +66,11 @@ pub fn ask_tgs(
     return Ok(());
 }
 
-fn send_recv_tgs(dst_addr: &SocketAddr, req: &TgsReq) -> Result<TgsRep> {
-    let rep = send_recv(dst_addr, &req.build())
+fn send_recv_tgs(
+    transporter: &dyn KerberosTransporter,
+    req: &TgsReq,
+) -> Result<TgsRep> {
+    let rep = send_recv(transporter, &req.build())
         .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
 
     match rep {
