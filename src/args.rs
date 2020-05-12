@@ -1,7 +1,7 @@
+use crate::cred_format::CredentialFormat;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
-use std::fmt;
 
 pub fn args() -> App<'static, 'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -97,7 +97,7 @@ pub fn args() -> App<'static, 'static> {
         .arg(
             Arg::with_name("no-preauth")
                 .long("no-preauth")
-                .help("Request ticket without send preauthentication data")
+                .help("Request ticket without send preauthentication data"),
         )
 }
 
@@ -135,23 +135,9 @@ fn is_aes_256_key(v: String) -> Result<(), String> {
 }
 
 fn is_ip(v: String) -> Result<(), String> {
-    v.parse::<IpAddr>().map_err(|_| format!("Invalid IP address '{}'", v))?;
+    v.parse::<IpAddr>()
+        .map_err(|_| format!("Invalid IP address '{}'", v))?;
     return Ok(());
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TicketFormat {
-    Krb,
-    Ccache,
-}
-
-impl fmt::Display for TicketFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Ccache => write!(f, "ccache"),
-            Self::Krb => write!(f, "krb")
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -161,7 +147,7 @@ pub struct Arguments {
     pub user_key: Key,
     pub kdc_ip: IpAddr,
     pub kdc_port: u16,
-    pub ticket_format: TicketFormat,
+    pub ticket_format: CredentialFormat,
     pub preauth: bool,
     pub out_file: String,
     pub service: Option<String>,
@@ -185,7 +171,7 @@ impl<'a> ArgumentsParser<'a> {
         let ticket_format = self.parse_ticket_format();
         let out_file = self.parse_out_file(&username, &ticket_format);
         let service = self.parse_service();
-        
+
         return Arguments {
             realm,
             username,
@@ -218,19 +204,23 @@ impl<'a> ArgumentsParser<'a> {
         unreachable!("No key specified");
     }
 
-    fn parse_ticket_format(&self) -> TicketFormat {
+    fn parse_ticket_format(&self) -> CredentialFormat {
         let format = self.matches.value_of("ticket-format").unwrap();
 
         if format == "krb" {
-            return TicketFormat::Krb;
+            return CredentialFormat::Krb;
         }
 
-        return TicketFormat::Ccache;
+        return CredentialFormat::Ccache;
     }
 
-    fn parse_out_file(&self, username: &str, ticket_format: &TicketFormat) -> String {
+    fn parse_out_file(
+        &self,
+        username: &str,
+        ticket_format: &CredentialFormat,
+    ) -> String {
         if let Some(filename) = self.matches.value_of("out-file") {
-            return filename.into()
+            return filename.into();
         }
 
         return format!("{}.{}", username, ticket_format);

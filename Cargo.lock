@@ -213,7 +213,7 @@ checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
  "synstructure",
 ]
 
@@ -253,7 +253,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
 ]
 
 [[package]]
@@ -286,9 +286,9 @@ dependencies = [
 
 [[package]]
 name = "kerberos_asn1"
-version = "0.0.6"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10f7cd50a44bed9021e695cf8a728595a6a602762035acea61fbeb9ea14e67fc"
+checksum = "1fc7c3353144fda9192c335648c03b19c99453533307308b02dbe2455f2bb1fb"
 dependencies = [
  "chrono",
  "kerberos_constants",
@@ -493,7 +493,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
  "version_check",
 ]
 
@@ -505,7 +505,7 @@ checksum = "8a5b4b77fdb63c1eca72173d68d24501c54ab1269409f6b672c85deb18af69de"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
  "syn-mid",
  "version_check",
 ]
@@ -806,9 +806,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.19"
+version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8e5aa70697bb26ee62214ae3288465ecec0000f05182f039b477001f08f5ae7"
+checksum = "dd1b5e337360b1fae433c59fcafa0c6b77c605e92540afa5221a7b81a9eca91d"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
@@ -823,7 +823,7 @@ checksum = "7be3539f6c128a931cf19dcee741c1af532c7fd387baa739c03dd2e96479338a"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
 ]
 
 [[package]]
@@ -834,7 +834,7 @@ checksum = "67656ea1dc1b41b1451851562ea232ec2e5a80242139f7e679ceccfb5d61f545"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
- "syn 1.0.19",
+ "syn 1.0.20",
  "unicode-xid 0.2.0",
 ]
 

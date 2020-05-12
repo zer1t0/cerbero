@@ -1,24 +1,21 @@
-
 use chrono::Utc;
 use kerberos_asn1::{
-    AsRep, AsReq, Asn1Object, EncAsRepPart, EncKrbCredPart, EncryptedData,
-    KrbCred, KrbCredInfo, KrbError, PaData, PaEncTsEnc, PrincipalName, Ticket,
+    AsRep, AsReq, Asn1Object, EncAsRepPart, EncryptedData, KrbCred, PaData,
+    PaEncTsEnc,
 };
-use std::convert::TryInto;
 
-use crate::args::{Arguments, TicketFormat};
-use crate::as_req_builder::KdcReqBuilder;
-use kerberos_ccache::CCache;
+use crate::args::Arguments;
+use crate::kdc_req_builder::KdcReqBuilder;
 use kerberos_constants;
-use kerberos_constants::{error_codes, etypes, key_usages, pa_data_types};
+use kerberos_constants::{key_usages, pa_data_types};
 use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
-use std::fs;
+
 use std::net::SocketAddr;
 
 use crate::senders::{send_recv_as, Rep};
-
+use crate::utils::{create_krb_cred, handle_krb_error, save_cred_in_file};
 
 pub fn ask_tgt(args: Arguments) -> Result<(), String> {
     let as_req =
@@ -38,6 +35,12 @@ pub fn ask_tgt(args: Arguments) -> Result<(), String> {
 
         Rep::AsRep(as_rep) => {
             return handle_as_rep(as_rep, &args);
+        }
+
+        Rep::TgsRep(_) => {
+            return Err(format!(
+                "Unexpected: server responded with a TGS-REQ to an AS-REP"
+            ));
         }
     }
 }
@@ -60,11 +63,6 @@ fn build_as_req(
     }
 
     return as_req_builder.build_as_req();
-}
-
-fn handle_krb_error(krb_error: &KrbError) -> Result<(), String> {
-    let error_string = error_codes::error_code_to_string(krb_error.error_code);
-    return Err(format!("Error {}: {}", krb_error.error_code, error_string));
 }
 
 fn handle_as_rep(as_rep: AsRep, args: &Arguments) -> Result<(), String> {
@@ -91,67 +89,11 @@ fn extract_krb_cred_from_as_rep(
         .map_err(|_| format!("Error decoding AS-REP"))?;
 
     return Ok(create_krb_cred(
-        enc_as_rep_part,
+        enc_as_rep_part.into(),
         as_rep.ticket,
         as_rep.crealm,
         as_rep.cname,
     ));
-}
-
-fn save_cred_in_file(
-    krb_cred: KrbCred,
-    cred_format: &TicketFormat,
-    out_file: &str,
-) -> Result<(), String> {
-    let raw_cred = match cred_format {
-        TicketFormat::Krb => krb_cred.build(),
-        TicketFormat::Ccache => {
-            let ccache: CCache = krb_cred
-                .try_into()
-                .map_err(|_| format!("Error converting KrbCred to CCache"))?;
-            ccache.build()
-        }
-    };
-
-    fs::write(out_file, raw_cred).map_err(|_| {
-        format!("Unable to write credentials in file {}", out_file)
-    })?;
-
-    return Ok(());
-}
-
-fn create_krb_cred(
-    enc_as_rep_part: EncAsRepPart,
-    ticket: Ticket,
-    prealm: String,
-    pname: PrincipalName,
-) -> KrbCred {
-    let krb_cred_info = KrbCredInfo {
-        key: enc_as_rep_part.key,
-        prealm: Some(prealm),
-        pname: Some(pname),
-        flags: Some(enc_as_rep_part.flags),
-        authtime: Some(enc_as_rep_part.authtime),
-        starttime: enc_as_rep_part.starttime,
-        endtime: Some(enc_as_rep_part.endtime),
-        renew_till: enc_as_rep_part.renew_till,
-        srealm: Some(enc_as_rep_part.srealm),
-        sname: Some(enc_as_rep_part.sname),
-        caddr: enc_as_rep_part.caddr,
-    };
-
-    let mut enc_krb_cred_part = EncKrbCredPart::default();
-    enc_krb_cred_part.ticket_info.push(krb_cred_info);
-
-    let mut krb_cred = KrbCred::default();
-    krb_cred.tickets.push(ticket);
-    krb_cred.enc_part = EncryptedData {
-        etype: etypes::NO_ENCRYPTION,
-        kvno: None,
-        cipher: enc_krb_cred_part.build(),
-    };
-
-    return krb_cred;
 }
 
 fn decrypt_as_rep_enc_part(
