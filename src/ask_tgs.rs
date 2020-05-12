@@ -1,6 +1,6 @@
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData, PaData,
-    PrincipalName,
+    PrincipalName, Realm, KrbCredInfo, Ticket, TgsReq
 };
 
 use kerberos_constants::key_usages;
@@ -27,60 +27,24 @@ pub fn ask_tgs(
     kdc_addr: &SocketAddr,
 ) -> Result<(), String> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
+    let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
+    
     let cname = username_to_principal_name(username.clone());
     let tgt_service = PrincipalName {
         name_type: NT_SRV_INST,
         name_string: vec!["krbtgt".into(), realm.clone()],
     };
-    let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
     let (ticket, krb_cred_info) = krb_cred_plain
         .look_for_user_creds(&cname, &tgt_service)
         .ok_or(format!("No TGT found for '{}", username))?;
 
-    // crear un default en kerberos_asn1
-    let mut authenticator = Authenticator::default();
-    authenticator.crealm = realm.clone();
-    authenticator.cname = cname;
-
-    let authen_etype = krb_cred_info.key.keytype;
-    let cipher = new_kerberos_cipher(authen_etype)
-        .map_err(|_| format!("No supported etype: {}", authen_etype))?;
-
     let session_key = &krb_cred_info.key.keyvalue;
-    let encrypted_authenticator = cipher.encrypt(
-        session_key,
-        KEY_USAGE_TGS_REQ_AUTHEN,
-        &authenticator.build(),
-    );
-
-    let mut ap_req = ApReq::default();
-    ap_req.ticket = ticket.clone();
-    ap_req.authenticator = EncryptedData {
-        etype: authen_etype,
-        kvno: None,
-        cipher: encrypted_authenticator,
-    };
-
-    let pa_tgs_req = PaData {
-        padata_type: PA_TGS_REQ,
-        padata_value: ap_req.build(),
-    };
-
-    let service_parts: Vec<String> =
-        service.split("/").map(|s| s.to_string()).collect();
-
-    let tgs_req = KdcReqBuilder::new(realm)
-        .push_padata(pa_tgs_req)
-        .sname(Some(PrincipalName {
-            name_type: NT_SRV_INST,
-            name_string: service_parts,
-        }))
-        .build_tgs_req();
+    let tgs_req = build_tgs_req(realm, cname, service, krb_cred_info, ticket.clone())?;
 
     let rep = send_recv_tgs(kdc_addr, &tgs_req)
-        .map_err(|err| format!("Error sending TgsReq: {}", err))?;
+        .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
@@ -119,6 +83,56 @@ pub fn ask_tgs(
     }
 
     return Ok(());
+}
+
+fn build_tgs_req(
+    crealm: Realm,
+    cname: PrincipalName,
+    service: String,
+    krb_cred_info: &KrbCredInfo,
+    ticket: Ticket,
+) -> Result<TgsReq, String> {
+
+    let mut authenticator = Authenticator::default();
+    authenticator.crealm = crealm.clone();
+    authenticator.cname = cname;
+
+    let authen_etype = krb_cred_info.key.keytype;
+    let cipher = new_kerberos_cipher(authen_etype)
+        .map_err(|_| format!("No supported etype: {}", authen_etype))?;
+
+    let session_key = &krb_cred_info.key.keyvalue;
+    let encrypted_authenticator = cipher.encrypt(
+        session_key,
+        KEY_USAGE_TGS_REQ_AUTHEN,
+        &authenticator.build(),
+    );
+
+    let mut ap_req = ApReq::default();
+    ap_req.ticket = ticket;
+    ap_req.authenticator = EncryptedData {
+        etype: authen_etype,
+        kvno: None,
+        cipher: encrypted_authenticator,
+    };
+
+    let pa_tgs_req = PaData {
+        padata_type: PA_TGS_REQ,
+        padata_value: ap_req.build(),
+    };
+
+    let service_parts: Vec<String> =
+        service.split("/").map(|s| s.to_string()).collect();
+
+    let tgs_req = KdcReqBuilder::new(crealm)
+        .push_padata(pa_tgs_req)
+        .sname(Some(PrincipalName {
+            name_type: NT_SRV_INST,
+            name_string: service_parts,
+        }))
+        .build_tgs_req();
+
+    return Ok(tgs_req);
 }
 
 fn decrypt_tgs_rep_enc_part(
