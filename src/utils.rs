@@ -8,6 +8,10 @@ use kerberos_asn1::{
     KrbCredInfo, KrbError, PrincipalName, Ticket,
 };
 use kerberos_ccache::CCache;
+use dns_lookup;
+use std::net::IpAddr;
+use crate::error::Result;
+
 
 pub fn username_to_principal_name(username: String) -> PrincipalName {
     return PrincipalName {
@@ -18,7 +22,7 @@ pub fn username_to_principal_name(username: String) -> PrincipalName {
 
 pub fn parse_creds_file(
     creds_file: &str,
-) -> Result<(KrbCred, CredentialFormat), String> {
+) -> Result<(KrbCred, CredentialFormat)> {
     let data = fs::read(creds_file).map_err(|err| {
         format!("Unable to read the file '{}': {}", creds_file, err)
     })?;
@@ -47,13 +51,13 @@ pub fn save_cred_in_file(
     krb_cred: KrbCred,
     cred_format: &CredentialFormat,
     out_file: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     let raw_cred = match cred_format {
         CredentialFormat::Krb => krb_cred.build(),
         CredentialFormat::Ccache => {
             let ccache: CCache = krb_cred
                 .try_into()
-                .map_err(|_| format!("Error converting KrbCred to CCache"))?;
+                .map_err(|_| "Error converting KrbCred to CCache")?;
             ccache.build()
         }
     };
@@ -110,4 +114,16 @@ pub fn create_krb_cred_info(
         sname: Some(enc_as_rep_part.sname),
         caddr: enc_as_rep_part.caddr,
     };
+}
+
+
+pub fn resolve_host(realm: &str) -> Result<IpAddr> {
+    let ips = dns_lookup::lookup_host(realm)
+        .map_err(|err| format!("Error resolving '{}' : '{}'", realm, err))?;
+
+    if ips.len() == 0 {
+        return Err(format!("Error resolving '{}': No entries found", realm))?;
+    }
+
+    return Ok(ips[0]);
 }

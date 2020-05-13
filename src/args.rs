@@ -68,7 +68,6 @@ pub fn args() -> App<'static, 'static> {
                 .short("k")
                 .value_name("ip")
                 .takes_value(true)
-                .required(true)
                 .help("The address of the KDC (usually the Domain Controller)")
                 .validator(is_ip),
         )
@@ -151,7 +150,7 @@ pub struct Arguments {
     pub realm: String,
     pub username: String,
     pub user_key: Key,
-    pub kdc_ip: IpAddr,
+    pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
     pub ticket_format: CredentialFormat,
     pub preauth: bool,
@@ -193,9 +192,9 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_kdc_ip(&self) -> IpAddr {
-        let kdc_ip = self.matches.value_of("kdc-ip").unwrap();
-        return kdc_ip.parse::<IpAddr>().unwrap();
+    fn parse_kdc_ip(&self) -> Option<IpAddr> {
+        let kdc_ip = self.matches.value_of("kdc-ip")?;
+        return Some(kdc_ip.parse::<IpAddr>().unwrap());
     }
 
     fn parse_user_key(&self) -> Key {

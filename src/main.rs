@@ -9,30 +9,43 @@ mod senders;
 mod transporter;
 mod utils;
 
-use args::{args, ArgumentsParser};
+use crate::error::Result;
+use args::{args, Arguments, ArgumentsParser};
 use ask_tgs::ask_tgs;
 use ask_tgt::ask_tgt;
 use std::net::SocketAddr;
 use transporter::new_transporter;
+use utils::resolve_host;
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-    let kdc_address = SocketAddr::new(args.kdc_ip, args.kdc_port);
+    if let Err(error) = main_inner(args) {
+        eprintln!("{}", error);
+    }
+}
+
+fn main_inner(args: Arguments) -> Result<()> {
+
+    let kdc_ip = match args.kdc_ip {
+        Some(ip) => ip,
+        None => resolve_host(&args.realm)?
+    };
+
+
+    let kdc_address = SocketAddr::new(kdc_ip, args.kdc_port);
     let transporter = new_transporter(kdc_address, args.transport_protocol);
 
     if let Some(service) = args.service {
-        if let Err(error) = ask_tgs(
+        return ask_tgs(
             "mickey.ccache",
             service,
             args.username,
             args.realm,
             &*transporter,
-        ) {
-            eprintln!("{}", error);
-        }
+        );
     } else {
-        if let Err(error) = ask_tgt(
+        return ask_tgt(
             &args.realm,
             &args.username,
             &args.user_key,
@@ -40,8 +53,6 @@ fn main() {
             &*transporter,
             &args.ticket_format,
             &args.out_file,
-        ) {
-            eprintln!("{}", error);
-        }
+        );
     }
 }

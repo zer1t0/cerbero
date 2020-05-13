@@ -36,6 +36,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "dns-lookup",
  "failure",
  "kerbeiros",
  "kerberos_asn1",
