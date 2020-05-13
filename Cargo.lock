@@ -37,7 +37,6 @@ dependencies = [
  "chrono",
  "clap",
  "dns-lookup",
- "failure",
  "kerbeiros",
  "kerberos_asn1",
  "kerberos_ccache",
