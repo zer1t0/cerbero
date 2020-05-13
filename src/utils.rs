@@ -1,11 +1,11 @@
-use kerberos_constants::{error_codes, etypes, principal_names};
+use kerberos_constants::{etypes, principal_names};
 use std::convert::TryInto;
 use std::fs;
 
 use crate::cred_format::CredentialFormat;
 use kerberos_asn1::{
     Asn1Object, EncKdcRepPart, EncKrbCredPart, EncryptedData, KrbCred,
-    KrbCredInfo, KrbError, PrincipalName, Ticket,
+    KrbCredInfo, PrincipalName, Ticket,
 };
 use kerberos_ccache::CCache;
 use dns_lookup;
@@ -67,11 +67,6 @@ pub fn save_cred_in_file(
     })?;
 
     return Ok(());
-}
-
-pub fn create_krb_error_msg(krb_error: &KrbError) -> String {
-    let error_string = error_codes::error_code_to_string(krb_error.error_code);
-    return format!("Error {}: {}", krb_error.error_code, error_string);
 }
 
 pub fn create_krb_cred(

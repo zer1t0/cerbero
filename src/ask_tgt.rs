@@ -15,7 +15,7 @@ use crate::cred_format::CredentialFormat;
 use crate::error::Result;
 use crate::senders::{send_recv, Rep};
 use crate::transporter::KerberosTransporter;
-use crate::utils::{create_krb_cred, create_krb_error_msg, save_cred_in_file};
+use crate::utils::{create_krb_cred, save_cred_in_file};
 
 pub fn ask_tgt(
     realm: &String,
@@ -57,7 +57,7 @@ fn send_recv_as(
 
     match rep {
         Rep::KrbError(krb_error) => {
-            return Err(create_krb_error_msg(&krb_error))?;
+            return Err(krb_error)?;
         }
 
         Rep::Raw(_) => {

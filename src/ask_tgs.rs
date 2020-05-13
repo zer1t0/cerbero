@@ -1,6 +1,6 @@
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
-    KrbCredInfo, PaData, PrincipalName, Realm, TgsRep, TgsReq, Ticket,
+    KrbCredInfo, PaData, PrincipalName, TgsRep, TgsReq, Ticket,
 };
 
 use kerberos_constants::key_usages;
@@ -16,7 +16,7 @@ use crate::error::Result;
 use crate::krb_cred_plain::KrbCredPlain;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{
-    create_krb_cred_info, create_krb_error_msg, parse_creds_file,
+    create_krb_cred_info, parse_creds_file,
     save_cred_in_file, username_to_principal_name,
 };
 
@@ -40,9 +40,34 @@ pub fn ask_tgs(
         .look_for_user_creds(&cname, &tgt_service)
         .ok_or(format!("No TGT found for '{}", username))?;
 
+    let (tgs, krb_cred_info_tgs) = request_tgs(
+        realm,
+        username,
+        service,
+        &krb_cred_info,
+        ticket.clone(),
+        transporter,
+    )?;
+
+    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
+    krb_cred_plain.tickets.push(tgs);
+
+    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+
+    return Ok(());
+}
+
+fn request_tgs(
+    realm: String,
+    username: String,
+    service: String,
+    krb_cred_info: &KrbCredInfo,
+    ticket: Ticket,
+    transporter: &dyn KerberosTransporter,
+) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
     let tgs_req =
-        build_tgs_req(realm, cname, service, krb_cred_info, ticket.clone())?;
+        build_tgs_req(realm, username, service, krb_cred_info, ticket)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -52,18 +77,13 @@ pub fn ask_tgs(
     let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
         .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
 
-    let krb_cred_info = create_krb_cred_info(
+    let krb_cred_info_tgs = create_krb_cred_info(
         enc_tgs_rep_part.into(),
         tgs_rep.crealm,
         tgs_rep.cname,
     );
 
-    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info);
-    krb_cred_plain.tickets.push(tgs_rep.ticket);
-
-    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
-
-    return Ok(());
+    return Ok((tgs_rep.ticket, krb_cred_info_tgs));
 }
 
 fn send_recv_tgs(
@@ -75,7 +95,7 @@ fn send_recv_tgs(
 
     match rep {
         Rep::KrbError(krb_error) => {
-            return Err(create_krb_error_msg(&krb_error))?;
+            return Err(krb_error)?;
         }
 
         Rep::Raw(_) => {
@@ -93,12 +113,13 @@ fn send_recv_tgs(
 }
 
 fn build_tgs_req(
-    crealm: Realm,
-    cname: PrincipalName,
+    crealm: String,
+    username: String,
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
 ) -> Result<TgsReq> {
+    let cname = username_to_principal_name(username);
     let mut authenticator = Authenticator::default();
     authenticator.crealm = crealm.clone();
     authenticator.cname = cname;
