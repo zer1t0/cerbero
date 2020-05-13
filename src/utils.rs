@@ -1,17 +1,16 @@
-use kerberos_constants::{etypes, principal_names};
-use std::convert::TryInto;
-use std::fs;
-
 use crate::cred_format::CredentialFormat;
+use crate::error::Result;
+use dns_lookup;
 use kerberos_asn1::{
     Asn1Object, EncKdcRepPart, EncKrbCredPart, EncryptedData, KrbCred,
     KrbCredInfo, PrincipalName, Ticket,
 };
 use kerberos_ccache::CCache;
-use dns_lookup;
+use kerberos_constants::{etypes, principal_names};
+use std::convert::TryInto;
+use std::env;
+use std::fs;
 use std::net::IpAddr;
-use crate::error::Result;
-
 
 pub fn username_to_principal_name(username: String) -> PrincipalName {
     return PrincipalName {
@@ -111,7 +110,6 @@ pub fn create_krb_cred_info(
     };
 }
 
-
 pub fn resolve_host(realm: &str) -> Result<IpAddr> {
     let ips = dns_lookup::lookup_host(realm)
         .map_err(|err| format!("Error resolving '{}' : '{}'", realm, err))?;
@@ -121,4 +119,24 @@ pub fn resolve_host(realm: &str) -> Result<IpAddr> {
     }
 
     return Ok(ips[0]);
+}
+
+pub fn get_ticket_file(
+    args_file: Option<String>,
+    username: &String,
+    cred_format: &CredentialFormat,
+) -> String {
+    if let Some(file) = args_file {
+        return file;
+    }
+
+    if let Some(file) = get_env_ticket_file() {
+        return file;
+    }
+
+    return format!("{}.{}", username, cred_format);
+}
+
+fn get_env_ticket_file() -> Option<String> {
+    return env::var("KRB5CCNAME").ok();
 }

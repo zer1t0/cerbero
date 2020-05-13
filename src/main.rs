@@ -15,7 +15,6 @@ use ask_tgs::ask_tgs;
 use ask_tgt::ask_tgt;
 use std::net::SocketAddr;
 use transporter::new_transporter;
-use utils::resolve_host;
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
@@ -26,19 +25,23 @@ fn main() {
 }
 
 fn main_inner(args: Arguments) -> Result<()> {
-
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
-        None => resolve_host(&args.realm)?
+        None => utils::resolve_host(&args.realm)?,
     };
-
 
     let kdc_address = SocketAddr::new(kdc_ip, args.kdc_port);
     let transporter = new_transporter(kdc_address, args.transport_protocol);
 
+    let creds_file = utils::get_ticket_file(
+        args.out_file,
+        &args.username,
+        &args.credential_format,
+    );
+
     if let Some(service) = args.service {
         return ask_tgs(
-            "mickey.ccache",
+            &creds_file,
             service,
             args.username,
             args.realm,
@@ -51,8 +54,8 @@ fn main_inner(args: Arguments) -> Result<()> {
             &args.user_key,
             args.preauth,
             &*transporter,
-            &args.ticket_format,
-            &args.out_file,
+            &args.credential_format,
+            &creds_file,
         );
     }
 }

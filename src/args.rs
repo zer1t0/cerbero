@@ -80,16 +80,18 @@ pub fn args() -> App<'static, 'static> {
                 .help("SPN of the desired service"),
         )
         .arg(
-            Arg::with_name("ticket-format")
-                .long("ticket-format")
+            Arg::with_name("cred-format")
+                .long("cred-format")
+                .alias("ticket-format")
                 .takes_value(true)
                 .possible_values(&["krb", "ccache"])
                 .help("Format to save retrieved tickets.")
                 .default_value("ccache"),
         )
         .arg(
-            Arg::with_name("out-file")
-                .long("out-file")
+            Arg::with_name("cred-file")
+                .long("cred-file")
+                .alias("ticket-file")
                 .takes_value(true)
                 .value_name("file")
                 .help("File to save ticket"),
@@ -152,9 +154,9 @@ pub struct Arguments {
     pub user_key: Key,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
-    pub ticket_format: CredentialFormat,
+    pub credential_format: CredentialFormat,
     pub preauth: bool,
-    pub out_file: String,
+    pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
 }
@@ -174,8 +176,8 @@ impl<'a> ArgumentsParser<'a> {
         let username: String = self.matches.value_of("user").unwrap().into();
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
-        let ticket_format = self.parse_ticket_format();
-        let out_file = self.parse_out_file(&username, &ticket_format);
+        let credential_format = self.parse_ticket_format();
+        let out_file = self.parse_credentials_file();
         let service = self.parse_service();
 
         return Arguments {
@@ -184,7 +186,7 @@ impl<'a> ArgumentsParser<'a> {
             user_key,
             kdc_ip,
             kdc_port: 88,
-            ticket_format,
+            credential_format,
             preauth: !self.matches.is_present("no-preauth"),
             out_file,
             service,
@@ -212,7 +214,7 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn parse_ticket_format(&self) -> CredentialFormat {
-        let format = self.matches.value_of("ticket-format").unwrap();
+        let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
             return CredentialFormat::Krb;
@@ -221,16 +223,8 @@ impl<'a> ArgumentsParser<'a> {
         return CredentialFormat::Ccache;
     }
 
-    fn parse_out_file(
-        &self,
-        username: &str,
-        ticket_format: &CredentialFormat,
-    ) -> String {
-        if let Some(filename) = self.matches.value_of("out-file") {
-            return filename.into();
-        }
-
-        return format!("{}.{}", username, ticket_format);
+    fn parse_credentials_file(&self) -> Option<String> {
+        return self.matches.value_of("cred-file").map(|s| s.into());
     }
 
     fn parse_service(&self) -> Option<String> {
