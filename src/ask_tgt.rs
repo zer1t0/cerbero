@@ -13,21 +13,20 @@ use kerberos_crypto::{
 
 use crate::cred_format::CredentialFormat;
 use crate::error::Result;
+use crate::krb_user::KerberosUser;
 use crate::senders::{send_recv, Rep};
 use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred, save_cred_in_file};
 
 pub fn ask_tgt(
-    realm: &String,
-    username: &String,
+    user: &KerberosUser,
     user_key: &Key,
     preauth: bool,
     transporter: &dyn KerberosTransporter,
     cred_format: &CredentialFormat,
     out_file: &str,
 ) -> Result<()> {
-    let krb_cred =
-        request_tgt(realm, username, user_key, preauth, transporter)?;
+    let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
 
     save_cred_in_file(krb_cred, cred_format, out_file)?;
 
@@ -35,17 +34,16 @@ pub fn ask_tgt(
 }
 
 fn request_tgt(
-    realm: &String,
-    username: &String,
+    user: &KerberosUser,
     user_key: &Key,
     preauth: bool,
     transporter: &dyn KerberosTransporter,
 ) -> Result<KrbCred> {
-    let as_req = build_as_req(realm, username, user_key, preauth);
+    let as_req = build_as_req(user, user_key, preauth);
 
     let rep = send_recv_as(transporter, &as_req)?;
 
-    return handle_as_rep(rep, realm, username, user_key);
+    return handle_as_rep(rep, user, user_key);
 }
 
 fn send_recv_as(
@@ -76,20 +74,18 @@ fn send_recv_as(
     }
 }
 
-fn build_as_req(
-    realm: &String,
-    username: &String,
-    user_key: &Key,
-    preauth: bool,
-) -> AsReq {
-    let mut as_req_builder = KdcReqBuilder::new(realm.clone())
-        .username(username.clone())
+fn build_as_req(user: &KerberosUser, user_key: &Key, preauth: bool) -> AsReq {
+    let mut as_req_builder = KdcReqBuilder::new(user.realm.clone())
+        .username(user.name.clone())
         .etypes(user_key.etypes())
         .request_pac();
 
     if preauth {
-        let padata =
-            generate_padata_encrypted_timestamp(&user_key, &realm, &username);
+        let padata = generate_padata_encrypted_timestamp(
+            &user_key,
+            &user.realm,
+            &user.name,
+        );
         as_req_builder = as_req_builder.push_padata(padata);
     }
 
@@ -98,21 +94,19 @@ fn build_as_req(
 
 fn handle_as_rep(
     as_rep: AsRep,
-    realm: &String,
-    username: &String,
+    user: &KerberosUser,
     user_key: &Key,
 ) -> Result<KrbCred> {
-    return extract_krb_cred_from_as_rep(as_rep, user_key, username, realm);
+    return extract_krb_cred_from_as_rep(as_rep, user, user_key);
 }
 
 fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
+    user: &KerberosUser,
     user_key: &Key,
-    username: &String,
-    realm: &String,
 ) -> Result<KrbCred> {
     let raw_enc_as_rep_part =
-        decrypt_as_rep_enc_part(user_key, username, realm, &as_rep.enc_part)?;
+        decrypt_as_rep_enc_part(user, user_key, &as_rep.enc_part)?;
 
     let (_, enc_as_rep_part) = EncAsRepPart::parse(&raw_enc_as_rep_part)
         .map_err(|_| format!("Error decoding AS-REP"))?;
@@ -126,9 +120,8 @@ fn extract_krb_cred_from_as_rep(
 }
 
 fn decrypt_as_rep_enc_part(
+    user: &KerberosUser,
     user_key: &Key,
-    username: &str,
-    realm: &str,
     enc_part: &EncryptedData,
 ) -> Result<Vec<u8>> {
     if !user_key.etypes().contains(&enc_part.etype) {
@@ -139,7 +132,7 @@ fn decrypt_as_rep_enc_part(
 
     let key = match &user_key {
         Key::Secret(secret) => {
-            let salt = cipher.generate_salt(realm, username);
+            let salt = cipher.generate_salt(&user.realm, &user.name);
             cipher.generate_key_from_string(&secret, &salt)
         }
         _ => (&user_key.as_bytes()).to_vec(),

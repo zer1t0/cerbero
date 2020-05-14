@@ -8,6 +8,7 @@ mod krb_cred_plain;
 mod senders;
 mod transporter;
 mod utils;
+mod krb_user;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
@@ -38,19 +39,19 @@ fn main_inner(args: Arguments) -> Result<()> {
         &args.username,
         &args.credential_format,
     );
+    
+    let user = krb_user::KerberosUser::new(args.username, args.realm);
 
     if let Some(service) = args.service {
         return ask_tgs(
-            &creds_file,
+            user,
             service,
-            args.username,
-            args.realm,
+            &creds_file,
             &*transporter,
         );
     } else {
         return ask_tgt(
-            &args.realm,
-            &args.username,
+            &user,
             &args.user_key,
             args.preauth,
             &*transporter,

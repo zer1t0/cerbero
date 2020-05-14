@@ -1,48 +1,48 @@
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
-    KrbCredInfo, PaData, PrincipalName, TgsRep, TgsReq, Ticket,
+    KrbCredInfo, PaData, PaForUser, PrincipalName, TgsRep, TgsReq, Ticket,
 };
 
 use kerberos_constants::key_usages;
-use kerberos_constants::key_usages::KEY_USAGE_TGS_REQ_AUTHEN;
+use kerberos_constants::key_usages::{
+    KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, KEY_USAGE_TGS_REQ_AUTHEN,
+};
 use kerberos_constants::pa_data_types::PA_TGS_REQ;
 use kerberos_constants::principal_names::NT_SRV_INST;
-use kerberos_crypto::new_kerberos_cipher;
+use kerberos_constants::checksum_types;
+use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher};
 
 use crate::kdc_req_builder::KdcReqBuilder;
 use crate::senders::{send_recv, Rep};
 
 use crate::error::Result;
 use crate::krb_cred_plain::KrbCredPlain;
+use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{
-    create_krb_cred_info, parse_creds_file,
+    create_krb_cred_info, gen_krbtgt_principal_name, parse_creds_file,
     save_cred_in_file, username_to_principal_name,
 };
 
 pub fn ask_tgs(
-    creds_file: &str,
+    user: KerberosUser,
     service: String,
-    username: String,
-    realm: String,
+    creds_file: &str,
     transporter: &dyn KerberosTransporter,
 ) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
     let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
-    let cname = username_to_principal_name(username.clone());
-    let tgt_service = PrincipalName {
-        name_type: NT_SRV_INST,
-        name_string: vec!["krbtgt".into(), realm.clone()],
-    };
+    let cname = username_to_principal_name(user.name.clone());
+    let tgt_service =
+        gen_krbtgt_principal_name(user.realm.clone(), NT_SRV_INST);
 
     let (ticket, krb_cred_info) = krb_cred_plain
         .look_for_user_creds(&cname, &tgt_service)
-        .ok_or(format!("No TGT found for '{}", username))?;
+        .ok_or(format!("No TGT found for '{}", user.name))?;
 
     let (tgs, krb_cred_info_tgs) = request_tgs(
-        realm,
-        username,
+        user,
         service,
         &krb_cred_info,
         ticket.clone(),
@@ -58,16 +58,14 @@ pub fn ask_tgs(
 }
 
 fn request_tgs(
-    realm: String,
-    username: String,
+    user: KerberosUser,
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req =
-        build_tgs_req(realm, username, service, krb_cred_info, ticket)?;
+    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket, None)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -113,15 +111,15 @@ fn send_recv_tgs(
 }
 
 fn build_tgs_req(
-    crealm: String,
-    username: String,
+    user: KerberosUser,
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
+    impersonate_user: Option<KerberosUser>,
 ) -> Result<TgsReq> {
-    let cname = username_to_principal_name(username);
+    let cname = username_to_principal_name(user.name);
     let mut authenticator = Authenticator::default();
-    authenticator.crealm = crealm.clone();
+    authenticator.crealm = user.realm.clone();
     authenticator.cname = cname;
 
     let authen_etype = krb_cred_info.key.keytype;
@@ -143,6 +141,31 @@ fn build_tgs_req(
         cipher: encrypted_authenticator,
     };
 
+    if let Some(impersonate_user) = impersonate_user {
+        let mut pa_for_user = PaForUser::default();
+        pa_for_user.username =
+            username_to_principal_name(impersonate_user.name);
+        pa_for_user.userrealm = impersonate_user.realm;
+        pa_for_user.auth_package = "Kerberos".to_string();
+
+        let mut ck_value =
+            pa_for_user.username.name_type.to_le_bytes().to_vec();
+        ck_value.append(&mut pa_for_user.username.name_string[0].clone().into_bytes());
+        ck_value.append(&mut pa_for_user.userrealm.into_bytes());
+        ck_value.append(&mut pa_for_user.auth_package.into_bytes());
+
+        let cksum = checksum_hmac_md5(
+            session_key,
+            KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
+            &ck_value,
+        );
+
+        pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
+        pa_for_user.cksum.checksum = cksum;
+
+       
+    }
+
     let pa_tgs_req = PaData {
         padata_type: PA_TGS_REQ,
         padata_value: ap_req.build(),
@@ -151,7 +174,7 @@ fn build_tgs_req(
     let service_parts: Vec<String> =
         service.split("/").map(|s| s.to_string()).collect();
 
-    let tgs_req = KdcReqBuilder::new(crealm)
+    let tgs_req = KdcReqBuilder::new(user.realm)
         .push_padata(pa_tgs_req)
         .sname(Some(PrincipalName {
             name_type: NT_SRV_INST,

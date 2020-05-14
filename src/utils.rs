@@ -19,6 +19,13 @@ pub fn username_to_principal_name(username: String) -> PrincipalName {
     };
 }
 
+pub fn gen_krbtgt_principal_name(realm: String, name_type: i32) -> PrincipalName {
+    return PrincipalName {
+        name_type,
+        name_string: vec!["krbtgt".into(), realm],
+    };
+}
+
 pub fn parse_creds_file(
     creds_file: &str,
 ) -> Result<(KrbCred, CredentialFormat)> {
