@@ -27,6 +27,12 @@ pub fn args() -> App<'static, 'static> {
                 .required(true),
         )
         .arg(
+            Arg::with_name("impersonate")
+                .long("impersonate")
+                .takes_value(true)
+                .help("Username to impersonate for request the ticket")
+        )
+        .arg(
             Arg::with_name("password")
                 .long("password")
                 .short("p")
@@ -159,6 +165,7 @@ pub struct Arguments {
     pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
+    pub impersonate_user: Option<String>
 }
 
 pub struct ArgumentsParser<'a> {
@@ -191,6 +198,7 @@ impl<'a> ArgumentsParser<'a> {
             out_file,
             service,
             transport_protocol: self.parse_transport_protocol(),
+            impersonate_user: self.parse_impersonate_user()
         };
     }
 
@@ -237,5 +245,9 @@ impl<'a> ArgumentsParser<'a> {
         }
 
         return TransportProtocol::TCP;
+    }
+
+    fn parse_impersonate_user(&self) -> Option<String> {
+        return self.matches.value_of("impersonate").map(|s| s.into());
     }
 }

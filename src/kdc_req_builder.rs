@@ -75,6 +75,11 @@ impl KdcReqBuilder {
         self
     }
 
+    pub fn padatas(mut self, padatas: Vec<PaData>) -> Self {
+        self.padatas = padatas;
+        self
+    }
+
     pub fn request_pac(self) -> Self {
         self.push_padata(PaData::new(
             pa_data_types::PA_PAC_REQUEST,

@@ -5,15 +5,16 @@ mod cred_format;
 mod error;
 mod kdc_req_builder;
 mod krb_cred_plain;
+mod krb_user;
 mod senders;
 mod transporter;
 mod utils;
-mod krb_user;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
 use ask_tgs::ask_tgs;
 use ask_tgt::ask_tgt;
+use krb_user::KerberosUser;
 use std::net::SocketAddr;
 use transporter::new_transporter;
 
@@ -39,8 +40,14 @@ fn main_inner(args: Arguments) -> Result<()> {
         &args.username,
         &args.credential_format,
     );
-    
-    let user = krb_user::KerberosUser::new(args.username, args.realm);
+
+    let impersonate_user = match args.impersonate_user {
+        Some(username) => Some(KerberosUser::new(username, args.realm.clone())),
+        None => None
+    };
+
+
+    let user = KerberosUser::new(args.username, args.realm);
 
     if let Some(service) = args.service {
         return ask_tgs(
@@ -48,6 +55,7 @@ fn main_inner(args: Arguments) -> Result<()> {
             service,
             &creds_file,
             &*transporter,
+            impersonate_user,
         );
     } else {
         return ask_tgt(

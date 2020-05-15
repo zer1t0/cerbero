@@ -3,13 +3,13 @@ use kerberos_asn1::{
     KrbCredInfo, PaData, PaForUser, PrincipalName, TgsRep, TgsReq, Ticket,
 };
 
+use kerberos_constants::checksum_types;
 use kerberos_constants::key_usages;
 use kerberos_constants::key_usages::{
     KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, KEY_USAGE_TGS_REQ_AUTHEN,
 };
-use kerberos_constants::pa_data_types::PA_TGS_REQ;
-use kerberos_constants::principal_names::NT_SRV_INST;
-use kerberos_constants::checksum_types;
+use kerberos_constants::pa_data_types::{PA_FOR_USER, PA_TGS_REQ};
+use kerberos_constants::principal_names::{NT_SRV_INST, NT_UNKNOWN};
 use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher};
 
 use crate::kdc_req_builder::KdcReqBuilder;
@@ -29,6 +29,7 @@ pub fn ask_tgs(
     service: String,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
+    impersonate_user: Option<KerberosUser>
 ) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
     let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
@@ -47,6 +48,7 @@ pub fn ask_tgs(
         &krb_cred_info,
         ticket.clone(),
         transporter,
+        impersonate_user
     )?;
 
     krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
@@ -63,9 +65,10 @@ fn request_tgs(
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
     transporter: &dyn KerberosTransporter,
+    impersonate_user: Option<KerberosUser>
 ) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket, None)?;
+    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket, impersonate_user)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -117,6 +120,26 @@ fn build_tgs_req(
     ticket: Ticket,
     impersonate_user: Option<KerberosUser>,
 ) -> Result<TgsReq> {
+    let mut padatas = Vec::new();
+    let session_key = &krb_cred_info.key.keyvalue;
+
+    let service_parts: Vec<String> =
+        service.split("/").map(|s| s.to_string()).collect();
+    let mut sname = PrincipalName {
+        name_type: NT_SRV_INST,
+        name_string: service_parts,
+    };
+    
+    if let Some(impersonate_user) = impersonate_user {
+        let pa_for_user = create_pa_for_user(impersonate_user, session_key);
+        padatas.push(PaData::new(PA_FOR_USER, pa_for_user.build()));
+
+        sname = PrincipalName {
+            name_type: NT_UNKNOWN,
+            name_string: vec![user.name.clone()]
+        };
+    }
+
     let cname = username_to_principal_name(user.name);
     let mut authenticator = Authenticator::default();
     authenticator.crealm = user.realm.clone();
@@ -126,7 +149,7 @@ fn build_tgs_req(
     let cipher = new_kerberos_cipher(authen_etype)
         .map_err(|_| format!("No supported etype: {}", authen_etype))?;
 
-    let session_key = &krb_cred_info.key.keyvalue;
+    
     let encrypted_authenticator = cipher.encrypt(
         session_key,
         KEY_USAGE_TGS_REQ_AUTHEN,
@@ -141,45 +164,11 @@ fn build_tgs_req(
         cipher: encrypted_authenticator,
     };
 
-    if let Some(impersonate_user) = impersonate_user {
-        let mut pa_for_user = PaForUser::default();
-        pa_for_user.username =
-            username_to_principal_name(impersonate_user.name);
-        pa_for_user.userrealm = impersonate_user.realm;
-        pa_for_user.auth_package = "Kerberos".to_string();
-
-        let mut ck_value =
-            pa_for_user.username.name_type.to_le_bytes().to_vec();
-        ck_value.append(&mut pa_for_user.username.name_string[0].clone().into_bytes());
-        ck_value.append(&mut pa_for_user.userrealm.into_bytes());
-        ck_value.append(&mut pa_for_user.auth_package.into_bytes());
-
-        let cksum = checksum_hmac_md5(
-            session_key,
-            KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
-            &ck_value,
-        );
-
-        pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
-        pa_for_user.cksum.checksum = cksum;
-
-       
-    }
-
-    let pa_tgs_req = PaData {
-        padata_type: PA_TGS_REQ,
-        padata_value: ap_req.build(),
-    };
-
-    let service_parts: Vec<String> =
-        service.split("/").map(|s| s.to_string()).collect();
+    padatas.push(PaData::new(PA_TGS_REQ, ap_req.build()));
 
     let tgs_req = KdcReqBuilder::new(user.realm)
-        .push_padata(pa_tgs_req)
-        .sname(Some(PrincipalName {
-            name_type: NT_SRV_INST,
-            name_string: service_parts,
-        }))
+        .padatas(padatas)
+        .sname(Some(sname))
         .build_tgs_req();
 
     return Ok(tgs_req);
@@ -201,4 +190,32 @@ fn decrypt_tgs_rep_enc_part(
         .map_err(|error| format!("Error decrypting TGS-REP: {}", error))?;
 
     return Ok(raw_enc_as_req_part);
+}
+
+
+fn create_pa_for_user(
+    user: KerberosUser,
+    session_key: &[u8]
+) -> PaForUser {
+    let mut pa_for_user = PaForUser::default();
+    pa_for_user.username = username_to_principal_name(user.name);
+    pa_for_user.userrealm = user.realm;
+    pa_for_user.auth_package = "Kerberos".to_string();
+
+    let mut ck_value = pa_for_user.username.name_type.to_le_bytes().to_vec();
+    ck_value
+        .append(&mut pa_for_user.username.name_string[0].clone().into_bytes());
+    ck_value.append(&mut pa_for_user.userrealm.clone().into_bytes());
+    ck_value.append(&mut pa_for_user.auth_package.clone().into_bytes());
+
+    let cksum = checksum_hmac_md5(
+        session_key,
+        KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
+        &ck_value,
+    );
+
+    pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
+    pa_for_user.cksum.checksum = cksum;
+
+    return pa_for_user;
 }
