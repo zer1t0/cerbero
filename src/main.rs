@@ -1,6 +1,5 @@
 mod args;
-mod ask_tgs;
-mod ask_tgt;
+mod ask;
 mod cred_format;
 mod error;
 mod file;
@@ -13,8 +12,7 @@ mod utils;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
-use ask_tgs::{ask_s4u2proxy, ask_s4u2self, ask_tgs};
-use ask_tgt::ask_tgt;
+use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
 use krb_user::KerberosUser;
 use std::net::SocketAddr;
 use transporter::new_transporter;

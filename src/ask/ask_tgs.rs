@@ -1,4 +1,4 @@
-use crate::ask_tgt::request_tgt;
+use super::ask_tgt::request_tgt;
 use crate::cred_format::CredentialFormat;
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
@@ -28,6 +28,7 @@ use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred_info, username_to_principal_name};
 
+/// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
     user: KerberosUser,
     service: String,
@@ -61,6 +62,8 @@ pub fn ask_tgs(
     return Ok(());
 }
 
+/// Function to get a TGT from the credentials file
+/// or request it if it is necessary
 fn get_user_tgt(
     user: KerberosUser,
     creds_file: &str,
@@ -92,6 +95,7 @@ fn get_user_tgt(
     }
 }
 
+/// Try to get the TGT user from the credentials file
 fn get_user_tgt_from_file(
     user: KerberosUser,
     creds_file: &str,
@@ -106,6 +110,7 @@ fn get_user_tgt_from_file(
     return Ok((krb_cred_plain, cred_format, ticket, krb_cred_info));
 }
 
+/// Use a TGT to request a TGS
 fn request_tgs(
     user: KerberosUser,
     service: String,
@@ -133,6 +138,7 @@ fn request_tgs(
     return Ok((tgs_rep.ticket, krb_cred_info_tgs));
 }
 
+/// Function to send a TGS-REQ message and receive a TGS-REP
 fn send_recv_tgs(
     transporter: &dyn KerberosTransporter,
     req: &TgsReq,
@@ -159,6 +165,8 @@ fn send_recv_tgs(
     }
 }
 
+/// Helper to easily craft a TGS-REQ message for asking a TGS
+/// from user data and TGT
 fn build_tgs_req(
     user: KerberosUser,
     service: String,
@@ -191,6 +199,7 @@ fn build_tgs_req(
     return Ok(tgs_req);
 }
 
+/// Decrypts the TGS-REP enc-part by using the session key
 fn decrypt_tgs_rep_enc_part(
     session_key: &[u8],
     enc_part: &EncryptedData,
@@ -209,30 +218,7 @@ fn decrypt_tgs_rep_enc_part(
     return Ok(raw_enc_as_req_part);
 }
 
-fn create_pa_for_user(user: KerberosUser, session_key: &[u8]) -> PaForUser {
-    let mut pa_for_user = PaForUser::default();
-    pa_for_user.username = username_to_principal_name(user.name);
-    pa_for_user.userrealm = user.realm;
-    pa_for_user.auth_package = "Kerberos".to_string();
-
-    let mut ck_value = pa_for_user.username.name_type.to_le_bytes().to_vec();
-    ck_value
-        .append(&mut pa_for_user.username.name_string[0].clone().into_bytes());
-    ck_value.append(&mut pa_for_user.userrealm.clone().into_bytes());
-    ck_value.append(&mut pa_for_user.auth_package.clone().into_bytes());
-
-    let cksum = checksum_hmac_md5(
-        session_key,
-        KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
-        &ck_value,
-    );
-
-    pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
-    pa_for_user.cksum.checksum = cksum;
-
-    return pa_for_user;
-}
-
+/// Main function to perform an S4U2Self operation
 pub fn ask_s4u2self(
     user: KerberosUser,
     impersonate_user: KerberosUser,
@@ -266,6 +252,7 @@ pub fn ask_s4u2self(
     return Ok(());
 }
 
+/// Use a TGT to request a TGS for user itself on behalf other user
 fn request_s4u2self(
     user: KerberosUser,
     impersonate_user: KerberosUser,
@@ -294,6 +281,8 @@ fn request_s4u2self(
     return Ok((tgs_rep.ticket, krb_cred_info_tgs));
 }
 
+/// Helper to easily craft a TGS-REQ message for S4U2Self
+/// from user data and TGT
 fn build_s4u2self_req(
     user: KerberosUser,
     impersonate_user: KerberosUser,
@@ -326,6 +315,7 @@ fn build_s4u2self_req(
     return Ok(tgs_req);
 }
 
+/// Main function to perform an S4U2Proxy operation
 pub fn ask_s4u2proxy(
     user: KerberosUser,
     impersonate_user: KerberosUser,
@@ -369,6 +359,8 @@ pub fn ask_s4u2proxy(
     return Ok(());
 }
 
+/// Function to get a TGS of an impersonated user from file
+/// or request it if it is necessary
 fn get_impersonation_ticket(
     mut krb_cred_plain: KrbCredPlain,
     user: KerberosUser,
@@ -403,6 +395,8 @@ fn get_impersonation_ticket(
     }
 }
 
+/// Use a TGT and TGS of impersonated user
+/// to request a new TGS for a service on behalf the impersonated user
 fn request_s4u2proxy(
     user: KerberosUser,
     service: String,
@@ -432,6 +426,8 @@ fn request_s4u2proxy(
     return Ok((tgs_rep.ticket, krb_cred_info_tgs));
 }
 
+/// Helper to easily craft a TGS-REQ message for S4U2Proxy
+/// from user data and TGT
 fn build_s4u2proxy_req(
     user: KerberosUser,
     service: String,
@@ -471,6 +467,8 @@ fn build_s4u2proxy_req(
     return Ok(tgs_req);
 }
 
+/// Helper to create a PA-DATA that contains a PA-FOR-USER struct
+/// used in S4U2Self
 fn create_pa_data_pa_for_user(
     impersonate_user: KerberosUser,
     session_key: &[u8],
@@ -479,6 +477,33 @@ fn create_pa_data_pa_for_user(
     return PaData::new(PA_FOR_USER, pa_for_user.build());
 }
 
+/// Helper to easily create a PA-FOR-USER struct used in S4U2Self
+fn create_pa_for_user(user: KerberosUser, session_key: &[u8]) -> PaForUser {
+    let mut pa_for_user = PaForUser::default();
+    pa_for_user.username = username_to_principal_name(user.name);
+    pa_for_user.userrealm = user.realm;
+    pa_for_user.auth_package = "Kerberos".to_string();
+
+    let mut ck_value = pa_for_user.username.name_type.to_le_bytes().to_vec();
+    ck_value
+        .append(&mut pa_for_user.username.name_string[0].clone().into_bytes());
+    ck_value.append(&mut pa_for_user.userrealm.clone().into_bytes());
+    ck_value.append(&mut pa_for_user.auth_package.clone().into_bytes());
+
+    let cksum = checksum_hmac_md5(
+        session_key,
+        KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
+        &ck_value,
+    );
+
+    pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
+    pa_for_user.cksum.checksum = cksum;
+
+    return pa_for_user;
+}
+
+/// Helper to create a PA-DATA that contains a PA-PAC-OPTIONS struct
+/// used in S4U2Proxy
 fn create_pa_data_pac_options(pac_options: u32) -> PaData {
     let pac_options = PaPacOptions {
         kerberos_flags: pac_options.into(),
@@ -487,30 +512,48 @@ fn create_pa_data_pac_options(pac_options: u32) -> PaData {
     return PaData::new(PA_PAC_OPTIONS, pac_options.build());
 }
 
+/// Helper to create a PA-DATA that contains an AP-REQ struct
 fn create_pa_data_ap_req(
     user: KerberosUser,
     ticket: Ticket,
     session_key: &[u8],
     etype: i32,
 ) -> Result<PaData> {
-    let cname = username_to_principal_name(user.name);
-    let mut authenticator = Authenticator::default();
-    authenticator.crealm = user.realm;
-    authenticator.cname = cname;
-
-    let cipher = new_kerberos_cipher(etype)
-        .map_err(|_| format!("No supported etype: {}", etype))?;
-
-    let encrypted_authenticator = cipher.encrypt(
-        session_key,
-        KEY_USAGE_TGS_REQ_AUTHEN,
-        &authenticator.build(),
-    );
+    let encrypted_authenticator =
+        create_encrypted_authenticator(user, etype, session_key)?;
 
     let ap_req = create_ap_req(ticket, etype, encrypted_authenticator);
     return Ok(PaData::new(PA_TGS_REQ, ap_req.build()));
 }
 
+/// Helper to create an encrypt an Authenticator struct
+/// that is contained in AP-REQ
+fn create_encrypted_authenticator(
+    user: KerberosUser,
+    etype: i32,
+    session_key: &[u8],
+) -> Result<Vec<u8>> {
+    let authenticator = create_authenticator(user);
+
+    let cipher = new_kerberos_cipher(etype)
+        .map_err(|_| format!("No supported etype: {}", etype))?;
+
+    return Ok(cipher.encrypt(
+        session_key,
+        KEY_USAGE_TGS_REQ_AUTHEN,
+        &authenticator.build(),
+    ));
+}
+
+/// Helper to create an encrypt an Authenticator struct
+fn create_authenticator(user: KerberosUser) -> Authenticator {
+    let mut authenticator = Authenticator::default();
+    authenticator.crealm = user.realm;
+    authenticator.cname = username_to_principal_name(user.name);
+    return authenticator;
+}
+
+/// Helper to create an AP-REQ struct
 fn create_ap_req(ticket: Ticket, etype: i32, cipher: Vec<u8>) -> ApReq {
     let mut ap_req = ApReq::default();
     ap_req.ticket = ticket;
