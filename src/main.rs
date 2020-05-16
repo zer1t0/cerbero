@@ -7,6 +7,7 @@ mod file;
 mod kdc_req_builder;
 mod krb_cred_plain;
 mod krb_user;
+mod list;
 mod senders;
 mod transporter;
 mod utils;
@@ -20,6 +21,14 @@ use std::net::SocketAddr;
 use stderrlog;
 use transporter::new_transporter;
 
+fn init_log(verbosity: usize) {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(verbosity)
+        .init()
+        .unwrap();
+}
+
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
@@ -32,11 +41,12 @@ fn main_inner(args: Arguments) -> Result<()> {
     match args {
         Arguments::Ask(args) => ask(args),
         Arguments::Convert(args) => convert(args),
+        Arguments::List(args) => list(args),
     }
 }
 
 fn ask(args: args::ask::Arguments) -> Result<()> {
-    init_log(args.verbosity);    
+    init_log(args.verbosity);
 
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
@@ -117,17 +127,19 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
     init_log(args.verbosity);
     let in_file = match args.in_file {
         Some(filename) => filename,
-        None => utils::get_env_ticket_file().ok_or("Unable to detect input file, specify -i/--input or KRB5CCNAME")?
+        None => utils::get_env_ticket_file().ok_or(
+            "Unable to detect input file, specify -i/--input or KRB5CCNAME",
+        )?,
     };
-    
+
     return convert::convert(&in_file, &args.out_file, args.cred_format);
 }
 
-
-fn init_log(verbosity: usize) {
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(verbosity)
-        .init()
-        .unwrap();
+fn list(args: args::list::Arguments) -> Result<()> {
+    let in_file = match args.in_file {
+        Some(filename) => filename,
+        None => utils::get_env_ticket_file()
+            .ok_or("Specify file or set KRB5CCNAME")?,
+    };
+    return list::list(&in_file, args.etypes, args.flags);
 }

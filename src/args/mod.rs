@@ -1,5 +1,6 @@
 pub mod ask;
 pub mod convert;
+pub mod list;
 mod validators;
 
 use clap::{App, AppSettings, ArgMatches};
@@ -12,11 +13,13 @@ pub fn args() -> App<'static, 'static> {
         .setting(AppSettings::SubcommandRequired)
         .subcommand(ask::command())
         .subcommand(convert::command())
+        .subcommand(list::command())
 }
 
 pub enum Arguments {
     Ask(ask::Arguments),
-    Convert(convert::Arguments)
+    Convert(convert::Arguments),
+    List(list::Arguments),
 }
 
 pub struct ArgumentsParser {}
@@ -32,6 +35,11 @@ impl ArgumentsParser {
             convert::COMMAND_NAME => {
                 return Arguments::Convert(convert::ArgumentsParser::parse(
                     matches.subcommand_matches(convert::COMMAND_NAME).unwrap(),
+                ));
+            }
+            list::COMMAND_NAME => {
+                return Arguments::List(list::ArgumentsParser::parse(
+                    matches.subcommand_matches(list::COMMAND_NAME).unwrap(),
                 ));
             }
             _ => unreachable!("Unknown command"),

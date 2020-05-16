@@ -15,9 +15,12 @@ pub fn convert(
         Some(cred_format) => cred_format,
         None => match cred_format_from_file_extension(out_file) {
             Some(cred_format) => {
-                info!("Detected {} format from output file extension", cred_format);
+                info!(
+                    "Detected {} format from output file extension",
+                    cred_format
+                );
                 cred_format
-            },
+            }
             None => in_cred_format.contrary(),
         },
     };

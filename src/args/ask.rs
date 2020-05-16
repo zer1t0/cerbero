@@ -1,9 +1,9 @@
+use super::validators;
 use crate::cred_format::CredentialFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
-use super::validators;
 
 pub const COMMAND_NAME: &str = "ask";
 

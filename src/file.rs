@@ -1,10 +1,9 @@
-use kerberos_ccache::CCache;
-use std::fs;
-use std::convert::TryInto;
-use crate::Result;
-use kerberos_asn1::{KrbCred, Asn1Object};
 use crate::cred_format::CredentialFormat;
-
+use crate::Result;
+use kerberos_asn1::{Asn1Object, KrbCred};
+use kerberos_ccache::CCache;
+use std::convert::TryInto;
+use std::fs;
 
 pub fn parse_creds_file(
     creds_file: &str,

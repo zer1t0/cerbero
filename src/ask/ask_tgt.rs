@@ -13,11 +13,11 @@ use kerberos_crypto::{
 
 use crate::cred_format::CredentialFormat;
 use crate::error::Result;
+use crate::file::save_cred_in_file;
 use crate::krb_user::KerberosUser;
 use crate::senders::{send_recv, Rep};
 use crate::transporter::KerberosTransporter;
-use crate::utils::{create_krb_cred};
-use crate::file::save_cred_in_file;
+use crate::utils::create_krb_cred;
 use log::info;
 
 /// Main function to ask a TGT
@@ -180,7 +180,7 @@ fn create_pa_data_encrypted_timestamp(
 }
 
 /// Helper to create an encrypted timestamp used by AS-REQ
-/// to provide Kerberos preauthentication 
+/// to provide Kerberos preauthentication
 fn create_encrypted_timestamp(
     user_key: &Key,
     realm: &str,

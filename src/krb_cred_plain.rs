@@ -1,5 +1,3 @@
-use kerberos_constants::principal_names::NT_UNKNOWN;
-use kerberos_constants::principal_names::NT_SRV_INST;
 use crate::krb_user::KerberosUser;
 use crate::utils::gen_krbtgt_principal_name;
 use crate::utils::username_to_principal_name;
@@ -8,6 +6,8 @@ use kerberos_asn1::{
     PrincipalName, Ticket,
 };
 use kerberos_constants::etypes::NO_ENCRYPTION;
+use kerberos_constants::principal_names::NT_SRV_INST;
+use kerberos_constants::principal_names::NT_UNKNOWN;
 
 pub struct KrbCredPlain {
     pub tickets: Vec<Ticket>,
@@ -61,7 +61,6 @@ impl KrbCredPlain {
         return self.look_for_user_creds(&cname, &tgt_service);
     }
 
-
     pub fn look_for_impersonation_ticket(
         &self,
         username: String,
@@ -72,7 +71,7 @@ impl KrbCredPlain {
             name_type: NT_UNKNOWN,
             name_string: vec![username],
         };
-        
+
         return self.look_for_user_creds(&cname_imp, &service_imp);
     }
 }

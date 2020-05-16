@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
     AsReq, Asn1Object, KdcReq, KerbPaPacRequest, KerberosTime, PaData,
-    PrincipalName, TgsReq, Ticket
+    PrincipalName, TgsReq, Ticket,
 };
 use kerberos_constants::{kdc_options, pa_data_types, principal_names};
 use kerberos_crypto::supported_etypes;
@@ -45,7 +45,7 @@ impl KdcReqBuilder {
                 Utc::now()
                     .checked_add_signed(Duration::weeks(20 * 52))
                     .unwrap()
-                    .into()
+                    .into(),
             ),
             additional_tickets: Vec::new(),
         };
@@ -92,7 +92,7 @@ impl KdcReqBuilder {
         self.additional_tickets.push(ticket);
         self
     }
- 
+
     pub fn request_pac(self) -> Self {
         self.push_padata(PaData::new(
             pa_data_types::PA_PAC_REQUEST,

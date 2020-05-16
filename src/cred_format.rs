@@ -7,10 +7,10 @@ pub enum CredentialFormat {
 }
 
 impl CredentialFormat {
-    pub fn contrary(&self) -> Self{
+    pub fn contrary(&self) -> Self {
         match self {
             Self::Krb => Self::Ccache,
-            Self::Ccache => Self::Krb
+            Self::Ccache => Self::Krb,
         }
     }
 }
