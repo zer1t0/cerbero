@@ -34,7 +34,7 @@ pub fn ask_tgt(
     return Ok(());
 }
 
-fn request_tgt(
+pub fn request_tgt(
     user: &KerberosUser,
     user_key: &Key,
     preauth: bool,

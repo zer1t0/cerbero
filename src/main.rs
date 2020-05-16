@@ -67,6 +67,7 @@ fn main_inner(args: Arguments) -> Result<()> {
                     &creds_file,
                     &*transporter,
                     args.user_key.as_ref(),
+                    args.credential_format,
                 );
             }
         },

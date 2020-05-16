@@ -30,18 +30,18 @@ impl KrbCredPlain {
         });
     }
 
-    pub fn look_for_user_creds<'a>(
-        &'a self,
+    pub fn look_for_user_creds(
+        &self,
         username: &PrincipalName,
         service: &PrincipalName,
-    ) -> Option<(&'a Ticket, &'a KrbCredInfo)> {
+    ) -> Option<(Ticket, KrbCredInfo)> {
         for (ticket, cred_info) in
             self.tickets.iter().zip(self.cred_part.ticket_info.iter())
         {
             if let Some(pname) = &cred_info.pname {
                 if let Some(sname) = &cred_info.sname {
                     if pname == username && sname == service {
-                        return Some((ticket, cred_info));
+                        return Some((ticket.clone(), cred_info.clone()));
                     }
                 }
             }
@@ -50,10 +50,10 @@ impl KrbCredPlain {
         return None;
     }
 
-    pub fn look_for_tgt<'a>(
-        &'a self,
+    pub fn look_for_tgt(
+        &self,
         user: KerberosUser,
-    ) -> Option<(&'a Ticket, &'a KrbCredInfo)> {
+    ) -> Option<(Ticket, KrbCredInfo)> {
         let cname = username_to_principal_name(user.name);
         let tgt_service = gen_krbtgt_principal_name(user.realm, NT_SRV_INST);
 

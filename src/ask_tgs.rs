@@ -1,3 +1,5 @@
+use crate::ask_tgt::request_tgt;
+use crate::cred_format::CredentialFormat;
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
     KrbCredInfo, PaData, PaForUser, PaPacOptions, PrincipalName, TgsRep,
@@ -34,13 +36,16 @@ pub fn ask_tgs(
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
+    cred_format: CredentialFormat,
 ) -> Result<()> {
-    let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
-    let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
-
-    let (ticket, krb_cred_info) = krb_cred_plain
-        .look_for_tgt(user.clone())
-        .ok_or(format!("No TGT found for '{}", user.name))?;
+    let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
+        get_user_tgt(
+            user.clone(),
+            creds_file,
+            user_key,
+            transporter,
+            cred_format,
+        )?;
 
     let (tgs, krb_cred_info_tgs) = request_tgs(
         user,
@@ -56,6 +61,52 @@ pub fn ask_tgs(
     save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
 
     return Ok(());
+}
+
+fn get_user_tgt(
+    user: KerberosUser,
+    creds_file: &str,
+    user_key: Option<&Key>,
+    transporter: &dyn KerberosTransporter,
+    cred_format: CredentialFormat,
+) -> Result<(KrbCredPlain, CredentialFormat, Ticket, KrbCredInfo)> {
+    match get_user_tgt_from_file(user.clone(), creds_file) {
+        Ok(ok) => return Ok(ok),
+        Err(_) => match user_key {
+            Some(user_key) => {
+                let krb_cred =
+                    request_tgt(&user, user_key, true, transporter)?;
+                let krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+
+                let (ticket, krb_cred_info) =
+                    krb_cred_plain.look_for_tgt(user.clone()).unwrap();
+
+                return Ok((
+                    krb_cred_plain,
+                    cred_format,
+                    ticket,
+                    krb_cred_info,
+                ));
+            }
+            None => {
+                return Err("Unable to request TGT without user credentials")?;
+            }
+        },
+    }
+}
+
+fn get_user_tgt_from_file(
+    user: KerberosUser,
+    creds_file: &str,
+) -> Result<(KrbCredPlain, CredentialFormat, Ticket, KrbCredInfo)> {
+    let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
+    let krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+
+    let (ticket, krb_cred_info) = krb_cred_plain
+        .look_for_tgt(user.clone())
+        .ok_or(format!("No TGT found for '{}", user.name))?;
+
+    return Ok((krb_cred_plain, cred_format, ticket, krb_cred_info));
 }
 
 fn request_tgs(
@@ -347,9 +398,9 @@ pub fn ask_s4u2proxy(
     let (tgs, krb_cred_info_tgs) = request_s4u2proxy(
         user,
         service,
-        krb_cred_info,
-        ticket.clone(),
-        ticket_imp.clone(),
+        &krb_cred_info,
+        ticket,
+        ticket_imp,
         transporter,
     )?;
 
