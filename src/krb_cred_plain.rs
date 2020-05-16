@@ -1,3 +1,7 @@
+use kerberos_constants::principal_names::NT_SRV_INST;
+use crate::krb_user::KerberosUser;
+use crate::utils::gen_krbtgt_principal_name;
+use crate::utils::username_to_principal_name;
 use kerberos_asn1::{
     Asn1Object, EncKrbCredPart, EncryptedData, KrbCred, KrbCredInfo,
     PrincipalName, Ticket,
@@ -44,6 +48,16 @@ impl KrbCredPlain {
         }
 
         return None;
+    }
+
+    pub fn look_for_tgt<'a>(
+        &'a self,
+        user: KerberosUser,
+    ) -> Option<(&'a Ticket, &'a KrbCredInfo)> {
+        let cname = username_to_principal_name(user.name);
+        let tgt_service = gen_krbtgt_principal_name(user.realm, NT_SRV_INST);
+
+        return self.look_for_user_creds(&cname, &tgt_service);
     }
 }
 

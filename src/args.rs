@@ -64,8 +64,7 @@ pub fn args() -> App<'static, 'static> {
         .group(
             ArgGroup::with_name("user_key")
                 .args(&["password", "rc4", "aes-128", "aes-256"])
-                .multiple(false)
-                .required(true),
+                .multiple(false),
         )
         .arg(
             Arg::with_name("kdc-ip")
@@ -157,7 +156,7 @@ fn is_ip(v: String) -> Result<(), String> {
 pub struct Arguments {
     pub realm: String,
     pub username: String,
-    pub user_key: Key,
+    pub user_key: Option<Key>,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
     pub credential_format: CredentialFormat,
@@ -207,18 +206,18 @@ impl<'a> ArgumentsParser<'a> {
         return Some(kdc_ip.parse::<IpAddr>().unwrap());
     }
 
-    fn parse_user_key(&self) -> Key {
+    fn parse_user_key(&self) -> Option<Key> {
         if let Some(password) = self.matches.value_of("password") {
-            return Key::Secret(password.to_string());
+            return Some(Key::Secret(password.to_string()));
         } else if let Some(ntlm) = self.matches.value_of("rc4") {
-            return Key::from_rc4_key_string(ntlm).unwrap();
+            return Some(Key::from_rc4_key_string(ntlm).unwrap());
         } else if let Some(aes_128_key) = self.matches.value_of("aes-128") {
-            return Key::from_aes_128_key_string(aes_128_key).unwrap();
+            return Some(Key::from_aes_128_key_string(aes_128_key).unwrap());
         } else if let Some(aes_256_key) = self.matches.value_of("aes-256") {
-            return Key::from_aes_256_key_string(aes_256_key).unwrap();
+            return Some(Key::from_aes_256_key_string(aes_256_key).unwrap());
         }
 
-        unreachable!("No key specified");
+        return None;
     }
 
     fn parse_ticket_format(&self) -> CredentialFormat {

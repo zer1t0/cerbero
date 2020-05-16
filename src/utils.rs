@@ -5,11 +5,8 @@ use kerberos_asn1::{
     Asn1Object, EncKdcRepPart, EncKrbCredPart, EncryptedData, KrbCred,
     KrbCredInfo, PrincipalName, Ticket,
 };
-use kerberos_ccache::CCache;
 use kerberos_constants::{etypes, principal_names};
-use std::convert::TryInto;
 use std::env;
-use std::fs;
 use std::net::IpAddr;
 
 pub fn username_to_principal_name(username: String) -> PrincipalName {
@@ -24,55 +21,6 @@ pub fn gen_krbtgt_principal_name(realm: String, name_type: i32) -> PrincipalName
         name_type,
         name_string: vec!["krbtgt".into(), realm],
     };
-}
-
-pub fn parse_creds_file(
-    creds_file: &str,
-) -> Result<(KrbCred, CredentialFormat)> {
-    let data = fs::read(creds_file).map_err(|err| {
-        format!("Unable to read the file '{}': {}", creds_file, err)
-    })?;
-
-    match CCache::parse(&data) {
-        Ok((_, ccache)) => {
-            let krb_cred = ccache.try_into().map_err(|_| {
-                format!(
-                    "Error parsing ccache data content of file '{}'",
-                    creds_file
-                )
-            })?;
-
-            return Ok((krb_cred, CredentialFormat::Ccache));
-        }
-        Err(_) => {
-            let (_, krb_cred) = KrbCred::parse(&data).map_err(|_| {
-                format!("Error parsing content of file '{}'", creds_file)
-            })?;
-            return Ok((krb_cred, CredentialFormat::Krb));
-        }
-    }
-}
-
-pub fn save_cred_in_file(
-    krb_cred: KrbCred,
-    cred_format: &CredentialFormat,
-    out_file: &str,
-) -> Result<()> {
-    let raw_cred = match cred_format {
-        CredentialFormat::Krb => krb_cred.build(),
-        CredentialFormat::Ccache => {
-            let ccache: CCache = krb_cred
-                .try_into()
-                .map_err(|_| "Error converting KrbCred to CCache")?;
-            ccache.build()
-        }
-    };
-
-    fs::write(out_file, raw_cred).map_err(|_| {
-        format!("Unable to write credentials in file {}", out_file)
-    })?;
-
-    return Ok(());
 }
 
 pub fn create_krb_cred(

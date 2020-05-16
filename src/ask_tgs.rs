@@ -1,31 +1,31 @@
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
-    KrbCredInfo, PaData, PaForUser, PrincipalName, TgsRep, TgsReq, Ticket,
-    PaPacOptions
+    KrbCredInfo, PaData, PaForUser, PaPacOptions, PrincipalName, TgsRep,
+    TgsReq, Ticket,
 };
 
 use kerberos_constants::checksum_types;
+use kerberos_constants::kdc_options;
 use kerberos_constants::key_usages;
 use kerberos_constants::key_usages::{
     KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, KEY_USAGE_TGS_REQ_AUTHEN,
 };
-use kerberos_constants::pa_data_types::{PA_FOR_USER, PA_TGS_REQ};
-use kerberos_constants::principal_names::{NT_SRV_INST, NT_UNKNOWN};
 use kerberos_constants::pa_data_types::PA_PAC_OPTIONS;
-use kerberos_constants::kdc_options;
+use kerberos_constants::pa_data_types::{PA_FOR_USER, PA_TGS_REQ};
 use kerberos_constants::pa_pac_options;
-use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher};
+use kerberos_constants::principal_names::{NT_SRV_INST, NT_UNKNOWN};
+use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher, Key};
 
 use crate::kdc_req_builder::KdcReqBuilder;
 use crate::senders::{send_recv, Rep};
 
 use crate::error::Result;
+use crate::file::{parse_creds_file, save_cred_in_file};
 use crate::krb_cred_plain::KrbCredPlain;
 use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{
-    create_krb_cred_info, gen_krbtgt_principal_name, parse_creds_file,
-    save_cred_in_file, username_to_principal_name,
+    create_krb_cred_info, gen_krbtgt_principal_name, username_to_principal_name,
 };
 
 pub fn ask_tgs(
@@ -33,17 +33,13 @@ pub fn ask_tgs(
     service: String,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
-    impersonate_user: Option<KerberosUser>
+    user_key: Option<&Key>,
 ) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
     let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
-    let cname = username_to_principal_name(user.name.clone());
-    let tgt_service =
-        gen_krbtgt_principal_name(user.realm.clone(), NT_SRV_INST);
-
     let (ticket, krb_cred_info) = krb_cred_plain
-        .look_for_user_creds(&cname, &tgt_service)
+        .look_for_tgt(user.clone())
         .ok_or(format!("No TGT found for '{}", user.name))?;
 
     let (tgs, krb_cred_info_tgs) = request_tgs(
@@ -52,7 +48,6 @@ pub fn ask_tgs(
         &krb_cred_info,
         ticket.clone(),
         transporter,
-        impersonate_user
     )?;
 
     krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
@@ -69,10 +64,9 @@ fn request_tgs(
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
     transporter: &dyn KerberosTransporter,
-    impersonate_user: Option<KerberosUser>
 ) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket, impersonate_user)?;
+    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -122,28 +116,16 @@ fn build_tgs_req(
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
-    impersonate_user: Option<KerberosUser>,
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
     let session_key = &krb_cred_info.key.keyvalue;
 
     let service_parts: Vec<String> =
         service.split("/").map(|s| s.to_string()).collect();
-    let mut sname = PrincipalName {
+    let sname = PrincipalName {
         name_type: NT_SRV_INST,
         name_string: service_parts,
     };
-
-    // S4U2Self, which requires the impersonate user, but not the service
-    if let Some(impersonate_user) = impersonate_user {
-        let pa_for_user = create_pa_for_user(impersonate_user, session_key);
-        padatas.push(PaData::new(PA_FOR_USER, pa_for_user.build()));
-
-        sname = PrincipalName {
-            name_type: NT_UNKNOWN,
-            name_string: vec![user.name.clone()]
-        };
-    }
 
     let cname = username_to_principal_name(user.name);
     let mut authenticator = Authenticator::default();
@@ -154,7 +136,6 @@ fn build_tgs_req(
     let cipher = new_kerberos_cipher(authen_etype)
         .map_err(|_| format!("No supported etype: {}", authen_etype))?;
 
-    
     let encrypted_authenticator = cipher.encrypt(
         session_key,
         KEY_USAGE_TGS_REQ_AUTHEN,
@@ -197,11 +178,7 @@ fn decrypt_tgs_rep_enc_part(
     return Ok(raw_enc_as_req_part);
 }
 
-
-fn create_pa_for_user(
-    user: KerberosUser,
-    session_key: &[u8]
-) -> PaForUser {
+fn create_pa_for_user(user: KerberosUser, session_key: &[u8]) -> PaForUser {
     let mut pa_for_user = PaForUser::default();
     pa_for_user.username = username_to_principal_name(user.name);
     pa_for_user.userrealm = user.realm;
@@ -224,7 +201,6 @@ fn create_pa_for_user(
 
     return pa_for_user;
 }
-
 
 pub fn ask_s4u2self(
     user: KerberosUser,
@@ -259,7 +235,6 @@ pub fn ask_s4u2self(
     return Ok(());
 }
 
-
 fn request_s4u2self(
     user: KerberosUser,
     impersonate_user: KerberosUser,
@@ -268,7 +243,8 @@ fn request_s4u2self(
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_s4u2self_req(user, impersonate_user, krb_cred_info, ticket)?;
+    let tgs_req =
+        build_s4u2self_req(user, impersonate_user, krb_cred_info, ticket)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -296,13 +272,12 @@ fn build_s4u2self_req(
     let mut padatas = Vec::new();
     let session_key = &krb_cred_info.key.keyvalue;
 
-
-   let pa_for_user = create_pa_for_user(impersonate_user, session_key);
+    let pa_for_user = create_pa_for_user(impersonate_user, session_key);
     padatas.push(PaData::new(PA_FOR_USER, pa_for_user.build()));
 
     let sname = PrincipalName {
         name_type: NT_UNKNOWN,
-        name_string: vec![user.name.clone()]
+        name_string: vec![user.name.clone()],
     };
 
     let cname = username_to_principal_name(user.name);
@@ -314,7 +289,6 @@ fn build_s4u2self_req(
     let cipher = new_kerberos_cipher(authen_etype)
         .map_err(|_| format!("No supported etype: {}", authen_etype))?;
 
-    
     let encrypted_authenticator = cipher.encrypt(
         session_key,
         KEY_USAGE_TGS_REQ_AUTHEN,
@@ -357,16 +331,18 @@ pub fn ask_s4u2proxy(
         .look_for_user_creds(&cname, &tgt_service)
         .ok_or(format!("No TGT found for '{}", user.name))?;
 
-
     let cname_imp = username_to_principal_name(impersonate_user.name.clone());
     let service_imp = PrincipalName {
         name_type: NT_UNKNOWN,
-        name_string: vec![user.name.clone()]
+        name_string: vec![user.name.clone()],
     };
-    
+
     let (ticket_imp, _) = krb_cred_plain
         .look_for_user_creds(&cname_imp, &service_imp)
-        .ok_or(format!("No impersonation ticket for user '{}' found", impersonate_user.name))?;
+        .ok_or(format!(
+            "No impersonation ticket for user '{}' found",
+            impersonate_user.name
+        ))?;
 
     let (tgs, krb_cred_info_tgs) = request_s4u2proxy(
         user,
@@ -385,7 +361,6 @@ pub fn ask_s4u2proxy(
     return Ok(());
 }
 
-
 fn request_s4u2proxy(
     user: KerberosUser,
     service: String,
@@ -395,13 +370,8 @@ fn request_s4u2proxy(
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
     let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_s4u2proxy_req(
-        user,
-        service,
-        krb_cred_info,
-        ticket,
-        ticket_imp,
-    )?;
+    let tgs_req =
+        build_s4u2proxy_req(user, service, krb_cred_info, ticket, ticket_imp)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
@@ -420,7 +390,6 @@ fn request_s4u2proxy(
     return Ok((tgs_rep.ticket, krb_cred_info_tgs));
 }
 
-
 fn build_s4u2proxy_req(
     user: KerberosUser,
     service: String,
@@ -438,9 +407,9 @@ fn build_s4u2proxy_req(
         name_string: service_parts,
     };
 
-
     let pac_options = PaPacOptions {
-        kerberos_flags: pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION.into()
+        kerberos_flags: pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION
+            .into(),
     };
 
     padatas.push(PaData::new(PA_PAC_OPTIONS, pac_options.build()));
@@ -454,7 +423,6 @@ fn build_s4u2proxy_req(
     let cipher = new_kerberos_cipher(authen_etype)
         .map_err(|_| format!("No supported etype: {}", authen_etype))?;
 
-    
     let encrypted_authenticator = cipher.encrypt(
         session_key,
         KEY_USAGE_TGS_REQ_AUTHEN,
@@ -475,9 +443,7 @@ fn build_s4u2proxy_req(
         .padatas(padatas)
         .sname(Some(sname))
         .push_ticket(ticket_imp)
-        .add_kdc_option(
-            kdc_options::CONSTRAINED_DELEGATION
-        )
+        .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
         .build_tgs_req();
 
     return Ok(tgs_req);

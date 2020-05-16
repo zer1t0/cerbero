@@ -16,7 +16,8 @@ use crate::error::Result;
 use crate::krb_user::KerberosUser;
 use crate::senders::{send_recv, Rep};
 use crate::transporter::KerberosTransporter;
-use crate::utils::{create_krb_cred, save_cred_in_file};
+use crate::utils::{create_krb_cred};
+use crate::file::save_cred_in_file;
 
 pub fn ask_tgt(
     user: &KerberosUser,
@@ -24,11 +25,11 @@ pub fn ask_tgt(
     preauth: bool,
     transporter: &dyn KerberosTransporter,
     cred_format: &CredentialFormat,
-    out_file: &str,
+    creds_file: &str,
 ) -> Result<()> {
     let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
 
-    save_cred_in_file(krb_cred, cred_format, out_file)?;
+    save_cred_in_file(krb_cred, cred_format, creds_file)?;
 
     return Ok(());
 }

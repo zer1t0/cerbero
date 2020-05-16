@@ -1,5 +1,6 @@
 
 
+#[derive(Clone, Debug)]
 pub struct KerberosUser {
     pub name: String,
     pub realm: String

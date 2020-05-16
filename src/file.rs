@@ -1,0 +1,56 @@
+use kerberos_ccache::CCache;
+use std::fs;
+use std::convert::TryInto;
+use crate::Result;
+use kerberos_asn1::{KrbCred, Asn1Object};
+use crate::cred_format::CredentialFormat;
+
+
+pub fn parse_creds_file(
+    creds_file: &str,
+) -> Result<(KrbCred, CredentialFormat)> {
+    let data = fs::read(creds_file).map_err(|err| {
+        format!("Unable to read the file '{}': {}", creds_file, err)
+    })?;
+
+    match CCache::parse(&data) {
+        Ok((_, ccache)) => {
+            let krb_cred = ccache.try_into().map_err(|_| {
+                format!(
+                    "Error parsing ccache data content of file '{}'",
+                    creds_file
+                )
+            })?;
+
+            return Ok((krb_cred, CredentialFormat::Ccache));
+        }
+        Err(_) => {
+            let (_, krb_cred) = KrbCred::parse(&data).map_err(|_| {
+                format!("Error parsing content of file '{}'", creds_file)
+            })?;
+            return Ok((krb_cred, CredentialFormat::Krb));
+        }
+    }
+}
+
+pub fn save_cred_in_file(
+    krb_cred: KrbCred,
+    cred_format: &CredentialFormat,
+    out_file: &str,
+) -> Result<()> {
+    let raw_cred = match cred_format {
+        CredentialFormat::Krb => krb_cred.build(),
+        CredentialFormat::Ccache => {
+            let ccache: CCache = krb_cred
+                .try_into()
+                .map_err(|_| "Error converting KrbCred to CCache")?;
+            ccache.build()
+        }
+    };
+
+    fs::write(out_file, raw_cred).map_err(|_| {
+        format!("Unable to write credentials in file {}", out_file)
+    })?;
+
+    return Ok(());
+}

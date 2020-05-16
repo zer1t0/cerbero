@@ -3,6 +3,7 @@ mod ask_tgs;
 mod ask_tgt;
 mod cred_format;
 mod error;
+mod file;
 mod kdc_req_builder;
 mod krb_cred_plain;
 mod krb_user;
@@ -12,7 +13,7 @@ mod utils;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
-use ask_tgs::{ask_s4u2proxy, ask_tgs, ask_s4u2self};
+use ask_tgs::{ask_s4u2proxy, ask_s4u2self, ask_tgs};
 use ask_tgt::ask_tgt;
 use krb_user::KerberosUser;
 use std::net::SocketAddr;
@@ -65,7 +66,7 @@ fn main_inner(args: Arguments) -> Result<()> {
                     service,
                     &creds_file,
                     &*transporter,
-                    impersonate_user,
+                    args.user_key.as_ref(),
                 );
             }
         },
@@ -78,16 +79,21 @@ fn main_inner(args: Arguments) -> Result<()> {
                     &*transporter,
                 );
             }
-            None => {
-                return ask_tgt(
-                &user,
-                &args.user_key,
-                args.preauth,
-                &*transporter,
-                &args.credential_format,
-                &creds_file,
-            );
-            }
-        }
+            None => match &args.user_key {
+                Some(user_key) => {
+                    return ask_tgt(
+                        &user,
+                        user_key,
+                        args.preauth,
+                        &*transporter,
+                        &args.credential_format,
+                        &creds_file,
+                    );
+                }
+                None => {
+                    return Err("Required credentials to request a TGT")?;
+                }
+            },
+        },
     }
 }
