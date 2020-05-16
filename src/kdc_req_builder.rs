@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
     AsReq, Asn1Object, KdcReq, KerbPaPacRequest, KerberosTime, PaData,
-    PrincipalName, TgsReq,
+    PrincipalName, TgsReq, Ticket
 };
 use kerberos_constants::{etypes, kdc_options, pa_data_types, principal_names};
 use rand;
@@ -17,6 +17,7 @@ pub struct KdcReqBuilder {
     nonce: u32,
     till: KerberosTime,
     rtime: Option<KerberosTime>,
+    additional_tickets: Vec<Ticket>,
 }
 
 impl KdcReqBuilder {
@@ -43,9 +44,15 @@ impl KdcReqBuilder {
                 Utc::now()
                     .checked_add_signed(Duration::weeks(20 * 52))
                     .unwrap()
-                    .into(),
+                    .into()
             ),
+            additional_tickets: Vec::new(),
         };
+    }
+
+    pub fn add_kdc_option(mut self, kdc_option: u32) -> Self {
+        self.kdc_options |= kdc_option;
+        self
     }
 
     pub fn etypes(mut self, etypes: Vec<i32>) -> Self {
@@ -80,6 +87,11 @@ impl KdcReqBuilder {
         self
     }
 
+    pub fn push_ticket(mut self, ticket: Ticket) -> Self {
+        self.additional_tickets.push(ticket);
+        self
+    }
+ 
     pub fn request_pac(self) -> Self {
         self.push_padata(PaData::new(
             pa_data_types::PA_PAC_REQUEST,
@@ -101,6 +113,10 @@ impl KdcReqBuilder {
 
         if self.padatas.len() > 0 {
             req.padata = Some(self.padatas);
+        }
+
+        if self.additional_tickets.len() > 0 {
+            req.req_body.additional_tickets = Some(self.additional_tickets);
         }
 
         return req;

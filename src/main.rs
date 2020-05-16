@@ -12,7 +12,7 @@ mod utils;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
-use ask_tgs::ask_tgs;
+use ask_tgs::{ask_s4u2proxy, ask_tgs, ask_s4u2self};
 use ask_tgt::ask_tgt;
 use krb_user::KerberosUser;
 use std::net::SocketAddr;
@@ -43,28 +43,51 @@ fn main_inner(args: Arguments) -> Result<()> {
 
     let impersonate_user = match args.impersonate_user {
         Some(username) => Some(KerberosUser::new(username, args.realm.clone())),
-        None => None
+        None => None,
     };
-
 
     let user = KerberosUser::new(args.username, args.realm);
 
-    if let Some(service) = args.service {
-        return ask_tgs(
-            user,
-            service,
-            &creds_file,
-            &*transporter,
-            impersonate_user,
-        );
-    } else {
-        return ask_tgt(
-            &user,
-            &args.user_key,
-            args.preauth,
-            &*transporter,
-            &args.credential_format,
-            &creds_file,
-        );
+    match args.service {
+        Some(service) => match impersonate_user {
+            Some(impersonate_user) => {
+                return ask_s4u2proxy(
+                    user,
+                    impersonate_user,
+                    service,
+                    &creds_file,
+                    &*transporter,
+                );
+            }
+            None => {
+                return ask_tgs(
+                    user,
+                    service,
+                    &creds_file,
+                    &*transporter,
+                    impersonate_user,
+                );
+            }
+        },
+        None => match impersonate_user {
+            Some(impersonate_user) => {
+                return ask_s4u2self(
+                    user,
+                    impersonate_user,
+                    &creds_file,
+                    &*transporter,
+                );
+            }
+            None => {
+                return ask_tgt(
+                &user,
+                &args.user_key,
+                args.preauth,
+                &*transporter,
+                &args.credential_format,
+                &creds_file,
+            );
+            }
+        }
     }
 }
