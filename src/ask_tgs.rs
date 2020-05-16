@@ -258,17 +258,17 @@ pub fn ask_s4u2self(
     impersonate_user: KerberosUser,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
+    user_key: Option<&Key>,
+    cred_format: CredentialFormat,
 ) -> Result<()> {
-    let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
-    let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
-
-    let cname = username_to_principal_name(user.name.clone());
-    let tgt_service =
-        gen_krbtgt_principal_name(user.realm.clone(), NT_SRV_INST);
-
-    let (ticket, krb_cred_info) = krb_cred_plain
-        .look_for_user_creds(&cname, &tgt_service)
-        .ok_or(format!("No TGT found for '{}", user.name))?;
+    let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
+        get_user_tgt(
+            user.clone(),
+            creds_file,
+            user_key,
+            transporter,
+            cred_format,
+        )?;
 
     let (tgs, krb_cred_info_tgs) = request_s4u2self(
         user,

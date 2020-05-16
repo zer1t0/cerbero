@@ -78,6 +78,8 @@ fn main_inner(args: Arguments) -> Result<()> {
                     impersonate_user,
                     &creds_file,
                     &*transporter,
+                    args.user_key.as_ref(),
+                    args.credential_format,
                 );
             }
             None => match &args.user_key {
