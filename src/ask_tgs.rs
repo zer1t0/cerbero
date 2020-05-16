@@ -26,9 +26,7 @@ use crate::file::{parse_creds_file, save_cred_in_file};
 use crate::krb_cred_plain::KrbCredPlain;
 use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
-use crate::utils::{
-    create_krb_cred_info, gen_krbtgt_principal_name, username_to_principal_name,
-};
+use crate::utils::{create_krb_cred_info, username_to_principal_name};
 
 pub fn ask_tgs(
     user: KerberosUser,
@@ -74,8 +72,7 @@ fn get_user_tgt(
         Ok(ok) => return Ok(ok),
         Err(_) => match user_key {
             Some(user_key) => {
-                let krb_cred =
-                    request_tgt(&user, user_key, true, transporter)?;
+                let krb_cred = request_tgt(&user, user_key, true, transporter)?;
                 let krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
                 let (ticket, krb_cred_info) =
@@ -370,37 +367,33 @@ pub fn ask_s4u2proxy(
     service: String,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
+    user_key: Option<&Key>,
+    cred_format: CredentialFormat,
 ) -> Result<()> {
-    let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
-    let mut krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+    let (krb_cred_plain, cred_format, tgt, krb_cred_info) =
+        get_user_tgt(
+            user.clone(),
+            creds_file,
+            user_key,
+            transporter,
+            cred_format,
+        )?;
 
-    let cname = username_to_principal_name(user.name.clone());
-    let tgt_service =
-        gen_krbtgt_principal_name(user.realm.clone(), NT_SRV_INST);
-
-    let (ticket, krb_cred_info) = krb_cred_plain
-        .look_for_user_creds(&cname, &tgt_service)
-        .ok_or(format!("No TGT found for '{}", user.name))?;
-
-    let cname_imp = username_to_principal_name(impersonate_user.name.clone());
-    let service_imp = PrincipalName {
-        name_type: NT_UNKNOWN,
-        name_string: vec![user.name.clone()],
-    };
-
-    let (ticket_imp, _) = krb_cred_plain
-        .look_for_user_creds(&cname_imp, &service_imp)
-        .ok_or(format!(
-            "No impersonation ticket for user '{}' found",
-            impersonate_user.name
-        ))?;
+    let (mut krb_cred_plain, imp_ticket) = get_impersonation_ticket(
+        krb_cred_plain,
+        user.clone(),
+        impersonate_user,
+        transporter,
+        &krb_cred_info,
+        tgt.clone(),
+    )?;
 
     let (tgs, krb_cred_info_tgs) = request_s4u2proxy(
         user,
         service,
         &krb_cred_info,
-        ticket,
-        ticket_imp,
+        tgt,
+        imp_ticket,
         transporter,
     )?;
 
@@ -410,6 +403,38 @@ pub fn ask_s4u2proxy(
     save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
 
     return Ok(());
+}
+
+fn get_impersonation_ticket(
+    mut krb_cred_plain: KrbCredPlain,
+    user: KerberosUser,
+    impersonate_user: KerberosUser,
+    transporter: &dyn KerberosTransporter,
+    krb_cred_info: &KrbCredInfo,
+    tgt: Ticket,
+) -> Result<(KrbCredPlain, Ticket)> {
+    let result = krb_cred_plain
+        .look_for_impersonation_ticket(user.name.clone(), impersonate_user.name.clone());
+
+    match result {
+        Some((imp_ticket, _)) => {
+            return Ok((krb_cred_plain, imp_ticket));
+        }
+        None => {
+            let (imp_ticket, krb_cred_info_tgs) = request_s4u2self(
+                user,
+                impersonate_user,
+                &krb_cred_info,
+                tgt,
+                transporter,
+            )?;
+            
+            krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
+            krb_cred_plain.tickets.push(imp_ticket.clone());
+
+            return Ok((krb_cred_plain, imp_ticket));
+        }
+    }
 }
 
 fn request_s4u2proxy(

@@ -1,3 +1,4 @@
+use kerberos_constants::principal_names::NT_UNKNOWN;
 use kerberos_constants::principal_names::NT_SRV_INST;
 use crate::krb_user::KerberosUser;
 use crate::utils::gen_krbtgt_principal_name;
@@ -58,6 +59,21 @@ impl KrbCredPlain {
         let tgt_service = gen_krbtgt_principal_name(user.realm, NT_SRV_INST);
 
         return self.look_for_user_creds(&cname, &tgt_service);
+    }
+
+
+    pub fn look_for_impersonation_ticket(
+        &self,
+        username: String,
+        impersonate_username: String,
+    ) -> Option<(Ticket, KrbCredInfo)> {
+        let cname_imp = username_to_principal_name(impersonate_username);
+        let service_imp = PrincipalName {
+            name_type: NT_UNKNOWN,
+            name_string: vec![username],
+        };
+        
+        return self.look_for_user_creds(&cname_imp, &service_imp);
     }
 }
 
