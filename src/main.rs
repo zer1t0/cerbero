@@ -16,12 +16,20 @@ use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
 use krb_user::KerberosUser;
 use std::net::SocketAddr;
 use transporter::new_transporter;
+use stderrlog;
+use log::error;
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(args.verbosity)
+        .init()
+        .unwrap();
+
     if let Err(error) = main_inner(args) {
-        eprintln!("{}", error);
+        error!("{}", error);
     }
 }
 

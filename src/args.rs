@@ -30,7 +30,7 @@ pub fn args() -> App<'static, 'static> {
             Arg::with_name("impersonate")
                 .long("impersonate")
                 .takes_value(true)
-                .help("Username to impersonate for request the ticket")
+                .help("Username to impersonate for request the ticket"),
         )
         .arg(
             Arg::with_name("password")
@@ -111,6 +111,12 @@ pub fn args() -> App<'static, 'static> {
                 .long("udp")
                 .help("Use udp as transport protocol"),
         )
+        .arg(
+            Arg::with_name("verbosity")
+                .short("v")
+                .multiple(true)
+                .help("Increase message verbosity"),
+        )
 }
 
 fn is_rc4_key(v: String) -> Result<(), String> {
@@ -164,7 +170,8 @@ pub struct Arguments {
     pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
-    pub impersonate_user: Option<String>
+    pub impersonate_user: Option<String>,
+    pub verbosity: usize,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -197,7 +204,8 @@ impl<'a> ArgumentsParser<'a> {
             out_file,
             service,
             transport_protocol: self.parse_transport_protocol(),
-            impersonate_user: self.parse_impersonate_user()
+            impersonate_user: self.parse_impersonate_user(),
+            verbosity: self.matches.occurrences_of("verbosity") as usize
         };
     }
 

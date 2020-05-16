@@ -27,6 +27,7 @@ use crate::krb_cred_plain::KrbCredPlain;
 use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred_info, username_to_principal_name};
+use log::{info, warn};
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -37,6 +38,8 @@ pub fn ask_tgs(
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
 ) -> Result<()> {
+    let username = user.name.clone();
+    let service_copy = service.clone();
     let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
         get_user_tgt(
             user.clone(),
@@ -57,6 +60,10 @@ pub fn ask_tgs(
     krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
     krb_cred_plain.tickets.push(tgs);
 
+    info!(
+        "Save {} TGS for {} in {}",
+        username, service_copy, creds_file
+    );
     save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
 
     return Ok(());
@@ -73,25 +80,33 @@ fn get_user_tgt(
 ) -> Result<(KrbCredPlain, CredentialFormat, Ticket, KrbCredInfo)> {
     match get_user_tgt_from_file(user.clone(), creds_file) {
         Ok(ok) => return Ok(ok),
-        Err(_) => match user_key {
-            Some(user_key) => {
-                let krb_cred = request_tgt(&user, user_key, true, transporter)?;
-                let krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+        Err(err) => {
+            warn!("No TGT found in {}: {}", creds_file, err);
 
-                let (ticket, krb_cred_info) =
-                    krb_cred_plain.look_for_tgt(user.clone()).unwrap();
+            match user_key {
+                Some(user_key) => {
+                    let krb_cred =
+                        request_tgt(&user, user_key, true, transporter)?;
+                    let krb_cred_plain =
+                        KrbCredPlain::try_from_krb_cred(krb_cred)?;
 
-                return Ok((
-                    krb_cred_plain,
-                    cred_format,
-                    ticket,
-                    krb_cred_info,
-                ));
+                    let (ticket, krb_cred_info) =
+                        krb_cred_plain.look_for_tgt(user.clone()).unwrap();
+
+                    return Ok((
+                        krb_cred_plain,
+                        cred_format,
+                        ticket,
+                        krb_cred_info,
+                    ));
+                }
+                None => {
+                    return Err(
+                        "Unable to request TGT without user credentials",
+                    )?;
+                }
             }
-            None => {
-                return Err("Unable to request TGT without user credentials")?;
-            }
-        },
+        }
     }
 }
 
@@ -118,6 +133,7 @@ fn request_tgs(
     ticket: Ticket,
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
+    info!("Request {} TGS for {}", service, user.name);
     let session_key = &krb_cred_info.key.keyvalue;
     let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket)?;
 
@@ -227,6 +243,8 @@ pub fn ask_s4u2self(
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
 ) -> Result<()> {
+    let imp_username = impersonate_user.name.clone();
+    let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
         get_user_tgt(
             user.clone(),
@@ -247,6 +265,10 @@ pub fn ask_s4u2self(
     krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
     krb_cred_plain.tickets.push(tgs);
 
+    info!(
+        "Save {} S4U2Self TGS for {} in {}",
+        imp_username, username, creds_file
+    );
     save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
 
     return Ok(());
@@ -260,6 +282,10 @@ fn request_s4u2self(
     ticket: Ticket,
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
+    info!(
+        "Request {} S4U2Self TGS for {}",
+        user.name, impersonate_user.name
+    );
     let session_key = &krb_cred_info.key.keyvalue;
     let tgs_req =
         build_s4u2self_req(user, impersonate_user, krb_cred_info, ticket)?;
@@ -325,6 +351,8 @@ pub fn ask_s4u2proxy(
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
 ) -> Result<()> {
+    let imp_username = impersonate_user.name.clone();
+    let service_copy = service.clone();
     let (krb_cred_plain, cred_format, tgt, krb_cred_info) = get_user_tgt(
         user.clone(),
         creds_file,
@@ -344,6 +372,7 @@ pub fn ask_s4u2proxy(
 
     let (tgs, krb_cred_info_tgs) = request_s4u2proxy(
         user,
+        &imp_username,
         service,
         &krb_cred_info,
         tgt,
@@ -354,6 +383,10 @@ pub fn ask_s4u2proxy(
     krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
     krb_cred_plain.tickets.push(tgs);
 
+    info!(
+        "Save {} S4U2Proxy TGS for {} in {}",
+        imp_username, service_copy, creds_file
+    );
     save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
 
     return Ok(());
@@ -379,6 +412,10 @@ fn get_impersonation_ticket(
             return Ok((krb_cred_plain, imp_ticket));
         }
         None => {
+            warn!(
+                "No {} S4U2Self TGS for {} found",
+                impersonate_user.name, user.name
+            );
             let (imp_ticket, krb_cred_info_tgs) = request_s4u2self(
                 user,
                 impersonate_user,
@@ -399,12 +436,17 @@ fn get_impersonation_ticket(
 /// to request a new TGS for a service on behalf the impersonated user
 fn request_s4u2proxy(
     user: KerberosUser,
+    impersonate_username: &str,
     service: String,
     krb_cred_info: &KrbCredInfo,
     ticket: Ticket,
     ticket_imp: Ticket,
     transporter: &dyn KerberosTransporter,
 ) -> Result<(Ticket, KrbCredInfo)> {
+    info!(
+        "Request {} S4U2Proxy TGS for {}",
+        service, impersonate_username
+    );
     let session_key = &krb_cred_info.key.keyvalue;
     let tgs_req =
         build_s4u2proxy_req(user, service, krb_cred_info, ticket, ticket_imp)?;

@@ -18,6 +18,7 @@ use crate::senders::{send_recv, Rep};
 use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred};
 use crate::file::save_cred_in_file;
+use log::info;
 
 /// Main function to ask a TGT
 pub fn ask_tgt(
@@ -28,8 +29,10 @@ pub fn ask_tgt(
     cred_format: &CredentialFormat,
     creds_file: &str,
 ) -> Result<()> {
+    let username = user.name.clone();
     let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
 
+    info!("Save {} TGT in {}", username, creds_file);
     save_cred_in_file(krb_cred, cred_format, creds_file)?;
 
     return Ok(());
@@ -42,6 +45,7 @@ pub fn request_tgt(
     preauth: bool,
     transporter: &dyn KerberosTransporter,
 ) -> Result<KrbCred> {
+    info!("Request TGT for {}", user.name);
     let as_req = build_as_req(user, user_key, preauth);
 
     let rep = send_recv_as(transporter, &as_req)?;
