@@ -1,6 +1,6 @@
 use crate::cred_format::CredentialFormat;
 use crate::transporter::TransportProtocol;
-use clap::{App, Arg, ArgGroup, ArgMatches};
+use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand, AppSettings};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
 
@@ -9,6 +9,13 @@ pub fn args() -> App<'static, 'static> {
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
+        .setting(AppSettings::SubcommandRequired)
+        .subcommand(ask_command())
+}
+
+fn ask_command() -> App<'static, 'static> {
+    SubCommand::with_name("ask")
+        .about("Ask for tickets")
         .arg(
             Arg::with_name("realm")
                 .long("realm")
@@ -158,8 +165,13 @@ fn is_ip(v: String) -> Result<(), String> {
     return Ok(());
 }
 
+pub enum Arguments {
+    Ask(AskArguments)
+}
+
+
 #[derive(Debug)]
-pub struct Arguments {
+pub struct AskArguments {
     pub realm: String,
     pub username: String,
     pub user_key: Option<Key>,
@@ -174,11 +186,24 @@ pub struct Arguments {
     pub verbosity: usize,
 }
 
-pub struct ArgumentsParser<'a> {
+pub struct ArgumentsParser{}
+
+impl ArgumentsParser {
+    pub fn parse<'a>(matches: &'a ArgMatches) -> Arguments {
+
+        match matches.subcommand_name().unwrap() {
+            "ask" => AskArgumentsParser::parse(matches.subcommand_matches("ask").unwrap()),
+            _ => unreachable!("Unknown command")
+                
+        }
+    }
+}
+
+pub struct AskArgumentsParser<'a> {
     matches: &'a ArgMatches<'a>,
 }
 
-impl<'a> ArgumentsParser<'a> {
+impl<'a> AskArgumentsParser<'a> {
     pub fn parse(matches: &'a ArgMatches) -> Arguments {
         let parser = Self { matches: matches };
         return parser._parse();
@@ -193,7 +218,7 @@ impl<'a> ArgumentsParser<'a> {
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
 
-        return Arguments {
+        return Arguments::Ask(AskArguments {
             realm,
             username,
             user_key,
@@ -205,8 +230,8 @@ impl<'a> ArgumentsParser<'a> {
             service,
             transport_protocol: self.parse_transport_protocol(),
             impersonate_user: self.parse_impersonate_user(),
-            verbosity: self.matches.occurrences_of("verbosity") as usize
-        };
+            verbosity: self.matches.occurrences_of("verbosity") as usize,
+        });
     }
 
     fn parse_kdc_ip(&self) -> Option<IpAddr> {

@@ -11,7 +11,7 @@ mod transporter;
 mod utils;
 
 use crate::error::Result;
-use args::{args, Arguments, ArgumentsParser};
+use args::{args, Arguments, ArgumentsParser, AskArguments};
 use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
 use krb_user::KerberosUser;
 use std::net::SocketAddr;
@@ -22,18 +22,24 @@ use log::error;
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
 
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(args.verbosity)
-        .init()
-        .unwrap();
-
     if let Err(error) = main_inner(args) {
         error!("{}", error);
     }
 }
 
 fn main_inner(args: Arguments) -> Result<()> {
+    match args {
+        Arguments::Ask(ask_args) => ask(ask_args)
+    }
+}
+
+fn ask(args: AskArguments) -> Result<()> {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(args.verbosity)
+        .init()
+        .unwrap();
+    
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
         None => utils::resolve_host(&args.realm)?,
