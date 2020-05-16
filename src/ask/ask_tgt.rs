@@ -19,6 +19,7 @@ use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred};
 use crate::file::save_cred_in_file;
 
+/// Main function to ask a TGT
 pub fn ask_tgt(
     user: &KerberosUser,
     user_key: &Key,
@@ -34,6 +35,7 @@ pub fn ask_tgt(
     return Ok(());
 }
 
+/// Uses user credentials to request a TGT
 pub fn request_tgt(
     user: &KerberosUser,
     user_key: &Key,
@@ -47,6 +49,7 @@ pub fn request_tgt(
     return handle_as_rep(rep, user, user_key);
 }
 
+/// Function to send an AS-REQ message and receive an AS-REP
 fn send_recv_as(
     transporter: &dyn KerberosTransporter,
     req: &AsReq,
@@ -75,6 +78,8 @@ fn send_recv_as(
     }
 }
 
+/// Helper to easily craft an AS-REQ message for asking a TGT
+/// from user data
 fn build_as_req(user: &KerberosUser, user_key: &Key, preauth: bool) -> AsReq {
     let mut as_req_builder = KdcReqBuilder::new(user.realm.clone())
         .username(user.name.clone())
@@ -82,7 +87,7 @@ fn build_as_req(user: &KerberosUser, user_key: &Key, preauth: bool) -> AsReq {
         .request_pac();
 
     if preauth {
-        let padata = generate_padata_encrypted_timestamp(
+        let padata = create_pa_data_encrypted_timestamp(
             &user_key,
             &user.realm,
             &user.name,
@@ -120,6 +125,7 @@ fn extract_krb_cred_from_as_rep(
     ));
 }
 
+/// Decrypts the AS-REP enc-part by using the use credentials
 fn decrypt_as_rep_enc_part(
     user: &KerberosUser,
     user_key: &Key,
@@ -152,13 +158,14 @@ fn decrypt_as_rep_enc_part(
     return Ok(raw_enc_as_req_part);
 }
 
-fn generate_padata_encrypted_timestamp(
+/// Helper to create a PA-DATA that contains a PA-ENC-TS-ENC struct
+fn create_pa_data_encrypted_timestamp(
     user_key: &Key,
     realm: &str,
     client_name: &str,
 ) -> PaData {
     let (encrypted_timestamp, etype) =
-        generate_encrypted_timestamp(user_key, realm, client_name);
+        create_encrypted_timestamp(user_key, realm, client_name);
 
     let padata = PaData::new(
         pa_data_types::PA_ENC_TIMESTAMP,
@@ -168,7 +175,9 @@ fn generate_padata_encrypted_timestamp(
     return padata;
 }
 
-fn generate_encrypted_timestamp(
+/// Helper to create an encrypted timestamp used by AS-REQ
+/// to provide Kerberos preauthentication 
+fn create_encrypted_timestamp(
     user_key: &Key,
     realm: &str,
     client_name: &str,
@@ -184,6 +193,9 @@ fn generate_encrypted_timestamp(
     return (encrypted_timestamp, cipher.etype());
 }
 
+/// Helper to generate a cipher based on user credentials
+/// and calculate the key when it is necessary
+/// (in case of password)
 fn get_cipher_and_key(
     user_key: &Key,
     realm: &str,
