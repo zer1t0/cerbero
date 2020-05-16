@@ -3,7 +3,8 @@ use kerberos_asn1::{
     AsReq, Asn1Object, KdcReq, KerbPaPacRequest, KerberosTime, PaData,
     PrincipalName, TgsReq, Ticket
 };
-use kerberos_constants::{etypes, kdc_options, pa_data_types, principal_names};
+use kerberos_constants::{kdc_options, pa_data_types, principal_names};
+use kerberos_crypto::supported_etypes;
 use rand;
 use rand::Rng;
 
@@ -129,12 +130,4 @@ impl KdcReqBuilder {
     pub fn build_tgs_req(self) -> TgsReq {
         self.build().into()
     }
-}
-
-fn supported_etypes() -> Vec<i32> {
-    vec![
-        etypes::RC4_HMAC,
-        etypes::AES128_CTS_HMAC_SHA1_96,
-        etypes::AES256_CTS_HMAC_SHA1_96,
-    ]
 }
