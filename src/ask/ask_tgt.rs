@@ -26,14 +26,14 @@ pub fn ask_tgt(
     user_key: &Key,
     preauth: bool,
     transporter: &dyn KerberosTransporter,
-    cred_format: &CredentialFormat,
+    cred_format: CredentialFormat,
     creds_file: &str,
 ) -> Result<()> {
     let username = user.name.clone();
     let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
 
     info!("Save {} TGT in {}", username, creds_file);
-    save_cred_in_file(krb_cred, cred_format, creds_file)?;
+    save_cred_in_file(creds_file, krb_cred, cred_format)?;
 
     return Ok(());
 }

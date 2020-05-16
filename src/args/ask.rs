@@ -1,20 +1,14 @@
 use crate::cred_format::CredentialFormat;
 use crate::transporter::TransportProtocol;
-use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand, AppSettings};
+use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
+use super::validators;
 
-pub fn args() -> App<'static, 'static> {
-    App::new(env!("CARGO_PKG_NAME"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .setting(AppSettings::SubcommandRequired)
-        .subcommand(ask_command())
-}
+pub const COMMAND_NAME: &str = "ask";
 
-fn ask_command() -> App<'static, 'static> {
-    SubCommand::with_name("ask")
+pub fn command() -> App<'static, 'static> {
+    SubCommand::with_name(COMMAND_NAME)
         .about("Ask for tickets")
         .arg(
             Arg::with_name("realm")
@@ -52,21 +46,21 @@ fn ask_command() -> App<'static, 'static> {
                 .alias("ntlm")
                 .takes_value(true)
                 .help("RC4 Kerberos key (NTLM hash of user)")
-                .validator(is_rc4_key),
+                .validator(validators::is_rc4_key),
         )
         .arg(
             Arg::with_name("aes-128")
                 .long("aes-128")
                 .takes_value(true)
                 .help("AES 128 Kerberos key of user")
-                .validator(is_aes_128_key),
+                .validator(validators::is_aes_128_key),
         )
         .arg(
             Arg::with_name("aes-256")
                 .long("aes-256")
                 .takes_value(true)
                 .help("AES 256 Kerberos key of user")
-                .validator(is_aes_256_key),
+                .validator(validators::is_aes_256_key),
         )
         .group(
             ArgGroup::with_name("user_key")
@@ -81,7 +75,7 @@ fn ask_command() -> App<'static, 'static> {
                 .value_name("ip")
                 .takes_value(true)
                 .help("The address of the KDC (usually the Domain Controller)")
-                .validator(is_ip),
+                .validator(validators::is_ip),
         )
         .arg(
             Arg::with_name("service")
@@ -126,52 +120,8 @@ fn ask_command() -> App<'static, 'static> {
         )
 }
 
-fn is_rc4_key(v: String) -> Result<(), String> {
-    Key::from_rc4_key_string(&v).map_err(|_| {
-        format!(
-            "Invalid RC4 key '{}', must be a string of 32 hexadecimals",
-            v
-        )
-    })?;
-
-    return Ok(());
-}
-
-fn is_aes_128_key(v: String) -> Result<(), String> {
-    Key::from_aes_128_key_string(&v).map_err(|_| {
-        format!(
-            "Invalid AES-128 key '{}', must be a string of 32 hexadecimals",
-            v
-        )
-    })?;
-
-    return Ok(());
-}
-
-fn is_aes_256_key(v: String) -> Result<(), String> {
-    Key::from_aes_256_key_string(&v).map_err(|_| {
-        format!(
-            "Invalid AES-256 key '{}', must be a string of 64 hexadecimals",
-            v
-        )
-    })?;
-
-    return Ok(());
-}
-
-fn is_ip(v: String) -> Result<(), String> {
-    v.parse::<IpAddr>()
-        .map_err(|_| format!("Invalid IP address '{}'", v))?;
-    return Ok(());
-}
-
-pub enum Arguments {
-    Ask(AskArguments)
-}
-
-
 #[derive(Debug)]
-pub struct AskArguments {
+pub struct Arguments {
     pub realm: String,
     pub username: String,
     pub user_key: Option<Key>,
@@ -186,24 +136,11 @@ pub struct AskArguments {
     pub verbosity: usize,
 }
 
-pub struct ArgumentsParser{}
-
-impl ArgumentsParser {
-    pub fn parse<'a>(matches: &'a ArgMatches) -> Arguments {
-
-        match matches.subcommand_name().unwrap() {
-            "ask" => AskArgumentsParser::parse(matches.subcommand_matches("ask").unwrap()),
-            _ => unreachable!("Unknown command")
-                
-        }
-    }
-}
-
-pub struct AskArgumentsParser<'a> {
+pub struct ArgumentsParser<'a> {
     matches: &'a ArgMatches<'a>,
 }
 
-impl<'a> AskArgumentsParser<'a> {
+impl<'a> ArgumentsParser<'a> {
     pub fn parse(matches: &'a ArgMatches) -> Arguments {
         let parser = Self { matches: matches };
         return parser._parse();
@@ -218,7 +155,7 @@ impl<'a> AskArgumentsParser<'a> {
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
 
-        return Arguments::Ask(AskArguments {
+        return Arguments {
             realm,
             username,
             user_key,
@@ -231,7 +168,7 @@ impl<'a> AskArgumentsParser<'a> {
             transport_protocol: self.parse_transport_protocol(),
             impersonate_user: self.parse_impersonate_user(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
-        });
+        };
     }
 
     fn parse_kdc_ip(&self) -> Option<IpAddr> {

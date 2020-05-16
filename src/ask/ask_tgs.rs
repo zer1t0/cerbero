@@ -64,7 +64,7 @@ pub fn ask_tgs(
         "Save {} TGS for {} in {}",
         username, service_copy, creds_file
     );
-    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+    save_cred_in_file(creds_file, krb_cred_plain.into(), cred_format)?;
 
     return Ok(());
 }
@@ -269,7 +269,7 @@ pub fn ask_s4u2self(
         "Save {} S4U2Self TGS for {} in {}",
         imp_username, username, creds_file
     );
-    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+    save_cred_in_file(creds_file, krb_cred_plain.into(), cred_format)?;
 
     return Ok(());
 }
@@ -387,7 +387,7 @@ pub fn ask_s4u2proxy(
         "Save {} S4U2Proxy TGS for {} in {}",
         imp_username, service_copy, creds_file
     );
-    save_cred_in_file(krb_cred_plain.into(), &cred_format, creds_file)?;
+    save_cred_in_file(creds_file, krb_cred_plain.into(), cred_format)?;
 
     return Ok(());
 }

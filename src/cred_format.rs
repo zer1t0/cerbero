@@ -6,6 +6,15 @@ pub enum CredentialFormat {
     Ccache,
 }
 
+impl CredentialFormat {
+    pub fn contrary(&self) -> Self{
+        match self {
+            Self::Krb => Self::Ccache,
+            Self::Ccache => Self::Krb
+        }
+    }
+}
+
 impl fmt::Display for CredentialFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

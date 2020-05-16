@@ -34,9 +34,9 @@ pub fn parse_creds_file(
 }
 
 pub fn save_cred_in_file(
-    krb_cred: KrbCred,
-    cred_format: &CredentialFormat,
     out_file: &str,
+    krb_cred: KrbCred,
+    cred_format: CredentialFormat,
 ) -> Result<()> {
     let raw_cred = match cred_format {
         CredentialFormat::Krb => krb_cred.build(),

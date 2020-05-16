@@ -92,6 +92,6 @@ pub fn get_ticket_file(
     return format!("{}.{}", username, cred_format);
 }
 
-fn get_env_ticket_file() -> Option<String> {
+pub fn get_env_ticket_file() -> Option<String> {
     return env::var("KRB5CCNAME").ok();
 }

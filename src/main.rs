@@ -1,5 +1,6 @@
 mod args;
 mod ask;
+mod convert;
 mod cred_format;
 mod error;
 mod file;
@@ -11,13 +12,13 @@ mod transporter;
 mod utils;
 
 use crate::error::Result;
-use args::{args, Arguments, ArgumentsParser, AskArguments};
+use args::{args, Arguments, ArgumentsParser};
 use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
 use krb_user::KerberosUser;
-use std::net::SocketAddr;
-use transporter::new_transporter;
-use stderrlog;
 use log::error;
+use std::net::SocketAddr;
+use stderrlog;
+use transporter::new_transporter;
 
 fn main() {
     let args = ArgumentsParser::parse(&args().get_matches());
@@ -29,17 +30,14 @@ fn main() {
 
 fn main_inner(args: Arguments) -> Result<()> {
     match args {
-        Arguments::Ask(ask_args) => ask(ask_args)
+        Arguments::Ask(args) => ask(args),
+        Arguments::Convert(args) => convert(args),
     }
 }
 
-fn ask(args: AskArguments) -> Result<()> {
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(args.verbosity)
-        .init()
-        .unwrap();
-    
+fn ask(args: args::ask::Arguments) -> Result<()> {
+    init_log(args.verbosity);    
+
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
         None => utils::resolve_host(&args.realm)?,
@@ -103,7 +101,7 @@ fn ask(args: AskArguments) -> Result<()> {
                         user_key,
                         args.preauth,
                         &*transporter,
-                        &args.credential_format,
+                        args.credential_format,
                         &creds_file,
                     );
                 }
@@ -113,4 +111,23 @@ fn ask(args: AskArguments) -> Result<()> {
             },
         },
     }
+}
+
+fn convert(args: args::convert::Arguments) -> Result<()> {
+    init_log(args.verbosity);
+    let in_file = match args.in_file {
+        Some(filename) => filename,
+        None => utils::get_env_ticket_file().ok_or("Unable to detect input file, specify -i/--input or KRB5CCNAME")?
+    };
+    
+    return convert::convert(&in_file, &args.out_file, args.cred_format);
+}
+
+
+fn init_log(verbosity: usize) {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(verbosity)
+        .init()
+        .unwrap();
 }
