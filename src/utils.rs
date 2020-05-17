@@ -1,5 +1,7 @@
 use crate::cred_format::CredentialFormat;
 use crate::error::Result;
+use crate::transporter::new_transporter;
+use crate::transporter::{KerberosTransporter, TransportProtocol};
 use dns_lookup;
 use kerberos_asn1::{
     Asn1Object, EncKdcRepPart, EncKrbCredPart, EncryptedData, KrbCred,
@@ -7,7 +9,7 @@ use kerberos_asn1::{
 };
 use kerberos_constants::{etypes, principal_names};
 use std::env;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
 pub fn username_to_principal_name(username: String) -> PrincipalName {
     return PrincipalName {
@@ -66,6 +68,21 @@ pub fn create_krb_cred_info(
         sname: Some(enc_as_rep_part.sname),
         caddr: enc_as_rep_part.caddr,
     };
+}
+
+pub fn resolve_and_get_tranporter(
+    kdc_ip: Option<IpAddr>,
+    realm: &str,
+    kdc_port: u16,
+    transport_protocol: TransportProtocol,
+) -> Result<Box<dyn KerberosTransporter>> {
+    let kdc_ip = match kdc_ip {
+        Some(ip) => ip,
+        None => resolve_host(&realm)?,
+    };
+
+    let kdc_address = SocketAddr::new(kdc_ip, kdc_port);
+    return Ok(new_transporter(kdc_address, transport_protocol));
 }
 
 pub fn resolve_host(realm: &str) -> Result<IpAddr> {

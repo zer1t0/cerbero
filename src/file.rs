@@ -4,6 +4,8 @@ use kerberos_asn1::{Asn1Object, KrbCred};
 use kerberos_ccache::CCache;
 use std::convert::TryInto;
 use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 pub fn parse_creds_file(
     creds_file: &str,
@@ -52,4 +54,16 @@ pub fn save_cred_in_file(
     })?;
 
     return Ok(());
+}
+
+pub fn read_file_lines(filename: &str) -> Result<Vec<String>> {
+    let fd = File::open(filename).map_err(|error| {
+        format!("Unable to read the file '{}': {}", filename, error)
+    })?;
+    let file_lines: Vec<String> = BufReader::new(fd)
+        .lines()
+        .filter_map(std::result::Result::ok)
+        .collect();
+
+    return Ok(file_lines);
 }

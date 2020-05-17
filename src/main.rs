@@ -1,5 +1,6 @@
 mod args;
 mod ask;
+mod brute;
 mod convert;
 mod cred_format;
 mod error;
@@ -15,11 +16,11 @@ mod utils;
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
 use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
+use file::read_file_lines;
 use krb_user::KerberosUser;
 use log::error;
-use std::net::SocketAddr;
 use stderrlog;
-use transporter::new_transporter;
+use utils::resolve_and_get_tranporter;
 
 fn init_log(verbosity: usize) {
     stderrlog::new()
@@ -49,13 +50,12 @@ fn main_inner(args: Arguments) -> Result<()> {
 fn ask(args: args::ask::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let kdc_ip = match args.kdc_ip {
-        Some(ip) => ip,
-        None => utils::resolve_host(&args.realm)?,
-    };
-
-    let kdc_address = SocketAddr::new(kdc_ip, args.kdc_port);
-    let transporter = new_transporter(kdc_address, args.transport_protocol);
+    let transporter = resolve_and_get_tranporter(
+        args.kdc_ip,
+        &args.realm,
+        args.kdc_port,
+        args.transport_protocol,
+    )?;
 
     let creds_file = utils::get_ticket_file(
         args.out_file,
@@ -145,8 +145,31 @@ fn list(args: args::list::Arguments) -> Result<()> {
     return list::list(&in_file, args.etypes, args.flags);
 }
 
-
 fn brute(args: args::brute::Arguments) -> Result<()> {
     init_log(args.verbosity);
-    unreachable!("JJJJJJJ")
+
+    let usernames = match read_file_lines(&args.users) {
+        Ok(users) => users,
+        Err(_) => vec![args.users],
+    };
+
+    let passwords = match read_file_lines(&args.passwords) {
+        Ok(passwords) => passwords,
+        Err(_) => vec![args.passwords],
+    };
+
+    let transporter = resolve_and_get_tranporter(
+        args.kdc_ip,
+        &args.realm,
+        args.kdc_port,
+        args.transport_protocol,
+    )?;
+
+    return brute::brute(
+        &args.realm,
+        usernames,
+        passwords,
+        &*transporter,
+        args.cred_format,
+    );
 }

