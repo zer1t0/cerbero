@@ -1,4 +1,5 @@
 pub mod ask;
+pub mod asreproast;
 pub mod brute;
 pub mod convert;
 pub mod list;
@@ -13,6 +14,7 @@ pub fn args() -> App<'static, 'static> {
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::SubcommandRequired)
         .subcommand(ask::command())
+        .subcommand(asreproast::command())
         .subcommand(brute::command())
         .subcommand(convert::command())
         .subcommand(list::command())
@@ -20,6 +22,7 @@ pub fn args() -> App<'static, 'static> {
 
 pub enum Arguments {
     Ask(ask::Arguments),
+    AsRepRoast(asreproast::Arguments),
     Brute(brute::Arguments),
     Convert(convert::Arguments),
     List(list::Arguments),
@@ -32,6 +35,11 @@ impl ArgumentsParser {
         match matches.subcommand_name().unwrap() {
             name @ ask::COMMAND_NAME => {
                 return Arguments::Ask(ask::ArgumentsParser::parse(
+                    matches.subcommand_matches(name).unwrap(),
+                ));
+            }
+            name @ asreproast::COMMAND_NAME => {
+                return Arguments::AsRepRoast(asreproast::ArgumentsParser::parse(
                     matches.subcommand_matches(name).unwrap(),
                 ));
             }
