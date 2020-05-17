@@ -9,7 +9,7 @@ pub const COMMAND_NAME: &str = "asreproast";
 
 pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
-        .about("Perform a asreproast attack against kerberos protocol")
+        .about("Perform a asreproast attack")
         .arg(
             Arg::with_name("realm")
                 .takes_value(true)

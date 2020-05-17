@@ -71,7 +71,7 @@ pub fn ask_tgs(
 
 /// Function to get a TGT from the credentials file
 /// or request it if it is necessary
-fn get_user_tgt(
+pub fn get_user_tgt(
     user: KerberosUser,
     creds_file: &str,
     user_key: Option<&Key>,
@@ -127,7 +127,7 @@ fn get_user_tgt_from_file(
 }
 
 /// Use a TGT to request a TGS
-fn request_tgs(
+pub fn request_tgs(
     user: KerberosUser,
     service: String,
     krb_cred_info: &KrbCredInfo,

