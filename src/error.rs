@@ -2,13 +2,15 @@ use kerberos_asn1::KrbError;
 use kerberos_constants::error_codes;
 use std::fmt;
 use std::result;
+use std::io;
 
 pub type Result<T> = result::Result<T, Error>;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Debug)]
 pub enum Error {
     String(String),
     KrbError(KrbError),
+    NetworkError(String, io::Error)
 }
 
 impl fmt::Display for Error {
@@ -17,6 +19,9 @@ impl fmt::Display for Error {
             Error::String(s) => write!(f, "{}", s),
             Error::KrbError(krb_error) => {
                 write!(f, "{}", create_krb_error_msg(&krb_error))
+            }
+            Error::NetworkError(desc, io_error) => {
+                write!(f, "{}: {}", desc, io_error)
             }
         }
     }
@@ -37,6 +42,13 @@ impl From<&str> for Error {
 impl From<KrbError> for Error {
     fn from(error: KrbError) -> Self {
         return Self::KrbError(error);
+    }
+}
+
+
+impl From<(&str, io::Error)> for Error {
+    fn from(error: (&str, io::Error)) -> Self {
+        return Self::NetworkError(error.0.into(), error.1);
     }
 }
 

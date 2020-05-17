@@ -74,7 +74,11 @@ pub fn brute(
                         }
                     },
 
-                    _ => {
+                    Error::NetworkError(_, _) => {
+                        return Err(err)
+                    }
+
+                    Error::String(err) => {
                         warn!("{}", err);
                     }
                 },

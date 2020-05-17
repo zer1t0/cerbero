@@ -59,7 +59,7 @@ fn send_recv_as(
     req: &AsReq,
 ) -> Result<AsRep> {
     let rep = send_recv(transporter, &req.build())
-        .map_err(|err| format!("Error sending TGS-REQ: {}", err))?;
+        .map_err(|err| ("Error sending TGS-REQ", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
