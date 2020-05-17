@@ -40,6 +40,7 @@ fn main() {
 fn main_inner(args: Arguments) -> Result<()> {
     match args {
         Arguments::Ask(args) => ask(args),
+        Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
         Arguments::List(args) => list(args),
     }
@@ -142,4 +143,10 @@ fn list(args: args::list::Arguments) -> Result<()> {
             .ok_or("Specify file or set KRB5CCNAME")?,
     };
     return list::list(&in_file, args.etypes, args.flags);
+}
+
+
+fn brute(args: args::brute::Arguments) -> Result<()> {
+    init_log(args.verbosity);
+    unreachable!("JJJJJJJ")
 }
