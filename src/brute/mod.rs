@@ -6,7 +6,7 @@ use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
 use kerberos_constants::error_codes;
 use kerberos_crypto::Key;
-use log::{error, info, warn};
+use log::{error, info, warn, debug};
 
 pub fn brute(
     realm: &str,
@@ -16,6 +16,7 @@ pub fn brute(
     cred_format: Option<CredentialFormat>,
 ) -> Result<()> {
     let mut non_test_users = Vec::new();
+    let mut valid_users = Vec::new();
 
     for password in passwords.iter() {
         for username in usernames.iter() {
@@ -59,7 +60,12 @@ pub fn brute(
                             non_test_users.push(username);
                         }
                         error_codes::KDC_ERR_PREAUTH_FAILED => {
-                            info!("Invalid creds {}:{}", username, password);
+                            debug!("Invalid creds {}:{}", username, password);
+
+                            if ! valid_users.contains(username) {
+                                info!("Valid user {}", username);
+                                valid_users.push(username.to_string());
+                            }
                         }
                         error_codes::KDC_ERR_KEY_EXPIRED => {
                             println!("{}:{} Expired", username, password);

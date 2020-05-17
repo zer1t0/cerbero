@@ -85,6 +85,7 @@ fn get_user_tgt(
 
             match user_key {
                 Some(user_key) => {
+                    info!("Request TGT for {}", user.name);
                     let krb_cred =
                         request_tgt(&user, user_key, true, transporter)?;
                     let krb_cred_plain =

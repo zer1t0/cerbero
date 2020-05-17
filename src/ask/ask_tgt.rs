@@ -30,6 +30,8 @@ pub fn ask_tgt(
     creds_file: &str,
 ) -> Result<()> {
     let username = user.name.clone();
+
+    info!("Request TGT for {}", user.name);
     let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
 
     info!("Save {} TGT in {}", username, creds_file);
@@ -45,7 +47,6 @@ pub fn request_tgt(
     preauth: bool,
     transporter: &dyn KerberosTransporter,
 ) -> Result<KrbCred> {
-    info!("Request TGT for {}", user.name);
     let as_req = build_as_req(user, user_key, preauth);
 
     let rep = send_recv_as(transporter, &as_req)?;
