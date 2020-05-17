@@ -111,7 +111,7 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn parse_cred_format(&self) -> Option<CredentialFormat> {
-        if !self.matches.is_present("save-ticktes") {
+        if !self.matches.is_present("save-tickets") {
             return None;
         }
 
