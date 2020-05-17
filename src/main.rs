@@ -1,7 +1,9 @@
 mod args;
 mod ask;
+mod asreproast;
 mod brute;
 mod convert;
+mod crack;
 mod cred_format;
 mod error;
 mod file;
@@ -41,6 +43,7 @@ fn main() {
 fn main_inner(args: Arguments) -> Result<()> {
     match args {
         Arguments::Ask(args) => ask(args),
+        Arguments::AsRepRoast(args) => asreproast(args),
         Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
         Arguments::List(args) => list(args),
@@ -171,5 +174,29 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
         passwords,
         &*transporter,
         args.cred_format,
+    );
+}
+
+fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
+    init_log(args.verbosity);
+
+    let usernames = match read_file_lines(&args.users) {
+        Ok(users) => users,
+        Err(_) => vec![args.users],
+    };
+
+    let transporter = resolve_and_get_tranporter(
+        args.kdc_ip,
+        &args.realm,
+        args.kdc_port,
+        args.transport_protocol,
+    )?;
+
+    return asreproast::asreproast(
+        &args.realm,
+        usernames,
+        args.crack_format,
+        &*transporter,
+        &args.cipher
     );
 }
