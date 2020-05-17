@@ -47,11 +47,19 @@ pub fn request_tgt(
     preauth: bool,
     transporter: &dyn KerberosTransporter,
 ) -> Result<KrbCred> {
-    let as_req = build_as_req(user, user_key, preauth);
-
-    let rep = send_recv_as(transporter, &as_req)?;
-
+    let rep = request_as_rep(user, user_key, preauth, transporter)?;
     return handle_as_rep(rep, user, user_key);
+}
+
+/// Uses user credentials to obtain an AS-REP response
+pub fn request_as_rep(
+    user: &KerberosUser,
+    user_key: &Key,
+    preauth: bool,
+    transporter: &dyn KerberosTransporter,
+) -> Result<AsRep> {
+    let as_req = build_as_req(user, user_key, preauth);
+    return send_recv_as(transporter, &as_req);
 }
 
 /// Function to send an AS-REQ message and receive an AS-REP
