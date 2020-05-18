@@ -3,13 +3,13 @@
 
 use kerberos_asn1::{AsRep, Asn1Object, EtypeInfo2, Ticket};
 use kerberos_constants::pa_data_types::PA_ETYPE_INFO2;
+use kerberos_constants::etypes;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CrackFormat {
     Hashcat,
-    John
+    John,
 }
-
 
 pub fn as_rep_to_crack_string(
     username: &str,
@@ -18,8 +18,12 @@ pub fn as_rep_to_crack_string(
 ) -> String {
     let etype = as_rep.enc_part.etype;
     let realm = &as_rep.crealm;
-    let salt = get_encryption_salt(as_rep);
-    let ciphertext = &as_rep.enc_part.cipher;
+
+    eprintln!("len = {}", as_rep.enc_part.cipher.len());
+    eprintln!("{}", arr_u8_to_hexa_string(&as_rep.enc_part.cipher));
+    
+    let (salt, ciphertext) =
+        divide_salt_and_ciphertext(etype, as_rep.enc_part.cipher.to_vec());
     let salt_hexa = arr_u8_to_hexa_string(&salt);
     let cipher_hexa = arr_u8_to_hexa_string(&ciphertext);
 
@@ -34,7 +38,6 @@ pub fn as_rep_to_crack_string(
         ),
     }
 }
-
 
 pub fn tgs_to_crack_string(
     username: &str,
@@ -64,10 +67,29 @@ pub fn tgs_to_crack_string(
     }
 }
 
+
+fn divide_salt_and_ciphertext(
+    etype: i32,
+    cipher: Vec<u8>,
+) -> (Vec<u8>, Vec<u8>) {
+    let mut salt;
+    let mut ciphertext;
+    if etype == etypes::AES128_CTS_HMAC_SHA1_96 || etype == etypes::AES256_CTS_HMAC_SHA1_96 {
+        let index = cipher.len() - 12;
+        ciphertext = cipher;
+        salt = ciphertext.drain(index..).collect();
+    }else {
+        salt = cipher;
+        ciphertext = salt.drain(16..).collect();
+    }
+    
+    return (salt, ciphertext);
+}
+
 fn arr_u8_to_hexa_string(array: &[u8]) -> String {
     let mut hexa_string = String::new();
     for item in array.iter() {
-        hexa_string.push_str(&format!("{:x}", item));
+        hexa_string.push_str(&format!("{:02x}", item));
     }
     return hexa_string;
 }
