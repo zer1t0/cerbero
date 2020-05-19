@@ -1,9 +1,8 @@
 //! Utilies related with crack formats parsed by john and hashcat
 //! used by asreproast and kerberoast
 
-use kerberos_asn1::{AsRep, Asn1Object, EtypeInfo2, Ticket};
+use kerberos_asn1::{AsRep, Ticket};
 use kerberos_constants::etypes;
-use kerberos_constants::pa_data_types::PA_ETYPE_INFO2;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CrackFormat {

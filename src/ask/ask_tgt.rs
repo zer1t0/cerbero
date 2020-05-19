@@ -1,23 +1,21 @@
+use crate::cred_format::CredentialFormat;
+use crate::error::Result;
+use crate::file::save_cred_in_file;
+use crate::kdc_req_builder::KdcReqBuilder;
+use crate::krb_user::KerberosUser;
+use crate::senders::send_recv_as;
+use crate::transporter::KerberosTransporter;
+use crate::utils::create_krb_cred;
 use chrono::Utc;
 use kerberos_asn1::{
     AsRep, AsReq, Asn1Object, EncAsRepPart, EncryptedData, KrbCred, PaData,
     PaEncTsEnc,
 };
-
-use crate::kdc_req_builder::KdcReqBuilder;
 use kerberos_constants;
 use kerberos_constants::{key_usages, pa_data_types};
 use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
-
-use crate::cred_format::CredentialFormat;
-use crate::error::Result;
-use crate::file::save_cred_in_file;
-use crate::krb_user::KerberosUser;
-use crate::senders::{send_recv, Rep};
-use crate::transporter::KerberosTransporter;
-use crate::utils::create_krb_cred;
 use log::info;
 
 /// Main function to ask a TGT
@@ -48,7 +46,7 @@ pub fn request_tgt(
     transporter: &dyn KerberosTransporter,
 ) -> Result<KrbCred> {
     let rep = request_as_rep(user, user_key, preauth, transporter)?;
-    return handle_as_rep(rep, user, user_key);
+    return extract_krb_cred_from_as_rep(rep, user, user_key);
 }
 
 /// Uses user credentials to obtain an AS-REP response
@@ -60,35 +58,6 @@ pub fn request_as_rep(
 ) -> Result<AsRep> {
     let as_req = build_as_req(user, user_key, preauth);
     return send_recv_as(transporter, &as_req);
-}
-
-/// Function to send an AS-REQ message and receive an AS-REP
-fn send_recv_as(
-    transporter: &dyn KerberosTransporter,
-    req: &AsReq,
-) -> Result<AsRep> {
-    let rep = send_recv(transporter, &req.build())
-        .map_err(|err| ("Error sending TGS-REQ", err))?;
-
-    match rep {
-        Rep::KrbError(krb_error) => {
-            return Err(krb_error)?;
-        }
-
-        Rep::Raw(_) => {
-            return Err("Error parsing response")?;
-        }
-
-        Rep::AsRep(as_rep) => {
-            return Ok(as_rep);
-        }
-
-        Rep::TgsRep(_) => {
-            return Err(
-                "Unexpected: server responded with a TGS-REQ to an AS-REP",
-            )?;
-        }
-    }
 }
 
 /// Helper to easily craft an AS-REQ message for asking a TGT
@@ -109,14 +78,6 @@ fn build_as_req(user: &KerberosUser, user_key: &Key, preauth: bool) -> AsReq {
     }
 
     return as_req_builder.build_as_req();
-}
-
-fn handle_as_rep(
-    as_rep: AsRep,
-    user: &KerberosUser,
-    user_key: &Key,
-) -> Result<KrbCred> {
-    return extract_krb_cred_from_as_rep(as_rep, user, user_key);
 }
 
 fn extract_krb_cred_from_as_rep(

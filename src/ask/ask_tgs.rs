@@ -1,11 +1,18 @@
 use super::ask_tgt::request_tgt;
 use crate::cred_format::CredentialFormat;
+use crate::error::Result;
+use crate::file::{parse_creds_file, save_cred_in_file};
+use crate::kdc_req_builder::KdcReqBuilder;
+use crate::krb_cred_plain::KrbCredPlain;
+use crate::krb_user::KerberosUser;
+use crate::senders::send_recv_tgs;
+use crate::transporter::KerberosTransporter;
+use crate::utils::{create_krb_cred_info, username_to_principal_name};
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
-    KrbCredInfo, PaData, PaForUser, PaPacOptions, PrincipalName, TgsRep,
+    KrbCredInfo, PaData, PaForUser, PaPacOptions, PrincipalName,
     TgsReq, Ticket,
 };
-
 use kerberos_constants::checksum_types;
 use kerberos_constants::kdc_options;
 use kerberos_constants::key_usages;
@@ -17,16 +24,6 @@ use kerberos_constants::pa_data_types::{PA_FOR_USER, PA_TGS_REQ};
 use kerberos_constants::pa_pac_options;
 use kerberos_constants::principal_names::{NT_SRV_INST, NT_UNKNOWN};
 use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher, Key};
-
-use crate::kdc_req_builder::KdcReqBuilder;
-use crate::senders::{send_recv, Rep};
-
-use crate::error::Result;
-use crate::file::{parse_creds_file, save_cred_in_file};
-use crate::krb_cred_plain::KrbCredPlain;
-use crate::krb_user::KerberosUser;
-use crate::transporter::KerberosTransporter;
-use crate::utils::{create_krb_cred_info, username_to_principal_name};
 use log::{info, warn};
 
 /// Main function to request a new TGS for a user for the selected service
@@ -153,33 +150,6 @@ pub fn request_tgs(
     );
 
     return Ok((tgs_rep.ticket, krb_cred_info_tgs));
-}
-
-/// Function to send a TGS-REQ message and receive a TGS-REP
-fn send_recv_tgs(
-    transporter: &dyn KerberosTransporter,
-    req: &TgsReq,
-) -> Result<TgsRep> {
-    let rep = send_recv(transporter, &req.build())
-        .map_err(|err| ("Error sending TGS-REQ", err))?;
-
-    match rep {
-        Rep::KrbError(krb_error) => {
-            return Err(krb_error)?;
-        }
-
-        Rep::Raw(_) => {
-            return Err("Error parsing response")?;
-        }
-
-        Rep::AsRep(_) => {
-            return Err("Unexpected: server responded with AS-REP to TGS-REQ")?;
-        }
-
-        Rep::TgsRep(tgs_rep) => {
-            return Ok(tgs_rep);
-        }
-    }
 }
 
 /// Helper to easily craft a TGS-REQ message for asking a TGS

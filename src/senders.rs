@@ -1,6 +1,7 @@
 use crate::transporter::KerberosTransporter;
-use kerberos_asn1::{AsRep, Asn1Object, KrbError, TgsRep};
+use kerberos_asn1::{AsRep, Asn1Object, KrbError, TgsRep, TgsReq, AsReq};
 use std::io;
+use crate::error::Result;
 
 pub enum Rep {
     AsRep(AsRep),
@@ -28,4 +29,62 @@ pub fn send_recv(
     }
 
     return Ok(Rep::Raw(raw_rep));
+}
+
+
+/// Function to send a TGS-REQ message and receive a TGS-REP
+pub fn send_recv_tgs(
+    transporter: &dyn KerberosTransporter,
+    req: &TgsReq,
+) -> Result<TgsRep> {
+    let rep = send_recv(transporter, &req.build())
+        .map_err(|err| ("Error sending TGS-REQ", err))?;
+
+    match rep {
+        Rep::KrbError(krb_error) => {
+            return Err(krb_error)?;
+        }
+
+        Rep::Raw(_) => {
+            return Err("Error parsing response")?;
+        }
+
+        Rep::AsRep(_) => {
+            return Err("Unexpected: server responded with AS-REP to TGS-REQ")?;
+        }
+
+        Rep::TgsRep(tgs_rep) => {
+            return Ok(tgs_rep);
+        }
+    }
+}
+
+
+/// Function to send an AS-REQ message and receive an AS-REP
+pub fn send_recv_as(
+    transporter: &dyn KerberosTransporter,
+    req: &AsReq,
+) -> Result<AsRep> {
+    let rep = send_recv(transporter, &req.build())
+        .map_err(|err| ("Error sending TGS-REQ", err))?;
+
+    match rep {
+        Rep::KrbError(krb_error) => {
+            return Err(krb_error)?;
+        }
+
+        Rep::Raw(_) => {
+            return Err("Error parsing response")?;
+        }
+
+        Rep::AsRep(as_rep) => {
+            return Ok(as_rep);
+        }
+
+        Rep::TgsRep(_) => {
+            return Err(
+                "Unexpected: server responded with a TGS-REQ to an AS-REP",
+            )?;
+        }
+    }
 }
