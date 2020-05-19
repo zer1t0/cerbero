@@ -4,14 +4,15 @@ use crate::error::Result;
 use crate::file::{parse_creds_file, save_cred_in_file};
 use crate::kdc_req_builder::KdcReqBuilder;
 use crate::krb_cred_plain::KrbCredPlain;
+use crate::krb_cred_plain::TicketCredInfo;
 use crate::krb_user::KerberosUser;
 use crate::senders::send_recv_tgs;
 use crate::transporter::KerberosTransporter;
 use crate::utils::{create_krb_cred_info, username_to_principal_name};
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncTgsRepPart, EncryptedData,
-    KrbCredInfo, PaData, PaForUser, PaPacOptions, PrincipalName,
-    TgsReq, Ticket,
+    PaData, PaForUser, PaPacOptions, PrincipalName, TgsReq,
+    Ticket,
 };
 use kerberos_constants::checksum_types;
 use kerberos_constants::kdc_options;
@@ -25,6 +26,7 @@ use kerberos_constants::pa_pac_options;
 use kerberos_constants::principal_names::{NT_SRV_INST, NT_UNKNOWN};
 use kerberos_crypto::{checksum_hmac_md5, new_kerberos_cipher, Key};
 use log::{info, warn};
+use std::convert::TryInto;
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -37,25 +39,17 @@ pub fn ask_tgs(
 ) -> Result<()> {
     let username = user.name.clone();
     let service_copy = service.clone();
-    let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
-        get_user_tgt(
-            user.clone(),
-            creds_file,
-            user_key,
-            transporter,
-            cred_format,
-        )?;
-
-    let (tgs, krb_cred_info_tgs) = request_tgs(
-        user,
-        service,
-        &krb_cred_info,
-        ticket.clone(),
+    let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
+        user.clone(),
+        creds_file,
+        user_key,
         transporter,
+        cred_format,
     )?;
 
-    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
-    krb_cred_plain.tickets.push(tgs);
+    let tgs_info = request_tgs(user, service, tgt_info, transporter)?;
+
+    krb_cred_plain.push(tgs_info);
 
     info!(
         "Save {} TGS for {} in {}",
@@ -74,7 +68,7 @@ pub fn get_user_tgt(
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
-) -> Result<(KrbCredPlain, CredentialFormat, Ticket, KrbCredInfo)> {
+) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
     match get_user_tgt_from_file(user.clone(), creds_file) {
         Ok(ok) => return Ok(ok),
         Err(err) => {
@@ -85,18 +79,12 @@ pub fn get_user_tgt(
                     info!("Request TGT for {}", user.name);
                     let krb_cred =
                         request_tgt(&user, user_key, true, transporter)?;
-                    let krb_cred_plain =
-                        KrbCredPlain::try_from_krb_cred(krb_cred)?;
+                    let krb_cred_plain: KrbCredPlain = krb_cred.try_into()?;
 
-                    let (ticket, krb_cred_info) =
+                    let ticket_cred_info =
                         krb_cred_plain.look_for_tgt(user.clone()).unwrap();
 
-                    return Ok((
-                        krb_cred_plain,
-                        cred_format,
-                        ticket,
-                        krb_cred_info,
-                    ));
+                    return Ok((krb_cred_plain, cred_format, ticket_cred_info));
                 }
                 None => {
                     return Err(
@@ -112,33 +100,32 @@ pub fn get_user_tgt(
 fn get_user_tgt_from_file(
     user: KerberosUser,
     creds_file: &str,
-) -> Result<(KrbCredPlain, CredentialFormat, Ticket, KrbCredInfo)> {
+) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
     let (krb_cred, cred_format) = parse_creds_file(creds_file)?;
-    let krb_cred_plain = KrbCredPlain::try_from_krb_cred(krb_cred)?;
+    let krb_cred_plain: KrbCredPlain = krb_cred.try_into()?;
 
-    let (ticket, krb_cred_info) = krb_cred_plain
+    let ticket_cred_info = krb_cred_plain
         .look_for_tgt(user.clone())
         .ok_or(format!("No TGT found for '{}", user.name))?;
 
-    return Ok((krb_cred_plain, cred_format, ticket, krb_cred_info));
+    return Ok((krb_cred_plain, cred_format, ticket_cred_info));
 }
 
 /// Use a TGT to request a TGS
 pub fn request_tgs(
     user: KerberosUser,
     service: String,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
+    ticket_info: TicketCredInfo,
     transporter: &dyn KerberosTransporter,
-) -> Result<(Ticket, KrbCredInfo)> {
+) -> Result<TicketCredInfo> {
     info!("Request {} TGS for {}", service, user.name);
-    let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req = build_tgs_req(user, service, krb_cred_info, ticket)?;
+    let session_key = ticket_info.cred_info.key.keyvalue.clone();
+    let tgs_req = build_tgs_req(user, service, ticket_info)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
     let enc_tgs_as_rep_raw =
-        decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
+        decrypt_tgs_rep_enc_part(&session_key, &tgs_rep.enc_part)?;
 
     let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
         .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
@@ -149,7 +136,7 @@ pub fn request_tgs(
         tgs_rep.cname,
     );
 
-    return Ok((tgs_rep.ticket, krb_cred_info_tgs));
+    return Ok((tgs_rep.ticket, krb_cred_info_tgs).into());
 }
 
 /// Helper to easily craft a TGS-REQ message for asking a TGS
@@ -157,11 +144,10 @@ pub fn request_tgs(
 fn build_tgs_req(
     user: KerberosUser,
     service: String,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
+    ticket_info: TicketCredInfo,
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
-    let session_key = &krb_cred_info.key.keyvalue;
+    let session_key = &ticket_info.cred_info.key.keyvalue;
     let realm = user.realm.clone();
 
     let service_parts: Vec<String> =
@@ -173,9 +159,9 @@ fn build_tgs_req(
 
     padatas.push(create_pa_data_ap_req(
         user,
-        ticket,
+        ticket_info.ticket,
         session_key,
-        krb_cred_info.key.keytype,
+        ticket_info.cred_info.key.keytype,
     )?);
 
     let tgs_req = KdcReqBuilder::new(realm)
@@ -216,25 +202,17 @@ pub fn ask_s4u2self(
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, ticket, krb_cred_info) =
-        get_user_tgt(
-            user.clone(),
-            creds_file,
-            user_key,
-            transporter,
-            cred_format,
-        )?;
-
-    let (tgs, krb_cred_info_tgs) = request_s4u2self(
-        user,
-        impersonate_user,
-        &krb_cred_info,
-        ticket.clone(),
+    let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
+        user.clone(),
+        creds_file,
+        user_key,
         transporter,
+        cred_format,
     )?;
 
-    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
-    krb_cred_plain.tickets.push(tgs);
+    let tgs = request_s4u2self(user, impersonate_user, tgt_info, transporter)?;
+
+    krb_cred_plain.push(tgs);
 
     info!(
         "Save {} S4U2Self TGS for {} in {}",
@@ -249,22 +227,20 @@ pub fn ask_s4u2self(
 fn request_s4u2self(
     user: KerberosUser,
     impersonate_user: KerberosUser,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
+    tgt: TicketCredInfo,
     transporter: &dyn KerberosTransporter,
-) -> Result<(Ticket, KrbCredInfo)> {
+) -> Result<TicketCredInfo> {
     info!(
         "Request {} S4U2Self TGS for {}",
         user.name, impersonate_user.name
     );
-    let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req =
-        build_s4u2self_req(user, impersonate_user, krb_cred_info, ticket)?;
+    let session_key = tgt.cred_info.key.keyvalue.clone();
+    let tgs_req = build_s4u2self_req(user, impersonate_user, tgt)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
     let enc_tgs_as_rep_raw =
-        decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
+        decrypt_tgs_rep_enc_part(&session_key, &tgs_rep.enc_part)?;
 
     let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
         .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
@@ -275,7 +251,7 @@ fn request_s4u2self(
         tgs_rep.cname,
     );
 
-    return Ok((tgs_rep.ticket, krb_cred_info_tgs));
+    return Ok((tgs_rep.ticket, krb_cred_info_tgs).into());
 }
 
 /// Helper to easily craft a TGS-REQ message for S4U2Self
@@ -283,11 +259,10 @@ fn request_s4u2self(
 fn build_s4u2self_req(
     user: KerberosUser,
     impersonate_user: KerberosUser,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
+    tgt: TicketCredInfo,
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
-    let session_key = &krb_cred_info.key.keyvalue;
+    let session_key = &tgt.cred_info.key.keyvalue;
     let realm = user.realm.clone();
 
     let sname = PrincipalName {
@@ -299,9 +274,9 @@ fn build_s4u2self_req(
 
     padatas.push(create_pa_data_ap_req(
         user,
-        ticket,
+        tgt.ticket,
         session_key,
-        krb_cred_info.key.keytype,
+        tgt.cred_info.key.keytype,
     )?);
 
     let tgs_req = KdcReqBuilder::new(realm)
@@ -324,7 +299,7 @@ pub fn ask_s4u2proxy(
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
     let service_copy = service.clone();
-    let (krb_cred_plain, cred_format, tgt, krb_cred_info) = get_user_tgt(
+    let (krb_cred_plain, cred_format, tgt) = get_user_tgt(
         user.clone(),
         creds_file,
         user_key,
@@ -337,22 +312,19 @@ pub fn ask_s4u2proxy(
         user.clone(),
         impersonate_user,
         transporter,
-        &krb_cred_info,
         tgt.clone(),
     )?;
 
-    let (tgs, krb_cred_info_tgs) = request_s4u2proxy(
+    let tgs_proxy = request_s4u2proxy(
         user,
         &imp_username,
         service,
-        &krb_cred_info,
         tgt,
-        imp_ticket,
+        imp_ticket.ticket,
         transporter,
     )?;
 
-    krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
-    krb_cred_plain.tickets.push(tgs);
+    krb_cred_plain.push(tgs_proxy);
 
     info!(
         "Save {} S4U2Proxy TGS for {} in {}",
@@ -370,35 +342,31 @@ fn get_impersonation_ticket(
     user: KerberosUser,
     impersonate_user: KerberosUser,
     transporter: &dyn KerberosTransporter,
-    krb_cred_info: &KrbCredInfo,
-    tgt: Ticket,
-) -> Result<(KrbCredPlain, Ticket)> {
+    tgt: TicketCredInfo,
+) -> Result<(KrbCredPlain, TicketCredInfo)> {
     let result = krb_cred_plain.look_for_impersonation_ticket(
         user.name.clone(),
         impersonate_user.name.clone(),
     );
 
     match result {
-        Some((imp_ticket, _)) => {
-            return Ok((krb_cred_plain, imp_ticket));
+        Some(ticket_info) => {
+            return Ok((krb_cred_plain, ticket_info));
         }
         None => {
             warn!(
                 "No {} S4U2Self TGS for {} found",
                 impersonate_user.name, user.name
             );
-            let (imp_ticket, krb_cred_info_tgs) = request_s4u2self(
+            let tgs_self = request_s4u2self(
                 user,
                 impersonate_user,
-                &krb_cred_info,
                 tgt,
                 transporter,
             )?;
+            krb_cred_plain.push(tgs_self.clone());
 
-            krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
-            krb_cred_plain.tickets.push(imp_ticket.clone());
-
-            return Ok((krb_cred_plain, imp_ticket));
+            return Ok((krb_cred_plain, tgs_self));
         }
     }
 }
@@ -409,23 +377,21 @@ fn request_s4u2proxy(
     user: KerberosUser,
     impersonate_username: &str,
     service: String,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
-    ticket_imp: Ticket,
+    tgt_info: TicketCredInfo,
+    tgs_imp: Ticket,
     transporter: &dyn KerberosTransporter,
-) -> Result<(Ticket, KrbCredInfo)> {
+) -> Result<TicketCredInfo> {
     info!(
         "Request {} S4U2Proxy TGS for {}",
         service, impersonate_username
     );
-    let session_key = &krb_cred_info.key.keyvalue;
-    let tgs_req =
-        build_s4u2proxy_req(user, service, krb_cred_info, ticket, ticket_imp)?;
+    let session_key = tgt_info.cred_info.key.keyvalue.clone();
+    let tgs_req = build_s4u2proxy_req(user, service, tgt_info, tgs_imp)?;
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
     let enc_tgs_as_rep_raw =
-        decrypt_tgs_rep_enc_part(session_key, &tgs_rep.enc_part)?;
+        decrypt_tgs_rep_enc_part(&session_key, &tgs_rep.enc_part)?;
 
     let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
         .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
@@ -436,7 +402,7 @@ fn request_s4u2proxy(
         tgs_rep.cname,
     );
 
-    return Ok((tgs_rep.ticket, krb_cred_info_tgs));
+    return Ok((tgs_rep.ticket, krb_cred_info_tgs).into());
 }
 
 /// Helper to easily craft a TGS-REQ message for S4U2Proxy
@@ -444,12 +410,11 @@ fn request_s4u2proxy(
 fn build_s4u2proxy_req(
     user: KerberosUser,
     service: String,
-    krb_cred_info: &KrbCredInfo,
-    ticket: Ticket,
-    ticket_imp: Ticket,
+    tgt_info: TicketCredInfo,
+    tgs_imp: Ticket,
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
-    let session_key = &krb_cred_info.key.keyvalue;
+    let session_key = &tgt_info.cred_info.key.keyvalue;
     let realm = user.realm.clone();
 
     let service_parts: Vec<String> =
@@ -465,15 +430,15 @@ fn build_s4u2proxy_req(
 
     padatas.push(create_pa_data_ap_req(
         user,
-        ticket,
+        tgt_info.ticket,
         session_key,
-        krb_cred_info.key.keytype,
+        tgt_info.cred_info.key.keytype,
     )?);
 
     let tgs_req = KdcReqBuilder::new(realm)
         .padatas(padatas)
         .sname(Some(sname))
-        .push_ticket(ticket_imp)
+        .push_ticket(tgs_imp)
         .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
         .build_tgs_req();
 
