@@ -31,23 +31,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbf56136a5198c7b01a49e3afcbef6cf84597273d298f54432926024107b0109"
 
 [[package]]
-name = "askticket"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "dns-lookup",
- "kerbeiros",
- "kerberos_asn1",
- "kerberos_ccache",
- "kerberos_constants",
- "kerberos_crypto 0.3.2",
- "log",
- "rand 0.6.5",
- "stderrlog",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -136,6 +119,23 @@ name = "cc"
 version = "1.0.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "404b1fe4f65288577753b17e3b36a04596ee784493ec249bf81c7f2d2acd751c"
+
+[[package]]
+name = "cerbero"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "dns-lookup",
+ "kerbeiros",
+ "kerberos_asn1",
+ "kerberos_ccache",
+ "kerberos_constants",
+ "kerberos_crypto 0.3.2",
+ "log",
+ "rand 0.6.5",
+ "stderrlog",
+]
 
 [[package]]
 name = "cfg-if"
