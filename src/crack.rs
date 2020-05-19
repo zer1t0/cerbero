@@ -101,25 +101,3 @@ fn arr_u8_to_hexa_string(array: &[u8]) -> String {
     }
     return hexa_string;
 }
-
-fn get_encryption_salt(as_rep: &AsRep) -> Vec<u8> {
-    if let Some(padata) = &as_rep.padata {
-        for entry_data in padata.iter() {
-            if entry_data.padata_type == PA_ETYPE_INFO2 {
-                match EtypeInfo2::parse(&entry_data.padata_value) {
-                    Ok((_, etypeinfo2)) => {
-                        for entry in etypeinfo2 {
-                            match entry.salt {
-                                Some(salt) => return salt.as_bytes().to_vec(),
-                                None => {}
-                            }
-                        }
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-    }
-
-    return Vec::new();
-}
