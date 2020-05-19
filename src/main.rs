@@ -150,7 +150,6 @@ mod utils;
 
 use crate::error::Result;
 use args::{args, Arguments, ArgumentsParser};
-use ask::{ask_s4u2proxy, ask_s4u2self, ask_tgs, ask_tgt};
 use file::read_file_lines;
 use krb_user::KerberosUser;
 use log::error;
@@ -207,58 +206,16 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let user = KerberosUser::new(args.username, args.realm);
 
-    match args.service {
-        Some(service) => match impersonate_user {
-            Some(impersonate_user) => {
-                return ask_s4u2proxy(
-                    user,
-                    impersonate_user,
-                    service,
-                    &creds_file,
-                    &*transporter,
-                    args.user_key.as_ref(),
-                    args.credential_format,
-                );
-            }
-            None => {
-                return ask_tgs(
-                    user,
-                    service,
-                    &creds_file,
-                    &*transporter,
-                    args.user_key.as_ref(),
-                    args.credential_format,
-                );
-            }
-        },
-        None => match impersonate_user {
-            Some(impersonate_user) => {
-                return ask_s4u2self(
-                    user,
-                    impersonate_user,
-                    &creds_file,
-                    &*transporter,
-                    args.user_key.as_ref(),
-                    args.credential_format,
-                );
-            }
-            None => match &args.user_key {
-                Some(user_key) => {
-                    return ask_tgt(
-                        &user,
-                        user_key,
-                        args.preauth,
-                        &*transporter,
-                        args.credential_format,
-                        &creds_file,
-                    );
-                }
-                None => {
-                    return Err("Required credentials to request a TGT")?;
-                }
-            },
-        },
-    }
+    return ask::ask(
+        user,
+        impersonate_user,
+        args.service,
+        &creds_file,
+        &*transporter,
+        args.user_key,
+        args.credential_format,
+        args.preauth,
+    );
 }
 
 fn convert(args: args::convert::Arguments) -> Result<()> {
