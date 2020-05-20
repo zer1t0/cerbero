@@ -1,4 +1,9 @@
 use super::kdc_req::KdcReqBuilder;
+use super::pa_data::{
+    new_pa_data_ap_req, new_pa_data_encrypted_timestamp,
+    new_pa_data_pa_for_user, new_pa_data_pac_options,
+};
+use super::principal_name::new_nt_srv_inst;
 use crate::core::krb_cred_plain::TicketCredInfo;
 use crate::core::krb_user::KerberosUser;
 use crate::error::Result;
@@ -12,14 +17,8 @@ use kerberos_constants;
 use kerberos_constants::{
     etypes, kdc_options, key_usages, pa_pac_options, principal_names,
 };
-use kerberos_crypto::{new_kerberos_cipher, Key};
-
-use super::pa_data::{
-    create_pa_data_ap_req, create_pa_data_encrypted_timestamp,
-    create_pa_data_pac_options, create_pa_data_pa_for_user
-};
-use super::principal_name::{
-    new_nt_srv_inst
+use kerberos_crypto::{
+    new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
 
 pub fn create_krb_cred(
@@ -76,7 +75,7 @@ pub fn build_tgs_req(
     let realm = user.realm.clone();
     let sname = new_nt_srv_inst(&service);
 
-    padatas.push(create_pa_data_ap_req(
+    padatas.push(new_pa_data_ap_req(
         user,
         ticket_info.ticket,
         session_key,
@@ -123,16 +122,48 @@ pub fn build_as_req(
         .request_pac();
 
     if preauth {
-        let padata = create_pa_data_encrypted_timestamp(
-            &user_key,
-            &user.realm,
-            &user.name,
-        );
+        let (cipher, key) = get_cipher_and_key(&user_key, &user.realm, &user.name); 
+        let padata =
+            new_pa_data_encrypted_timestamp(
+                cipher.etype(),
+                &|u,b| cipher.encrypt(&key, u, b)
+            );
         as_req_builder = as_req_builder.push_padata(padata);
     }
 
     return as_req_builder.build_as_req();
 }
+
+/// Helper to generate a cipher based on user credentials
+/// and calculate the key when it is necessary
+/// (in case of password)
+fn get_cipher_and_key(
+    user_key: &Key,
+    realm: &str,
+    client_name: &str,
+) -> (Box<dyn KerberosCipher>, Vec<u8>) {
+    match user_key {
+        Key::Secret(secret) => {
+            let cipher = AesCipher::new(AesSizes::Aes256);
+            let salt = cipher.generate_salt(realm, client_name);
+            let key = cipher.generate_key_from_string(&secret, &salt);
+            return (Box::new(cipher), key);
+        }
+        Key::RC4Key(key) => {
+            let cipher = Rc4Cipher::new();
+            return (Box::new(cipher), key.to_vec());
+        }
+        Key::AES128Key(key) => {
+            let cipher = AesCipher::new(AesSizes::Aes128);
+            return (Box::new(cipher), key.to_vec());
+        }
+        Key::AES256Key(key) => {
+            let cipher = AesCipher::new(AesSizes::Aes256);
+            return (Box::new(cipher), key.to_vec());
+        }
+    };
+}
+
 
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
@@ -198,13 +229,12 @@ pub fn build_s4u2proxy_req(
     let session_key = &tgt_info.cred_info.key.keyvalue;
     let realm = user.realm.clone();
     let sname = new_nt_srv_inst(service);
-    
 
-    padatas.push(create_pa_data_pac_options(
+    padatas.push(new_pa_data_pac_options(
         pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
     ));
 
-    padatas.push(create_pa_data_ap_req(
+    padatas.push(new_pa_data_ap_req(
         user,
         tgt_info.ticket,
         session_key,
@@ -237,9 +267,9 @@ pub fn build_s4u2self_req(
         name_string: vec![user.name.clone()],
     };
 
-    padatas.push(create_pa_data_pa_for_user(impersonate_user, session_key));
+    padatas.push(new_pa_data_pa_for_user(impersonate_user, session_key));
 
-    padatas.push(create_pa_data_ap_req(
+    padatas.push(new_pa_data_ap_req(
         user,
         tgt.ticket,
         session_key,
@@ -253,3 +283,4 @@ pub fn build_s4u2self_req(
 
     return Ok(tgs_req);
 }
+
