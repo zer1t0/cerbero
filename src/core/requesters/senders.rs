@@ -1,7 +1,7 @@
-use crate::transporter::KerberosTransporter;
-use kerberos_asn1::{AsRep, Asn1Object, KrbError, TgsRep, TgsReq, AsReq};
-use std::io;
 use crate::error::Result;
+use crate::transporter::KerberosTransporter;
+use kerberos_asn1::{AsRep, AsReq, Asn1Object, KrbError, TgsRep, TgsReq};
+use std::io;
 
 pub enum Rep {
     AsRep(AsRep),
@@ -34,7 +34,6 @@ pub fn send_recv(
     return Ok(Rep::Raw(raw_rep));
 }
 
-
 /// Function to send a TGS-REQ message and receive a TGS-REP
 pub fn send_recv_tgs(
     transporter: &dyn KerberosTransporter,
@@ -61,7 +60,6 @@ pub fn send_recv_tgs(
         }
     }
 }
-
 
 /// Function to send an AS-REQ message and receive an AS-REP
 pub fn send_recv_as(

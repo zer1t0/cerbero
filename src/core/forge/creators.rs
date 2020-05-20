@@ -72,15 +72,19 @@ pub fn build_tgs_req(
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
     let session_key = &ticket_info.cred_info.key.keyvalue;
+    let etype = ticket_info.cred_info.key.keytype;
     let realm = user.realm.clone();
     let sname = new_nt_srv_inst(&service);
+
+    let cipher = new_kerberos_cipher(etype)
+        .map_err(|_| format!("No supported etype: {}", etype))?;
 
     padatas.push(new_pa_data_ap_req(
         user,
         ticket_info.ticket,
-        session_key,
-        ticket_info.cred_info.key.keytype,
-    )?);
+        etype,
+        &|u, b| cipher.encrypt(&session_key, u, b),
+    ));
 
     let tgs_req = KdcReqBuilder::new(realm)
         .padatas(padatas)
@@ -122,12 +126,12 @@ pub fn build_as_req(
         .request_pac();
 
     if preauth {
-        let (cipher, key) = get_cipher_and_key(&user_key, &user.realm, &user.name); 
+        let (cipher, key) =
+            get_cipher_and_key(&user_key, &user.realm, &user.name);
         let padata =
-            new_pa_data_encrypted_timestamp(
-                cipher.etype(),
-                &|u,b| cipher.encrypt(&key, u, b)
-            );
+            new_pa_data_encrypted_timestamp(cipher.etype(), &|u, b| {
+                cipher.encrypt(&key, u, b)
+            });
         as_req_builder = as_req_builder.push_padata(padata);
     }
 
@@ -163,7 +167,6 @@ fn get_cipher_and_key(
         }
     };
 }
-
 
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
@@ -227,6 +230,7 @@ pub fn build_s4u2proxy_req(
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
     let session_key = &tgt_info.cred_info.key.keyvalue;
+    let etype = tgt_info.cred_info.key.keytype;
     let realm = user.realm.clone();
     let sname = new_nt_srv_inst(service);
 
@@ -234,12 +238,12 @@ pub fn build_s4u2proxy_req(
         pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
     ));
 
-    padatas.push(new_pa_data_ap_req(
-        user,
-        tgt_info.ticket,
-        session_key,
-        tgt_info.cred_info.key.keytype,
-    )?);
+    let cipher = new_kerberos_cipher(etype)
+        .map_err(|_| format!("No supported etype: {}", etype))?;
+
+    padatas.push(new_pa_data_ap_req(user, tgt_info.ticket, etype, &|u, b| {
+        cipher.encrypt(&session_key, u, b)
+    }));
 
     let tgs_req = KdcReqBuilder::new(realm)
         .padatas(padatas)
@@ -260,6 +264,7 @@ pub fn build_s4u2self_req(
 ) -> Result<TgsReq> {
     let mut padatas = Vec::new();
     let session_key = &tgt.cred_info.key.keyvalue;
+    let etype = tgt.cred_info.key.keytype;
     let realm = user.realm.clone();
 
     let sname = PrincipalName {
@@ -269,12 +274,12 @@ pub fn build_s4u2self_req(
 
     padatas.push(new_pa_data_pa_for_user(impersonate_user, session_key));
 
-    padatas.push(new_pa_data_ap_req(
-        user,
-        tgt.ticket,
-        session_key,
-        tgt.cred_info.key.keytype,
-    )?);
+    let cipher = new_kerberos_cipher(etype)
+        .map_err(|_| format!("No supported etype: {}", etype))?;
+
+    padatas.push(new_pa_data_ap_req(user, tgt.ticket, etype, &|u, b| {
+        cipher.encrypt(&session_key, u, b)
+    }));
 
     let tgs_req = KdcReqBuilder::new(realm)
         .padatas(padatas)
@@ -283,4 +288,3 @@ pub fn build_s4u2self_req(
 
     return Ok(tgs_req);
 }
-

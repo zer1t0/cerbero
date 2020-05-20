@@ -1,8 +1,8 @@
 use kerberos_asn1::KrbError;
 use kerberos_constants::error_codes;
 use std::fmt;
-use std::result;
 use std::io;
+use std::result;
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -10,7 +10,7 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     String(String),
     KrbError(KrbError),
-    NetworkError(String, io::Error)
+    NetworkError(String, io::Error),
 }
 
 impl fmt::Display for Error {
@@ -44,7 +44,6 @@ impl From<KrbError> for Error {
         return Self::KrbError(error);
     }
 }
-
 
 impl From<(&str, io::Error)> for Error {
     fn from(error: (&str, io::Error)) -> Self {

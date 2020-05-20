@@ -1,12 +1,12 @@
-use std::slice::Iter;
-use crate::core::KerberosUser;
 use crate::core::forge::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
+use crate::core::KerberosUser;
 use kerberos_asn1::{
     Asn1Object, EncKrbCredPart, EncryptedData, KrbCred, KrbCredInfo,
     PrincipalName, Ticket,
 };
 use kerberos_constants::etypes::NO_ENCRYPTION;
 use std::convert::TryFrom;
+use std::slice::Iter;
 
 pub struct KrbCredPlain {
     pub ticket_cred_infos: Vec<TicketCredInfo>,
@@ -130,6 +130,6 @@ impl TicketCredInfo {
 
 impl From<(Ticket, KrbCredInfo)> for TicketCredInfo {
     fn from((t, kci): (Ticket, KrbCredInfo)) -> Self {
-        return Self::new(t,kci);
+        return Self::new(t, kci);
     }
 }

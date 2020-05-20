@@ -1,23 +1,20 @@
+use super::principal_name::new_nt_principal;
 use crate::core::krb_user::KerberosUser;
-use crate::error::Result;
 use chrono::Utc;
 use kerberos_asn1::{
-    ApReq, Asn1Object, Authenticator,
-    EncryptedData, PaData, PaEncTsEnc, PaForUser, PaPacOptions, Ticket,
+    ApReq, Asn1Object, Authenticator, EncryptedData, PaData, PaEncTsEnc,
+    PaForUser, PaPacOptions, Ticket,
 };
 use kerberos_constants;
 use kerberos_constants::key_usages::{
-    KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, KEY_USAGE_TGS_REQ_AUTHEN,
-    KEY_USAGE_AS_REQ_TIMESTAMP
+    KEY_USAGE_AS_REQ_TIMESTAMP, KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
+    KEY_USAGE_TGS_REQ_AUTHEN,
 };
 use kerberos_constants::pa_data_types::{
     PA_FOR_USER, PA_PAC_OPTIONS, PA_TGS_REQ,
 };
 use kerberos_constants::{checksum_types, pa_data_types};
-use kerberos_crypto::{
-    checksum_hmac_md5, new_kerberos_cipher
-};
-use super::principal_name::new_nt_principal;
+use kerberos_crypto::checksum_hmac_md5;
 
 /// Helper to create a PA-DATA that contains a PA-ENC-TS-ENC struct
 pub fn new_pa_data_encrypted_timestamp(
@@ -25,7 +22,8 @@ pub fn new_pa_data_encrypted_timestamp(
     encrypt: &dyn Fn(i32, &[u8]) -> Vec<u8>,
 ) -> PaData {
     let timestamp = PaEncTsEnc::from(Utc::now());
-    let encrypted_timestamp = encrypt(KEY_USAGE_AS_REQ_TIMESTAMP, &timestamp.build());
+    let encrypted_timestamp =
+        encrypt(KEY_USAGE_AS_REQ_TIMESTAMP, &timestamp.build());
     let padata = PaData::new(
         pa_data_types::PA_ENC_TIMESTAMP,
         EncryptedData::new(etype, None, encrypted_timestamp).build(),
@@ -33,8 +31,6 @@ pub fn new_pa_data_encrypted_timestamp(
 
     return padata;
 }
-
-
 
 /// Helper to create a PA-DATA that contains a PA-FOR-USER struct
 /// used in S4U2Self
@@ -85,33 +81,16 @@ pub fn new_pa_data_pac_options(pac_options: u32) -> PaData {
 pub fn new_pa_data_ap_req(
     user: KerberosUser,
     ticket: Ticket,
-    session_key: &[u8],
     etype: i32,
-) -> Result<PaData> {
-    let encrypted_authenticator =
-        new_encrypted_authenticator(user, etype, session_key)?;
-
-    let ap_req = new_ap_req(ticket, etype, encrypted_authenticator);
-    return Ok(PaData::new(PA_TGS_REQ, ap_req.build()));
-}
-
-/// Helper to create an encrypt an Authenticator struct
-/// that is contained in AP-REQ
-fn new_encrypted_authenticator(
-    user: KerberosUser,
-    etype: i32,
-    session_key: &[u8],
-) -> Result<Vec<u8>> {
+    encrypt: &dyn Fn(i32, &[u8]) -> Vec<u8>,
+) -> PaData {
     let authenticator = new_authenticator(user);
 
-    let cipher = new_kerberos_cipher(etype)
-        .map_err(|_| format!("No supported etype: {}", etype))?;
+    let encrypted_authenticator =
+        encrypt(KEY_USAGE_TGS_REQ_AUTHEN, &authenticator.build());
 
-    return Ok(cipher.encrypt(
-        session_key,
-        KEY_USAGE_TGS_REQ_AUTHEN,
-        &authenticator.build(),
-    ));
+    let ap_req = new_ap_req(ticket, etype, encrypted_authenticator);
+    return PaData::new(PA_TGS_REQ, ap_req.build());
 }
 
 /// Helper to create an encrypt an Authenticator struct

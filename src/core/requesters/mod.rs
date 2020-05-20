@@ -1,9 +1,9 @@
 //! Module to provide the operations required
 //! in order to retrieve a ticket from the KDC
 
-mod senders;
 mod request_tgt;
-pub use request_tgt::{request_tgt, request_as_rep};
+mod senders;
+pub use request_tgt::{request_as_rep, request_tgt};
 
 mod request_tgs;
 pub use request_tgs::request_tgs;
@@ -20,11 +20,9 @@ use crate::core::parse_creds_file;
 use crate::core::CredentialFormat;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
+use kerberos_crypto::Key;
 use log::{info, warn};
 use std::convert::TryInto;
-use kerberos_crypto::Key;
-
-
 
 /// Function to get a TGT from the credentials file
 /// or request it if it is necessary
@@ -77,10 +75,6 @@ fn get_user_tgt_from_file(
     return Ok((krb_cred_plain, cred_format, ticket_cred_info));
 }
 
-
-
-
-
 /// Function to get a TGS of an impersonated user from file
 /// or request it if it is necessary
 pub fn get_impersonation_ticket(
@@ -90,10 +84,8 @@ pub fn get_impersonation_ticket(
     transporter: &dyn KerberosTransporter,
     tgt: TicketCredInfo,
 ) -> Result<(KrbCredPlain, TicketCredInfo)> {
-    let result = krb_cred_plain.look_for_impersonation_ticket(
-        &user.name,
-        &impersonate_user.name,
-    );
+    let result = krb_cred_plain
+        .look_for_impersonation_ticket(&user.name, &impersonate_user.name);
 
     match result {
         Some(ticket_info) => {
@@ -112,5 +104,3 @@ pub fn get_impersonation_ticket(
         }
     }
 }
-
-

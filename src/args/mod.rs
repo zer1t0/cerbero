@@ -42,9 +42,11 @@ impl ArgumentsParser {
                 ));
             }
             name @ asreproast::COMMAND_NAME => {
-                return Arguments::AsRepRoast(asreproast::ArgumentsParser::parse(
-                    matches.subcommand_matches(name).unwrap(),
-                ));
+                return Arguments::AsRepRoast(
+                    asreproast::ArgumentsParser::parse(
+                        matches.subcommand_matches(name).unwrap(),
+                    ),
+                );
             }
             name @ brute::COMMAND_NAME => {
                 return Arguments::Brute(brute::ArgumentsParser::parse(
@@ -57,9 +59,11 @@ impl ArgumentsParser {
                 ));
             }
             name @ kerberoast::COMMAND_NAME => {
-                return Arguments::KerbeRoast(kerberoast::ArgumentsParser::parse(
-                    matches.subcommand_matches(name).unwrap(),
-                ));
+                return Arguments::KerbeRoast(
+                    kerberoast::ArgumentsParser::parse(
+                        matches.subcommand_matches(name).unwrap(),
+                    ),
+                );
             }
             name @ list::COMMAND_NAME => {
                 return Arguments::List(list::ArgumentsParser::parse(

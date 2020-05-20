@@ -1,9 +1,9 @@
-use crate::core::{tgs_to_crack_string, CrackFormat};
-use crate::core::CredentialFormat;
-use crate::error::Result;
 use crate::core::save_cred_in_file;
+use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
 use crate::core::{get_user_tgt, request_tgs};
+use crate::core::{tgs_to_crack_string, CrackFormat};
+use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
 use log::info;
@@ -18,21 +18,11 @@ pub fn kerberoast(
     crack_format: CrackFormat,
 ) -> Result<()> {
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
-        &user,
-        creds_file,
-        user_key,
-        transporter,
-        cred_format,
-    )?;
+    let (mut krb_cred_plain, cred_format, tgt) =
+        get_user_tgt(&user, creds_file, user_key, transporter, cred_format)?;
 
     for service in services {
-        match request_tgs(
-            user.clone(),
-            &service,
-            tgt.clone(),
-            transporter,
-        ) {
+        match request_tgs(user.clone(), &service, tgt.clone(), transporter) {
             Err(err) => match &err {
                 _ => return Err(err),
             },
