@@ -1,8 +1,8 @@
 use super::validators;
-use crate::crack::CrackFormat;
-use kerberos_crypto::Key;
+use crate::core::CrackFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use kerberos_crypto::Key;
 use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "asreproast";
@@ -56,7 +56,7 @@ pub fn command() -> App<'static, 'static> {
                 .long("cipher")
                 .help("Encryption algorithm requested to server.")
                 .possible_values(&["rc4", "aes128", "aes256"])
-                .takes_value(true)
+                .takes_value(true),
         )
 }
 
@@ -95,7 +95,7 @@ impl<'a> ArgumentsParser<'a> {
             transport_protocol: self.parse_transport_protocol(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
             crack_format: self.parse_crack_format(),
-            cipher: self.parse_cipher()
+            cipher: self.parse_cipher(),
         };
     }
 
@@ -125,14 +125,12 @@ impl<'a> ArgumentsParser<'a> {
     fn parse_cipher(&self) -> Key {
         match self.matches.value_of("cipher") {
             None => Key::Secret("".to_string()),
-            Some(cipher) => {
-                match cipher {
-                    "rc4" => Key::RC4Key([0; 16]),
-                    "aes128" => Key::AES128Key([0; 16]),
-                    "aes256" => Key::AES256Key([0; 32]),
-                    _ => unreachable!("Unknown cipher format")
-                }
-            }
+            Some(cipher) => match cipher {
+                "rc4" => Key::RC4Key([0; 16]),
+                "aes128" => Key::AES128Key([0; 16]),
+                "aes256" => Key::AES256Key([0; 32]),
+                _ => unreachable!("Unknown cipher format"),
+            },
         }
     }
 }

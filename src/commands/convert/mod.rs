@@ -1,5 +1,5 @@
-use crate::cred_format::CredentialFormat;
-use crate::file::{parse_creds_file, save_cred_in_file};
+use crate::core::CredentialFormat;
+use crate::core::{parse_creds_file, save_cred_in_file};
 use crate::Result;
 use log::info;
 

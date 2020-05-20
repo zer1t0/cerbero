@@ -1,13 +1,13 @@
 //! Module to provide the operations required
-//! in order to retrieve a ticket from the KDC 
+//! in order to retrieve a ticket from the KDC
 
-use crate::cred_format::CredentialFormat;
+use crate::core::builders::KdcReqBuilder;
+use crate::core::parse_creds_file;
+use crate::core::krb_cred_plain::{KrbCredPlain, TicketCredInfo};
+use crate::core::krb_user::KerberosUser;
+use crate::core::senders::{send_recv_as, send_recv_tgs};
+use crate::core::CredentialFormat;
 use crate::error::Result;
-use crate::file::parse_creds_file;
-use crate::builders::KdcReqBuilder;
-use crate::krb_cred_plain::{KrbCredPlain, TicketCredInfo};
-use crate::krb_user::KerberosUser;
-use crate::senders::{send_recv_as, send_recv_tgs};
 use crate::transporter::KerberosTransporter;
 use crate::utils::{
     create_krb_cred, create_krb_cred_info, username_to_principal_name,

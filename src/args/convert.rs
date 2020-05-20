@@ -1,4 +1,4 @@
-use crate::cred_format::CredentialFormat;
+use crate::core::CredentialFormat;
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 pub const COMMAND_NAME: &str = "convert";

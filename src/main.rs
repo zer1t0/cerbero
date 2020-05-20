@@ -131,26 +131,18 @@
 //! TODO
 
 mod args;
-mod builders;
 mod commands;
-mod crack;
-mod cred_format;
+mod core;
 mod error;
-mod file;
-mod krb_cred_plain;
-mod krb_user;
-mod requesters;
-mod senders;
 mod transporter;
 mod utils;
 
+use crate::args::{args, Arguments, ArgumentsParser};
+use crate::core::KerberosUser;
 use crate::error::Result;
-use args::{args, Arguments, ArgumentsParser};
-use file::read_file_lines;
-use krb_user::KerberosUser;
+use crate::utils::{read_file_lines, resolve_and_get_tranporter};
 use log::error;
 use stderrlog;
-use utils::resolve_and_get_tranporter;
 
 fn init_log(verbosity: usize) {
     stderrlog::new()

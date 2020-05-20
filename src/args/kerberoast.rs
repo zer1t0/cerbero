@@ -1,9 +1,9 @@
 use super::validators;
-use crate::crack::CrackFormat;
-use crate::cred_format::CredentialFormat;
-use kerberos_crypto::Key;
+use crate::core::CrackFormat;
+use crate::core::CredentialFormat;
 use crate::transporter::TransportProtocol;
-use clap::{App, Arg, ArgMatches, SubCommand, ArgGroup};
+use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
+use kerberos_crypto::Key;
 use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "kerberoast";
@@ -110,7 +110,6 @@ pub fn command() -> App<'static, 'static> {
         )
 }
 
-
 #[derive(Debug)]
 pub struct Arguments {
     pub realm: String,
@@ -215,4 +214,3 @@ impl<'a> ArgumentsParser<'a> {
         return CrackFormat::Hashcat;
     }
 }
-

@@ -1,5 +1,5 @@
 use std::slice::Iter;
-use crate::krb_user::KerberosUser;
+use crate::core::KerberosUser;
 use crate::utils::gen_krbtgt_principal_name;
 use crate::utils::username_to_principal_name;
 use kerberos_asn1::{

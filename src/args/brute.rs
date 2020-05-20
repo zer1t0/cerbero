@@ -1,5 +1,5 @@
 use super::validators;
-use crate::cred_format::CredentialFormat;
+use crate::core::CredentialFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::net::IpAddr;

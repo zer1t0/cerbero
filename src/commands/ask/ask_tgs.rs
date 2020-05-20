@@ -1,9 +1,9 @@
-use crate::cred_format::CredentialFormat;
+use crate::core::CredentialFormat;
 use crate::error::Result;
-use crate::file::{save_cred_in_file};
-use crate::krb_user::KerberosUser;
+use crate::core::{save_cred_in_file};
+use crate::core::KerberosUser;
 use crate::transporter::KerberosTransporter;
-use crate::requesters::{request_tgs, get_user_tgt, get_impersonation_ticket, request_s4u2self, request_s4u2proxy};
+use crate::core::{request_tgs, get_user_tgt, get_impersonation_ticket, request_s4u2self, request_s4u2proxy};
 use kerberos_crypto::Key;
 use log::{info};
 

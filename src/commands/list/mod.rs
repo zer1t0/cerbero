@@ -1,5 +1,5 @@
-use crate::file::parse_creds_file;
-use crate::krb_cred_plain::KrbCredPlain;
+use crate::core::parse_creds_file;
+use crate::core::KrbCredPlain;
 use crate::Result;
 use chrono::Local;
 use kerberos_asn1::KerberosTime;

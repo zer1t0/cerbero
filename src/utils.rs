@@ -1,4 +1,4 @@
-use crate::cred_format::CredentialFormat;
+use crate::core::CredentialFormat;
 use crate::error::Result;
 use crate::transporter::new_transporter;
 use crate::transporter::{KerberosTransporter, TransportProtocol};
@@ -9,6 +9,8 @@ use kerberos_asn1::{
 };
 use kerberos_constants::{etypes, principal_names};
 use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::net::{IpAddr, SocketAddr};
 
 pub fn username_to_principal_name(username: String) -> PrincipalName {
@@ -114,4 +116,16 @@ pub fn get_ticket_file(
 
 pub fn get_env_ticket_file() -> Option<String> {
     return env::var("KRB5CCNAME").ok();
+}
+
+pub fn read_file_lines(filename: &str) -> Result<Vec<String>> {
+    let fd = File::open(filename).map_err(|error| {
+        format!("Unable to read the file '{}': {}", filename, error)
+    })?;
+    let file_lines: Vec<String> = BufReader::new(fd)
+        .lines()
+        .filter_map(std::result::Result::ok)
+        .collect();
+
+    return Ok(file_lines);
 }
