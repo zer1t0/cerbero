@@ -10,6 +10,9 @@ pub enum Rep {
     Raw(Vec<u8>),
 }
 
+/// Send an array of bytes, which should be a kerberos request
+/// coded in ASN1/DER format and retrieves the response, by parsing
+/// it to a known Kerberos response
 pub fn send_recv(
     transporter: &dyn KerberosTransporter,
     raw: &[u8],

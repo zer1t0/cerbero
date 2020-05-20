@@ -1,12 +1,12 @@
-use crate::ask::request_tgt;
 use crate::cred_format::CredentialFormat;
 use crate::error::{Error, Result};
 use crate::file::save_cred_in_file;
 use crate::krb_user::KerberosUser;
+use crate::requesters::request_tgt;
 use crate::transporter::KerberosTransporter;
 use kerberos_constants::error_codes;
 use kerberos_crypto::Key;
-use log::{error, info, warn, debug};
+use log::{debug, error, info, warn};
 
 pub fn brute(
     realm: &str,
@@ -62,7 +62,7 @@ pub fn brute(
                         error_codes::KDC_ERR_PREAUTH_FAILED => {
                             debug!("Invalid creds {}:{}", username, password);
 
-                            if ! valid_users.contains(username) {
+                            if !valid_users.contains(username) {
                                 info!("Valid user {}", username);
                                 valid_users.push(username.to_string());
                             }
@@ -80,9 +80,7 @@ pub fn brute(
                         }
                     },
 
-                    Error::NetworkError(_, _) => {
-                        return Err(err)
-                    }
+                    Error::NetworkError(_, _) => return Err(err),
 
                     Error::String(err) => {
                         warn!("{}", err);

@@ -1,9 +1,9 @@
-use crate::ask::{get_user_tgt, request_tgs};
 use crate::crack::{tgs_to_crack_string, CrackFormat};
 use crate::cred_format::CredentialFormat;
 use crate::error::Result;
 use crate::file::save_cred_in_file;
 use crate::krb_user::KerberosUser;
+use crate::requesters::{get_user_tgt, request_tgs};
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
 use log::info;
