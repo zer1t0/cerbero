@@ -131,19 +131,14 @@
 //! TODO
 
 mod args;
-mod ask;
-mod asreproast;
-mod brute;
 mod builders;
-mod convert;
+mod commands;
 mod crack;
 mod cred_format;
 mod error;
 mod file;
-mod kerberoast;
 mod krb_cred_plain;
 mod krb_user;
-mod list;
 mod requesters;
 mod senders;
 mod transporter;
@@ -207,7 +202,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let user = KerberosUser::new(args.username, args.realm);
 
-    return ask::ask(
+    return commands::ask(
         user,
         impersonate_user,
         args.service,
@@ -228,7 +223,7 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
         )?,
     };
 
-    return convert::convert(&in_file, &args.out_file, args.cred_format);
+    return commands::convert(&in_file, &args.out_file, args.cred_format);
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {
@@ -237,7 +232,7 @@ fn list(args: args::list::Arguments) -> Result<()> {
         None => utils::get_env_ticket_file()
             .ok_or("Specify file or set KRB5CCNAME")?,
     };
-    return list::list(&in_file, args.etypes, args.flags);
+    return commands::list(&in_file, args.etypes, args.flags);
 }
 
 fn brute(args: args::brute::Arguments) -> Result<()> {
@@ -260,7 +255,7 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
         args.transport_protocol,
     )?;
 
-    return brute::brute(
+    return commands::brute(
         &args.realm,
         usernames,
         passwords,
@@ -284,7 +279,7 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         args.transport_protocol,
     )?;
 
-    return asreproast::asreproast(
+    return commands::asreproast(
         &args.realm,
         usernames,
         args.crack_format,
@@ -316,7 +311,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
 
     let user = KerberosUser::new(args.username, args.realm);
 
-    return kerberoast::kerberoast(
+    return commands::kerberoast(
         user,
         services,
         &creds_file,
