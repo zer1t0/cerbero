@@ -26,7 +26,7 @@ pub fn ask(
                 return ask_s4u2proxy(
                     user,
                     impersonate_user,
-                    service,
+                    &service,
                     creds_file,
                     transporter,
                     user_key.as_ref(),
@@ -36,7 +36,7 @@ pub fn ask(
             None => {
                 return ask_tgs(
                     user,
-                    service,
+                    &service,
                     creds_file,
                     transporter,
                     user_key.as_ref(),

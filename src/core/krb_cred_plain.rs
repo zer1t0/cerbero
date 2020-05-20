@@ -1,14 +1,11 @@
 use std::slice::Iter;
 use crate::core::KerberosUser;
-use crate::utils::gen_krbtgt_principal_name;
-use crate::utils::username_to_principal_name;
+use crate::core::forge::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
 use kerberos_asn1::{
     Asn1Object, EncKrbCredPart, EncryptedData, KrbCred, KrbCredInfo,
     PrincipalName, Ticket,
 };
 use kerberos_constants::etypes::NO_ENCRYPTION;
-use kerberos_constants::principal_names::NT_SRV_INST;
-use kerberos_constants::principal_names::NT_UNKNOWN;
 use std::convert::TryFrom;
 
 pub struct KrbCredPlain {
@@ -46,23 +43,20 @@ impl KrbCredPlain {
         return None;
     }
 
-    pub fn look_for_tgt(&self, user: KerberosUser) -> Option<TicketCredInfo> {
-        let cname = username_to_principal_name(user.name);
-        let tgt_service = gen_krbtgt_principal_name(user.realm, NT_SRV_INST);
+    pub fn look_for_tgt(&self, user: &KerberosUser) -> Option<TicketCredInfo> {
+        let cname = new_nt_principal(&user.name);
+        let tgt_service = new_nt_srv_inst(&format!("krbtgt/{}", user.realm));
 
         return self.look_for_user_creds(&cname, &tgt_service);
     }
 
     pub fn look_for_impersonation_ticket(
         &self,
-        username: String,
-        impersonate_username: String,
+        username: &str,
+        impersonate_username: &str,
     ) -> Option<TicketCredInfo> {
-        let cname_imp = username_to_principal_name(impersonate_username);
-        let service_imp = PrincipalName {
-            name_type: NT_UNKNOWN,
-            name_string: vec![username],
-        };
+        let cname_imp = new_nt_principal(impersonate_username);
+        let service_imp = new_nt_unknown(username);
 
         return self.look_for_user_creds(&cname_imp, &service_imp);
     }

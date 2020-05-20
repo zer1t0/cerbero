@@ -11,29 +11,28 @@ use log::{info};
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
     user: KerberosUser,
-    service: String,
+    service: &str,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
 ) -> Result<()> {
     let username = user.name.clone();
-    let service_copy = service.clone();
     let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
-        user.clone(),
+        &user,
         creds_file,
         user_key,
         transporter,
         cred_format,
     )?;
 
-    let tgs_info = request_tgs(user, service, tgt_info, transporter)?;
+    let tgs_info = request_tgs(user, &service, tgt_info, transporter)?;
 
     krb_cred_plain.push(tgs_info);
 
     info!(
         "Save {} TGS for {} in {}",
-        username, service_copy, creds_file
+        username, service, creds_file
     );
     save_cred_in_file(creds_file, krb_cred_plain.into(), cred_format)?;
 
@@ -45,16 +44,15 @@ pub fn ask_tgs(
 pub fn ask_s4u2proxy(
     user: KerberosUser,
     impersonate_user: KerberosUser,
-    service: String,
+    service: &str,
     creds_file: &str,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
-    let service_copy = service.clone();
     let (krb_cred_plain, cred_format, tgt) = get_user_tgt(
-        user.clone(),
+        &user,
         creds_file,
         user_key,
         transporter,
@@ -82,7 +80,7 @@ pub fn ask_s4u2proxy(
 
     info!(
         "Save {} S4U2Proxy TGS for {} in {}",
-        imp_username, service_copy, creds_file
+        imp_username, service, creds_file
     );
     save_cred_in_file(creds_file, krb_cred_plain.into(), cred_format)?;
 
@@ -102,7 +100,7 @@ pub fn ask_s4u2self(
     let imp_username = impersonate_user.name.clone();
     let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
-        user.clone(),
+        &user,
         creds_file,
         user_key,
         transporter,

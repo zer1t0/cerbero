@@ -19,7 +19,7 @@ pub fn kerberoast(
 ) -> Result<()> {
     let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
-        user.clone(),
+        &user,
         creds_file,
         user_key,
         transporter,
@@ -29,7 +29,7 @@ pub fn kerberoast(
     for service in services {
         match request_tgs(
             user.clone(),
-            service.clone(),
+            &service,
             tgt.clone(),
             transporter,
         ) {
