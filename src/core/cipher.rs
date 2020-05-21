@@ -4,6 +4,7 @@ use kerberos_constants::etypes;
 use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
 };
+use kerberos_asn1::EncryptionKey;
 
 pub struct Cipher {
     cipher: Box<dyn KerberosCipher>,
@@ -42,6 +43,16 @@ impl Cipher {
             .cipher
             .decrypt(&self.key, key_usage, ciphertext)
             .map_err(|err| format!("Decryption error: {}", err))?);
+    }
+}
+
+impl From<EncryptionKey> for Cipher {
+    fn from(enc_key: EncryptionKey) -> Self {
+        let etype = enc_key.keytype;
+        let cipher = new_kerberos_cipher(etype)
+            .expect(&format!("Unknown etype {} of EncryptionKey", etype));
+
+        return Self::new(cipher, enc_key.keyvalue);
     }
 }
 

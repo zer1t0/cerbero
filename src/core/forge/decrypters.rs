@@ -2,10 +2,11 @@ use super::krb_cred::new_krb_cred_info;
 use crate::core::Cipher;
 use crate::core::TicketCredInfo;
 use crate::error::Result;
-use kerberos_asn1::{AsRep, Asn1Object, EncAsRepPart, EncryptedData};
+use kerberos_asn1::{
+    AsRep, Asn1Object, EncAsRepPart, EncTgsRepPart, EncryptedData, TgsRep,
+};
 use kerberos_constants;
 use kerberos_constants::key_usages;
-use kerberos_crypto::{new_kerberos_cipher};
 
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
@@ -41,17 +42,32 @@ fn decrypt_as_rep_enc_part(
     return Ok(raw_enc_as_req_part);
 }
 
+pub fn extract_ticket_from_tgs_rep(
+    tgs_rep: TgsRep,
+    cipher: &Cipher,
+) -> Result<TicketCredInfo> {
+    let enc_tgs_as_rep_raw =
+        decrypt_tgs_rep_enc_part(&cipher, &tgs_rep.enc_part)?;
+
+    let (_, enc_tgs_rep_part) = EncTgsRepPart::parse(&enc_tgs_as_rep_raw)
+        .map_err(|_| format!("Error parsing EncTgsRepPart"))?;
+
+    let krb_cred_info_tgs = new_krb_cred_info(
+        enc_tgs_rep_part.into(),
+        tgs_rep.crealm,
+        tgs_rep.cname,
+    );
+
+    return Ok((tgs_rep.ticket, krb_cred_info_tgs).into());
+}
+
 /// Decrypts the TGS-REP enc-part by using the session key
-pub fn decrypt_tgs_rep_enc_part(
-    session_key: &[u8],
+fn decrypt_tgs_rep_enc_part(
+    cipher: &Cipher,
     enc_part: &EncryptedData,
 ) -> Result<Vec<u8>> {
-    let cipher = new_kerberos_cipher(enc_part.etype)
-        .map_err(|_| format!("Not supported etype: '{}'", enc_part.etype))?;
-
     let raw_enc_as_req_part = cipher
         .decrypt(
-            session_key,
             key_usages::KEY_USAGE_TGS_REP_ENC_PART_SESSION_KEY,
             &enc_part.cipher,
         )

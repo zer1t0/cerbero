@@ -20,4 +20,4 @@ pub use build_req::{
 };
 
 mod decrypters;
-pub use decrypters::{decrypt_tgs_rep_enc_part, extract_krb_cred_from_as_rep};
+pub use decrypters::{extract_ticket_from_tgs_rep, extract_krb_cred_from_as_rep};
