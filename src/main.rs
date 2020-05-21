@@ -143,6 +143,7 @@ use crate::error::Result;
 use crate::utils::{read_file_lines, resolve_and_get_tranporter};
 use log::error;
 use stderrlog;
+use crate::core::FileVault;
 
 fn init_log(verbosity: usize) {
     stderrlog::new()
@@ -192,13 +193,14 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         None => None,
     };
 
+    let vault = FileVault::new(creds_file);
     let user = KerberosUser::new(args.username, args.realm);
 
     return commands::ask(
         user,
         impersonate_user,
         args.service,
-        &creds_file,
+        &vault,
         &*transporter,
         args.user_key,
         args.credential_format,
@@ -215,7 +217,10 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
         )?,
     };
 
-    return commands::convert(&in_file, &args.out_file, args.cred_format);
+    let in_vault = FileVault::new(in_file);
+    let out_vault = FileVault::new(args.out_file);
+    
+    return commands::convert(&in_vault, &out_vault, args.cred_format);
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {
@@ -224,7 +229,9 @@ fn list(args: args::list::Arguments) -> Result<()> {
         None => utils::get_env_ticket_file()
             .ok_or("Specify file or set KRB5CCNAME")?,
     };
-    return commands::list(&in_file, args.etypes, args.flags);
+    
+    let in_vault = FileVault::new(in_file);
+    return commands::list(&in_vault, args.etypes, args.flags);
 }
 
 fn brute(args: args::brute::Arguments) -> Result<()> {
@@ -295,18 +302,19 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         args.transport_protocol,
     )?;
 
-    let creds_file = utils::get_ticket_file(
-        args.out_file,
-        &args.username,
-        &args.credential_format,
-    );
+    let creds_file = match args.out_file {
+        Some(filename) => filename,
+        None => utils::get_env_ticket_file()
+            .ok_or("Specify credentials file or set KRB5CCNAME")?,
+    };
 
+    let vault = FileVault::new(creds_file);
     let user = KerberosUser::new(args.username, args.realm);
 
     return commands::kerberoast(
         user,
         services,
-        &creds_file,
+        &vault,
         args.user_key.as_ref(),
         &*transporter,
         args.credential_format,

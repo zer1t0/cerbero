@@ -1,19 +1,19 @@
 use crate::core::CredentialFormat;
-use crate::core::{parse_creds_file, save_cred_in_file};
 use crate::Result;
 use log::info;
+use crate::core::Vault;
 
 pub fn convert(
-    in_file: &str,
-    out_file: &str,
+    in_vault: &dyn Vault,
+    out_vault: &dyn Vault,
     cred_format: Option<CredentialFormat>,
 ) -> Result<()> {
-    let (krb_cred, in_cred_format) = parse_creds_file(in_file)?;
-    info!("Read {} with {} format", in_file, in_cred_format);
+    let (krb_cred, in_cred_format) = in_vault.load()?;
+    info!("Read {} with {} format", in_vault.id(), in_cred_format);
 
     let cred_format = match cred_format {
         Some(cred_format) => cred_format,
-        None => match cred_format_from_file_extension(out_file) {
+        None => match cred_format_from_file_extension(out_vault.id()) {
             Some(cred_format) => {
                 info!(
                     "Detected {} format from output file extension",
@@ -25,8 +25,8 @@ pub fn convert(
         },
     };
 
-    save_cred_in_file(out_file, krb_cred, cred_format)?;
-    info!("Save {} with {} format", out_file, cred_format);
+    out_vault.save(krb_cred, cred_format)?;
+    info!("Save {} with {} format", out_vault.id(), cred_format);
 
     return Ok(());
 }

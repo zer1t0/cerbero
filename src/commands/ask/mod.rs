@@ -9,12 +9,13 @@ use crate::core::KerberosUser;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
+use crate::core::Vault;
 
 pub fn ask(
     user: KerberosUser,
     impersonate_user: Option<KerberosUser>,
     service: Option<String>,
-    creds_file: &str,
+    vault: &dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<Key>,
     credential_format: CredentialFormat,
@@ -27,7 +28,7 @@ pub fn ask(
                     user,
                     impersonate_user,
                     &service,
-                    creds_file,
+                    vault,
                     transporter,
                     user_key.as_ref(),
                     credential_format,
@@ -37,10 +38,10 @@ pub fn ask(
                 return ask_tgs(
                     user,
                     &service,
-                    creds_file,
                     transporter,
                     user_key.as_ref(),
                     credential_format,
+                    vault,
                 );
             }
         },
@@ -49,7 +50,7 @@ pub fn ask(
                 return ask_s4u2self(
                     user,
                     impersonate_user,
-                    creds_file,
+                    vault,
                     transporter,
                     user_key.as_ref(),
                     credential_format,
@@ -63,7 +64,7 @@ pub fn ask(
                         preauth,
                         transporter,
                         credential_format,
-                        creds_file,
+                        vault,
                     );
                 }
                 None => {

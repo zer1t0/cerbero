@@ -1,18 +1,17 @@
-use crate::core::parse_creds_file;
-use crate::core::KrbCredPlain;
+use crate::core::Vault;
 use crate::Result;
 use chrono::Local;
 use kerberos_asn1::KerberosTime;
 use kerberos_constants::etypes;
 use kerberos_constants::ticket_flags;
-use std::convert::TryFrom;
 
-pub fn list(in_file: &str, show_etypes: bool, show_flags: bool) -> Result<()> {
-    let (krb_cred, cred_format) = parse_creds_file(&in_file)?;
-
-    println!("Ticket cache ({}): FILE:{}", cred_format, in_file);
-
-    let krb_creds = KrbCredPlain::try_from(krb_cred)?;
+pub fn list(
+    vault: &dyn Vault,
+    show_etypes: bool,
+    show_flags: bool,
+) -> Result<()> {
+    let (krb_creds, cred_format) = vault.load()?;
+    println!("Ticket cache ({}): FILE:{}", cred_format, vault.id());
 
     for ticket_info in krb_creds.iter() {
         println!("");

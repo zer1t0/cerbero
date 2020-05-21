@@ -6,6 +6,9 @@ pub use kdc_req::KdcReqBuilder;
 mod krb_cred;
 pub use krb_cred::new_krb_cred_info;
 
+mod krb_user;
+pub use krb_user::KerberosUser;
+
 mod principal_name;
 pub use principal_name::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
 

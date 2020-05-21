@@ -5,7 +5,7 @@ use super::pa_data::{
 };
 use super::principal_name::{new_nt_srv_inst, new_nt_unknown};
 use crate::core::krb_cred_plain::TicketCredInfo;
-use crate::core::krb_user::KerberosUser;
+use crate::core::forge::KerberosUser;
 use crate::error::Result;
 use kerberos_asn1::{
     AsReq, TgsReq, Ticket,

@@ -1,29 +1,30 @@
-use super::krb_cred::new_krb_cred;
-use crate::core::krb_user::KerberosUser;
+use super::krb_cred::new_krb_cred_info;
+use crate::core::KerberosUser;
 use crate::error::Result;
-use kerberos_asn1::KrbCred;
 use kerberos_asn1::{AsRep, Asn1Object, EncAsRepPart, EncryptedData};
 use kerberos_constants;
 use kerberos_constants::key_usages;
 use kerberos_crypto::{new_kerberos_cipher, Key};
+use crate::core::TicketCredInfo;
 
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
     user: &KerberosUser,
     user_key: &Key,
-) -> Result<KrbCred> {
+) -> Result<TicketCredInfo> {
     let raw_enc_as_rep_part =
         decrypt_as_rep_enc_part(user, user_key, &as_rep.enc_part)?;
 
     let (_, enc_as_rep_part) = EncAsRepPart::parse(&raw_enc_as_rep_part)
         .map_err(|_| format!("Error decoding AS-REP"))?;
 
-    return Ok(new_krb_cred(
+    let krb_cred_info = new_krb_cred_info(
         enc_as_rep_part.into(),
-        as_rep.ticket,
         as_rep.crealm,
-        as_rep.cname,
-    ));
+        as_rep.cname
+    );
+
+    return Ok(TicketCredInfo::new(as_rep.ticket, krb_cred_info));
 }
 
 /// Decrypts the AS-REP enc-part by using the use credentials

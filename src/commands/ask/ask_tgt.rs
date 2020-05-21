@@ -1,10 +1,11 @@
 use crate::core::request_tgt;
-use crate::core::save_cred_in_file;
 use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
+use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
+use crate::core::KrbCredPlain;
 use log::info;
 
 /// Main function to ask a TGT
@@ -14,15 +15,17 @@ pub fn ask_tgt(
     preauth: bool,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
-    creds_file: &str,
+    vault: &dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
 
     info!("Request TGT for {}", user.name);
-    let krb_cred = request_tgt(user, user_key, preauth, transporter)?;
+    let tgt_info = request_tgt(user, user_key, preauth, transporter)?;
 
-    info!("Save {} TGT in {}", username, creds_file);
-    save_cred_in_file(creds_file, krb_cred, cred_format)?;
+    let krb_cred_plain = KrbCredPlain::new(vec![tgt_info]);
+
+    info!("Save {} TGT in {}", username, vault.id());
+    vault.save(krb_cred_plain, cred_format)?;
 
     return Ok(());
 }

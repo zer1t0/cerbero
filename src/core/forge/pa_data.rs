@@ -1,5 +1,5 @@
 use super::principal_name::new_nt_principal;
-use crate::core::krb_user::KerberosUser;
+use crate::core::forge::KerberosUser;
 use chrono::Utc;
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncryptedData, PaData, PaEncTsEnc,

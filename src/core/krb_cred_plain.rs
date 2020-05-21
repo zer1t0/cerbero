@@ -1,3 +1,5 @@
+//! Structs to allow handle easier tickets and their associated KrbCredInfo
+
 use crate::core::forge::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
 use crate::core::KerberosUser;
 use kerberos_asn1::{
@@ -8,6 +10,7 @@ use kerberos_constants::etypes::NO_ENCRYPTION;
 use std::convert::TryFrom;
 use std::slice::Iter;
 
+#[derive(Debug)]
 pub struct KrbCredPlain {
     pub ticket_cred_infos: Vec<TicketCredInfo>,
 }
@@ -113,6 +116,13 @@ impl From<(Vec<Ticket>, Vec<KrbCredInfo>)> for KrbCredPlain {
         }
 
         return Self::new(ticket_cred_infos);
+    }
+}
+
+
+impl From<TicketCredInfo> for KrbCredPlain {
+    fn from(ticket_info: TicketCredInfo) -> Self {
+        return Self::new(vec![ticket_info]);
     }
 }
 

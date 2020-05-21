@@ -1,5 +1,5 @@
 use crate::core::request_tgt;
-use crate::core::save_cred_in_file;
+use crate::core::save_file_creds;
 use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
 use crate::error::{Error, Result};
@@ -30,14 +30,14 @@ pub fn brute(
             let result = request_tgt(&user, &user_key, true, &*transporter);
 
             match result {
-                Ok(krb_cred) => {
+                Ok(tgt_info) => {
                     println!("{}:{}", username, password);
 
                     if let Some(cred_format) = cred_format {
                         let filename = format!("{}.{}", username, cred_format);
-                        match save_cred_in_file(
+                        match save_file_creds(
                             &filename,
-                            krb_cred,
+                            tgt_info.into(),
                             cred_format,
                         ) {
                             Ok(_) => info!(

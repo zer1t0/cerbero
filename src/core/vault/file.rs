@@ -1,11 +1,45 @@
+use super::Vault;
 use crate::core::CredentialFormat;
+use crate::core::KrbCredPlain;
 use crate::Result;
 use kerberos_asn1::{Asn1Object, KrbCred};
 use kerberos_ccache::CCache;
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 use std::fs;
 
-pub fn parse_creds_file(
+pub struct FileVault {
+    file_path: String,
+}
+
+impl FileVault {
+    pub fn new(file_path: String) -> Self {
+        return Self { file_path };
+    }
+}
+
+impl Vault for FileVault {
+    fn id(&self) -> &String {
+        return &self.file_path;
+    }
+        
+    fn load(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
+        return load_file_creds(&self.file_path);
+    }
+
+    fn save(&self, creds: KrbCredPlain, cred_format: CredentialFormat) -> Result<()> {
+        return save_file_creds(&self.file_path, creds, cred_format);
+    }
+}
+
+pub fn load_file_creds(
+    creds_file: &str,
+) -> Result<(KrbCredPlain, CredentialFormat)> {
+    let (krb_cred, cred_format) = load_file_krb_cred(&creds_file)?;
+    let creds = KrbCredPlain::try_from(krb_cred)?;
+    return Ok((creds, cred_format));
+}
+
+pub fn load_file_krb_cred(
     creds_file: &str,
 ) -> Result<(KrbCred, CredentialFormat)> {
     let data = fs::read(creds_file).map_err(|err| {
@@ -32,8 +66,17 @@ pub fn parse_creds_file(
     }
 }
 
-pub fn save_cred_in_file(
-    out_file: &str,
+pub fn save_file_creds(
+    creds_file: &str,
+    creds: KrbCredPlain,
+    cred_format: CredentialFormat,
+) -> Result<()> {
+    let krb_cred = creds.into();
+    return save_file_krb_cred(creds_file, krb_cred, cred_format);
+}
+
+pub fn save_file_krb_cred(
+    creds_file: &str,
     krb_cred: KrbCred,
     cred_format: CredentialFormat,
 ) -> Result<()> {
@@ -47,8 +90,8 @@ pub fn save_cred_in_file(
         }
     };
 
-    fs::write(out_file, raw_cred).map_err(|_| {
-        format!("Unable to write credentials in file {}", out_file)
+    fs::write(creds_file, raw_cred).map_err(|_| {
+        format!("Unable to write credentials in file {}", creds_file)
     })?;
 
     return Ok(());

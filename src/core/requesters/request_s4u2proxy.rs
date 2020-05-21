@@ -3,7 +3,7 @@ use crate::core::forge::{
     build_s4u2proxy_req, new_krb_cred_info, decrypt_tgs_rep_enc_part,
 };
 use crate::core::krb_cred_plain::TicketCredInfo;
-use crate::core::krb_user::KerberosUser;
+use crate::core::forge::KerberosUser;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_asn1::{Asn1Object, EncTgsRepPart, Ticket};
