@@ -2,7 +2,7 @@ mod cipher;
 pub use cipher::{Cipher, generate_cipher_and_key};
 
 mod forge;
-pub use forge::KerberosUser;
+pub use forge::{KerberosUser, S4u2options};
 
 mod cracking;
 pub use cracking::{as_rep_to_crack_string, tgs_to_crack_string, CrackFormat};
@@ -18,7 +18,7 @@ pub use provider::{get_impersonation_ticket, get_user_tgt};
 
 mod requesters;
 pub use requesters::{
-    request_as_rep, request_s4u2proxy, request_s4u2self, request_tgs,
+    request_as_rep, request_tgs,
     request_tgt,
 };
 

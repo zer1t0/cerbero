@@ -2,7 +2,7 @@ use super::Vault;
 use crate::core::krb_cred_plain::{KrbCredPlain, TicketCredInfo};
 use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
-use crate::core::{request_s4u2self, request_tgt};
+use crate::core::{request_tgs, request_tgt, S4u2options};
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
@@ -24,7 +24,8 @@ pub fn get_user_tgt(
     let err = tgt_result.unwrap_err();
     warn!("No TGT found in {}: {}", vault.id(), err);
 
-    let user_key = user_key.ok_or("Unable to request TGT without user credentials")?;
+    let user_key =
+        user_key.ok_or("Unable to request TGT without user credentials")?;
 
     info!("Request TGT for {}", user.name);
     let tgt_info = request_tgt(user, user_key, transporter)?;
@@ -46,7 +47,10 @@ fn get_user_tgt_from_file(
 
     if let Some(etype) = etype {
         if ticket_cred_info.cred_info.key.keytype != etype {
-            return Err(format!("TGT of '{}' with incompatible etype", user.name))?;
+            return Err(format!(
+                "TGT of '{}' with incompatible etype",
+                user.name
+            ))?;
         }
     }
 
@@ -74,8 +78,12 @@ pub fn get_impersonation_ticket(
                 "No {} S4U2Self TGS for {} found",
                 impersonate_user.name, user.name
             );
-            let tgs_self =
-                request_s4u2self(user, impersonate_user, tgt, transporter)?;
+            let tgs_self = request_tgs(
+                user,
+                tgt,
+                S4u2options::S4u2self(impersonate_user),
+                transporter,
+            )?;
             krb_cred_plain.push(tgs_self.clone());
 
             return Ok((krb_cred_plain, tgs_self));

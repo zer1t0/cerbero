@@ -2,8 +2,7 @@ use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
 use crate::core::Vault;
 use crate::core::{
-    get_impersonation_ticket, get_user_tgt, request_s4u2proxy,
-    request_s4u2self, request_tgs,
+    get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
@@ -23,11 +22,55 @@ pub fn ask_tgs(
     let (mut krb_cred_plain, cred_format, tgt_info) =
         get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
 
-    let tgs_info = request_tgs(user, service.clone(), tgt_info, transporter)?;
+    info!("Request {} TGS for {}", service, user.name);
+    let tgs_info = request_tgs(
+        user,
+        tgt_info,
+        S4u2options::Normal(service.clone()),
+        transporter,
+    )?;
 
     krb_cred_plain.push(tgs_info);
 
     info!("Save {} TGS for {} in {}", username, service, vault.id());
+    vault.save(krb_cred_plain, cred_format)?;
+
+    return Ok(());
+}
+
+/// Main function to perform an S4U2Self operation
+pub fn ask_s4u2self(
+    user: KerberosUser,
+    impersonate_user: KerberosUser,
+    vault: &dyn Vault,
+    transporter: &dyn KerberosTransporter,
+    user_key: Option<&Key>,
+    cred_format: CredentialFormat,
+) -> Result<()> {
+    let imp_username = impersonate_user.name.clone();
+    let username = user.name.clone();
+    let (mut krb_cred_plain, cred_format, tgt_info) =
+        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
+
+    info!(
+        "Request {} S4U2Self TGS for {}",
+        user.name, impersonate_user.name
+    );
+    let tgs = request_tgs(
+        user,
+        tgt_info,
+        S4u2options::S4u2self(impersonate_user),
+        transporter,
+    )?;
+
+    krb_cred_plain.push(tgs);
+
+    info!(
+        "Save {} S4U2Self TGS for {} in {}",
+        imp_username,
+        username,
+        vault.id()
+    );
     vault.save(krb_cred_plain, cred_format)?;
 
     return Ok(());
@@ -55,12 +98,14 @@ pub fn ask_s4u2proxy(
         tgt.clone(),
     )?;
 
-    let tgs_proxy = request_s4u2proxy(
+    info!(
+        "Request {} S4U2Proxy TGS for {}",
+        service, imp_username
+    );
+    let tgs_proxy = request_tgs(
         user,
-        &imp_username,
-        service.clone(),
         tgt,
-        imp_ticket.ticket,
+        S4u2options::S4u2proxy(imp_ticket.ticket, service.clone()),
         transporter,
     )?;
 
@@ -70,35 +115,6 @@ pub fn ask_s4u2proxy(
         "Save {} S4U2Proxy TGS for {} in {}",
         imp_username,
         service,
-        vault.id()
-    );
-    vault.save(krb_cred_plain, cred_format)?;
-
-    return Ok(());
-}
-
-/// Main function to perform an S4U2Self operation
-pub fn ask_s4u2self(
-    user: KerberosUser,
-    impersonate_user: KerberosUser,
-    vault: &dyn Vault,
-    transporter: &dyn KerberosTransporter,
-    user_key: Option<&Key>,
-    cred_format: CredentialFormat,
-) -> Result<()> {
-    let imp_username = impersonate_user.name.clone();
-    let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt_info) =
-        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
-
-    let tgs = request_s4u2self(user, impersonate_user, tgt_info, transporter)?;
-
-    krb_cred_plain.push(tgs);
-
-    info!(
-        "Save {} S4U2Self TGS for {} in {}",
-        imp_username,
-        username,
         vault.id()
     );
     vault.save(krb_cred_plain, cred_format)?;
