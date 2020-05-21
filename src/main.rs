@@ -204,7 +204,6 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         &*transporter,
         args.user_key,
         args.credential_format,
-        args.preauth,
     );
 }
 
@@ -283,7 +282,7 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         usernames,
         args.crack_format,
         &*transporter,
-        &args.cipher,
+        args.etype,
     );
 }
 
@@ -319,5 +318,6 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         &*transporter,
         args.credential_format,
         args.crack_format,
+        args.etype
     );
 }

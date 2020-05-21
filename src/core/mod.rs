@@ -1,3 +1,6 @@
+mod cipher;
+pub use cipher::{Cipher, generate_cipher_and_key};
+
 mod forge;
 pub use forge::KerberosUser;
 

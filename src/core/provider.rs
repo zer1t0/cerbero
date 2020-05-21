@@ -11,13 +11,13 @@ use log::{info, warn};
 /// Function to get a TGT from the credentials file
 /// or request it if it is necessary
 pub fn get_user_tgt(
-    user: &KerberosUser,
+    user: KerberosUser,
     vault: &dyn Vault,
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
 ) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
-    let tgt_result = get_user_tgt_from_file(user, vault);
+    let tgt_result = get_user_tgt_from_file(&user, vault, None);
     if let Ok(creds) = tgt_result {
         return Ok(creds);
     }
@@ -27,7 +27,7 @@ pub fn get_user_tgt(
     let user_key = user_key.ok_or("Unable to request TGT without user credentials")?;
 
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user, user_key, true, transporter)?;
+    let tgt_info = request_tgt(user, user_key, transporter)?;
     let krb_cred_plain = KrbCredPlain::new(vec![tgt_info.clone()]);
     return Ok((krb_cred_plain, cred_format, tgt_info));
 }
@@ -36,12 +36,19 @@ pub fn get_user_tgt(
 fn get_user_tgt_from_file(
     user: &KerberosUser,
     vault: &dyn Vault,
+    etype: Option<i32>,
 ) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
     let (krb_cred_plain, cred_format) = vault.load()?;
 
     let ticket_cred_info = krb_cred_plain
         .look_for_tgt(&user)
         .ok_or(format!("No TGT found for '{}", user.name))?;
+
+    if let Some(etype) = etype {
+        if ticket_cred_info.cred_info.key.keytype != etype {
+            return Err(format!("TGT of '{}' with incompatible etype", user.name))?;
+        }
+    }
 
     return Ok((krb_cred_plain, cred_format, ticket_cred_info));
 }

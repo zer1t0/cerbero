@@ -10,9 +10,8 @@ use log::info;
 
 /// Main function to ask a TGT
 pub fn ask_tgt(
-    user: &KerberosUser,
+    user: KerberosUser,
     user_key: &Key,
-    preauth: bool,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
     vault: &dyn Vault,
@@ -20,7 +19,7 @@ pub fn ask_tgt(
     let username = user.name.clone();
 
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user, user_key, preauth, transporter)?;
+    let tgt_info = request_tgt(user, user_key, transporter)?;
 
     let krb_cred_plain = KrbCredPlain::new(vec![tgt_info]);
 

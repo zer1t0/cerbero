@@ -21,7 +21,7 @@ pub fn ask_tgs(
 ) -> Result<()> {
     let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, tgt_info) =
-        get_user_tgt(&user, vault, user_key, transporter, cred_format)?;
+        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
 
     let tgs_info = request_tgs(user, &service, tgt_info, transporter)?;
 
@@ -45,7 +45,7 @@ pub fn ask_s4u2proxy(
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
     let (krb_cred_plain, cred_format, tgt) =
-        get_user_tgt(&user, vault, user_key, transporter, cred_format)?;
+        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
 
     let (mut krb_cred_plain, imp_ticket) = get_impersonation_ticket(
         krb_cred_plain,
@@ -89,7 +89,7 @@ pub fn ask_s4u2self(
     let imp_username = impersonate_user.name.clone();
     let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, tgt_info) =
-        get_user_tgt(&user, vault, user_key, transporter, cred_format)?;
+        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
 
     let tgs = request_s4u2self(user, impersonate_user, tgt_info, transporter)?;
 

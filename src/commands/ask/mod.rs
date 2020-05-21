@@ -19,7 +19,6 @@ pub fn ask(
     transporter: &dyn KerberosTransporter,
     user_key: Option<Key>,
     credential_format: CredentialFormat,
-    preauth: bool,
 ) -> Result<()> {
     match service {
         Some(service) => match impersonate_user {
@@ -59,9 +58,8 @@ pub fn ask(
             None => match user_key {
                 Some(user_key) => {
                     return ask_tgt(
-                        &user,
+                        user,
                         &user_key,
-                        preauth,
                         transporter,
                         credential_format,
                         vault,

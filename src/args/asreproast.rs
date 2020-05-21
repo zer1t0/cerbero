@@ -2,8 +2,8 @@ use super::validators;
 use crate::core::CrackFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use kerberos_crypto::Key;
 use std::net::IpAddr;
+use kerberos_constants::etypes;
 
 pub const COMMAND_NAME: &str = "asreproast";
 
@@ -52,8 +52,8 @@ pub fn command() -> App<'static, 'static> {
                 .default_value("hashcat"),
         )
         .arg(
-            Arg::with_name("cipher")
-                .long("cipher")
+            Arg::with_name("etype")
+                .long("etype")
                 .help("Encryption algorithm requested to server.")
                 .possible_values(&["rc4", "aes128", "aes256"])
                 .takes_value(true),
@@ -69,7 +69,7 @@ pub struct Arguments {
     pub transport_protocol: TransportProtocol,
     pub verbosity: usize,
     pub crack_format: CrackFormat,
-    pub cipher: Key,
+    pub etype: Option<i32>,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -95,7 +95,7 @@ impl<'a> ArgumentsParser<'a> {
             transport_protocol: self.parse_transport_protocol(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
             crack_format: self.parse_crack_format(),
-            cipher: self.parse_cipher(),
+            etype: self.parse_etype(),
         };
     }
 
@@ -122,15 +122,13 @@ impl<'a> ArgumentsParser<'a> {
         return TransportProtocol::TCP;
     }
 
-    fn parse_cipher(&self) -> Key {
-        match self.matches.value_of("cipher") {
-            None => Key::Secret("".to_string()),
-            Some(cipher) => match cipher {
-                "rc4" => Key::RC4Key([0; 16]),
-                "aes128" => Key::AES128Key([0; 16]),
-                "aes256" => Key::AES256Key([0; 32]),
-                _ => unreachable!("Unknown cipher format"),
-            },
-        }
+    fn parse_etype(&self) -> Option<i32> {
+        let etype = match self.matches.value_of("etype")? {
+            "rc4" => etypes::RC4_HMAC,
+            "aes128" => etypes::AES128_CTS_HMAC_SHA1_96,
+            "aes256" => etypes::AES256_CTS_HMAC_SHA1_96,
+            _ => unreachable!("Unknown etype"),
+        };
+        return Some(etype);
     }
 }

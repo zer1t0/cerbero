@@ -15,18 +15,18 @@ use kerberos_constants::pa_data_types::{
 };
 use kerberos_constants::{checksum_types, pa_data_types};
 use kerberos_crypto::checksum_hmac_md5;
+use crate::core::Cipher;
 
 /// Helper to create a PA-DATA that contains a PA-ENC-TS-ENC struct
 pub fn new_pa_data_encrypted_timestamp(
-    etype: i32,
-    encrypt: &dyn Fn(i32, &[u8]) -> Vec<u8>,
+    cipher: &Cipher,
 ) -> PaData {
     let timestamp = PaEncTsEnc::from(Utc::now());
     let encrypted_timestamp =
-        encrypt(KEY_USAGE_AS_REQ_TIMESTAMP, &timestamp.build());
+        cipher.encrypt(KEY_USAGE_AS_REQ_TIMESTAMP, &timestamp.build());
     let padata = PaData::new(
         pa_data_types::PA_ENC_TIMESTAMP,
-        EncryptedData::new(etype, None, encrypted_timestamp).build(),
+        EncryptedData::new(cipher.etype(), None, encrypted_timestamp).build(),
     );
 
     return padata;

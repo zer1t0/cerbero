@@ -6,25 +6,27 @@ use crate::transporter::KerberosTransporter;
 use kerberos_asn1::{AsRep};
 use kerberos_crypto::Key;
 use crate::core::TicketCredInfo;
+use crate::core::Cipher; 
 
 /// Uses user credentials to request a TGT
 pub fn request_tgt(
-    user: &KerberosUser,
+    user: KerberosUser,
     user_key: &Key,
-    preauth: bool,
     transporter: &dyn KerberosTransporter,
 ) -> Result<TicketCredInfo> {
-    let rep = request_as_rep(user, user_key, preauth, transporter)?;
-    return extract_krb_cred_from_as_rep(rep, user, user_key);
+    let cipher = Cipher::generate(user_key, &user, None);
+    
+    let rep = request_as_rep(user.clone(), Some(&cipher), None, transporter)?;
+    return extract_krb_cred_from_as_rep(rep, &user, user_key);
 }
 
 /// Uses user credentials to obtain an AS-REP response
 pub fn request_as_rep(
-    user: &KerberosUser,
-    user_key: &Key,
-    preauth: bool,
+    user: KerberosUser,
+    cipher: Option<&Cipher>,
+    etypes: Option<Vec<i32>>,
     transporter: &dyn KerberosTransporter,
 ) -> Result<AsRep> {
-    let as_req = build_as_req(user, user_key, preauth);
+    let as_req = build_as_req(user, cipher, etypes);
     return send_recv_as(transporter, &as_req);
 }

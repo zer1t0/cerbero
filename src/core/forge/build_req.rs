@@ -4,73 +4,40 @@ use super::pa_data::{
     new_pa_data_pa_for_user, new_pa_data_pac_options,
 };
 use super::principal_name::{new_nt_srv_inst, new_nt_unknown};
-use crate::core::krb_cred_plain::TicketCredInfo;
 use crate::core::forge::KerberosUser;
+use crate::core::krb_cred_plain::TicketCredInfo;
+use crate::core::Cipher;
 use crate::error::Result;
-use kerberos_asn1::{
-    AsReq, TgsReq, Ticket,
-};
+use kerberos_asn1::{AsReq, TgsReq, Ticket};
 use kerberos_constants;
 use kerberos_constants::{kdc_options, pa_pac_options};
 use kerberos_crypto::{
-    new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
+    new_kerberos_cipher,
 };
-
-
 
 /// Helper to easily craft an AS-REQ message for asking a TGT
 /// from user data
 pub fn build_as_req(
-    user: &KerberosUser,
-    user_key: &Key,
-    preauth: bool,
+    user: KerberosUser,
+    cipher: Option<&Cipher>,
+    etypes: Option<Vec<i32>>,
 ) -> AsReq {
-    let mut as_req_builder = KdcReqBuilder::new(user.realm.clone())
-        .username(user.name.clone())
-        .etypes(user_key.etypes())
+    let mut as_req_builder = KdcReqBuilder::new(user.realm)
+        .username(user.name)
         .request_pac();
 
-    if preauth {
-        let (cipher, key) =
-            get_cipher_and_key(&user_key, &user.realm, &user.name);
-        let padata =
-            new_pa_data_encrypted_timestamp(cipher.etype(), &|u, b| {
-                cipher.encrypt(&key, u, b)
-            });
-        as_req_builder = as_req_builder.push_padata(padata);
+    if let Some(cipher) = cipher {
+        let padata = new_pa_data_encrypted_timestamp(cipher);
+        as_req_builder = as_req_builder
+            .push_padata(padata)
+            .etypes(vec![cipher.etype()]);
+    }
+
+    if let Some(etypes) = etypes {
+        as_req_builder = as_req_builder.etypes(etypes);
     }
 
     return as_req_builder.build_as_req();
-}
-
-/// Helper to generate a cipher based on user credentials
-/// and calculate the key when it is necessary
-/// (in case of password)
-fn get_cipher_and_key(
-    user_key: &Key,
-    realm: &str,
-    client_name: &str,
-) -> (Box<dyn KerberosCipher>, Vec<u8>) {
-    match user_key {
-        Key::Secret(secret) => {
-            let cipher = AesCipher::new(AesSizes::Aes256);
-            let salt = cipher.generate_salt(realm, client_name);
-            let key = cipher.generate_key_from_string(&secret, &salt);
-            return (Box::new(cipher), key);
-        }
-        Key::RC4Key(key) => {
-            let cipher = Rc4Cipher::new();
-            return (Box::new(cipher), key.to_vec());
-        }
-        Key::AES128Key(key) => {
-            let cipher = AesCipher::new(AesSizes::Aes128);
-            return (Box::new(cipher), key.to_vec());
-        }
-        Key::AES256Key(key) => {
-            let cipher = AesCipher::new(AesSizes::Aes256);
-            return (Box::new(cipher), key.to_vec());
-        }
-    };
 }
 
 /// Helper to easily craft a TGS-REQ message for asking a TGS
@@ -103,7 +70,6 @@ pub fn build_tgs_req(
 
     return Ok(tgs_req);
 }
-
 
 /// Helper to easily craft a TGS-REQ message for S4U2Proxy
 /// from user data and TGT

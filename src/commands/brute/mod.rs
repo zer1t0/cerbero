@@ -27,7 +27,7 @@ pub fn brute(
             let user = KerberosUser::new(username.clone(), realm.to_string());
             let user_key = Key::Secret(password.clone());
 
-            let result = request_tgt(&user, &user_key, true, &*transporter);
+            let result = request_tgt(user, &user_key, &*transporter);
 
             match result {
                 Ok(tgt_info) => {

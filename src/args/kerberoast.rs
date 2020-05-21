@@ -5,6 +5,7 @@ use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
+use kerberos_constants::etypes;
 
 pub const COMMAND_NAME: &str = "kerberoast";
 
@@ -92,6 +93,13 @@ pub fn command() -> App<'static, 'static> {
                 .help("Increase message verbosity"),
         )
         .arg(
+            Arg::with_name("etype")
+                .long("etype")
+                .help("Encryption algorithm requested to server.")
+                .possible_values(&["rc4", "aes128", "aes256"])
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("crack-format")
                 .long("crack-format")
                 .takes_value(true)
@@ -123,6 +131,7 @@ pub struct Arguments {
     pub services: String,
     pub transport_protocol: TransportProtocol,
     pub verbosity: usize,
+    pub etype: Option<i32>,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -156,6 +165,7 @@ impl<'a> ArgumentsParser<'a> {
             transport_protocol: self.parse_transport_protocol(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
             crack_format: self.parse_crack_format(),
+            etype: self.parse_etype(),
         };
     }
 
@@ -212,5 +222,15 @@ impl<'a> ArgumentsParser<'a> {
         }
 
         return CrackFormat::Hashcat;
+    }
+
+    fn parse_etype(&self) -> Option<i32> {
+        let etype = match self.matches.value_of("etype")? {
+            "rc4" => etypes::RC4_HMAC,
+            "aes128" => etypes::AES128_CTS_HMAC_SHA1_96,
+            "aes256" => etypes::AES256_CTS_HMAC_SHA1_96,
+            _ => unreachable!("Unknown etype"),
+        };
+        return Some(etype);
     }
 }

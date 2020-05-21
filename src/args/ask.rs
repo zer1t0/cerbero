@@ -103,11 +103,6 @@ pub fn command() -> App<'static, 'static> {
                 .help("File to save ticket"),
         )
         .arg(
-            Arg::with_name("no-preauth")
-                .long("no-preauth")
-                .help("Request ticket without send preauthentication data"),
-        )
-        .arg(
             Arg::with_name("udp")
                 .long("udp")
                 .help("Use udp as transport protocol"),
@@ -128,7 +123,6 @@ pub struct Arguments {
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
     pub credential_format: CredentialFormat,
-    pub preauth: bool,
     pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
@@ -162,7 +156,6 @@ impl<'a> ArgumentsParser<'a> {
             kdc_ip,
             kdc_port: 88,
             credential_format,
-            preauth: !self.matches.is_present("no-preauth"),
             out_file,
             service,
             transport_protocol: self.parse_transport_protocol(),
