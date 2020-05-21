@@ -17,7 +17,7 @@ pub fn request_tgt(
     let cipher = Cipher::generate(user_key, &user, None);
     
     let rep = request_as_rep(user.clone(), Some(&cipher), None, transporter)?;
-    return extract_krb_cred_from_as_rep(rep, &user, user_key);
+    return extract_krb_cred_from_as_rep(rep, &cipher);
 }
 
 /// Uses user credentials to obtain an AS-REP response

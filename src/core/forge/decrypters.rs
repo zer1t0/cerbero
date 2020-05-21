@@ -1,58 +1,39 @@
 use super::krb_cred::new_krb_cred_info;
-use crate::core::KerberosUser;
+use crate::core::Cipher;
+use crate::core::TicketCredInfo;
 use crate::error::Result;
 use kerberos_asn1::{AsRep, Asn1Object, EncAsRepPart, EncryptedData};
 use kerberos_constants;
 use kerberos_constants::key_usages;
-use kerberos_crypto::{new_kerberos_cipher, Key};
-use crate::core::TicketCredInfo;
+use kerberos_crypto::{new_kerberos_cipher};
 
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
-    user: &KerberosUser,
-    user_key: &Key,
+    cipher: &Cipher,
 ) -> Result<TicketCredInfo> {
     let raw_enc_as_rep_part =
-        decrypt_as_rep_enc_part(user, user_key, &as_rep.enc_part)?;
+        decrypt_as_rep_enc_part(cipher, &as_rep.enc_part)?;
 
     let (_, enc_as_rep_part) = EncAsRepPart::parse(&raw_enc_as_rep_part)
         .map_err(|_| format!("Error decoding AS-REP"))?;
 
-    let krb_cred_info = new_krb_cred_info(
-        enc_as_rep_part.into(),
-        as_rep.crealm,
-        as_rep.cname
-    );
+    let krb_cred_info =
+        new_krb_cred_info(enc_as_rep_part.into(), as_rep.crealm, as_rep.cname);
 
     return Ok(TicketCredInfo::new(as_rep.ticket, krb_cred_info));
 }
 
 /// Decrypts the AS-REP enc-part by using the use credentials
 fn decrypt_as_rep_enc_part(
-    user: &KerberosUser,
-    user_key: &Key,
+    cipher: &Cipher,
     enc_part: &EncryptedData,
 ) -> Result<Vec<u8>> {
-    if !user_key.etypes().contains(&enc_part.etype) {
+    if cipher.etype() != enc_part.etype {
         return Err("Unable to decrypt KDC response AS-REP: mistmach etypes")?;
     }
 
-    let cipher = new_kerberos_cipher(enc_part.etype).unwrap();
-
-    let key = match &user_key {
-        Key::Secret(secret) => {
-            let salt = cipher.generate_salt(&user.realm, &user.name);
-            cipher.generate_key_from_string(&secret, &salt)
-        }
-        _ => (&user_key.as_bytes()).to_vec(),
-    };
-
     let raw_enc_as_req_part = cipher
-        .decrypt(
-            &key,
-            key_usages::KEY_USAGE_AS_REP_ENC_PART,
-            &enc_part.cipher,
-        )
+        .decrypt(key_usages::KEY_USAGE_AS_REP_ENC_PART, &enc_part.cipher)
         .map_err(|error| {
             format!("Error decrypting KDC response AS-REP: {}", error)
         })?;
