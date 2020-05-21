@@ -23,7 +23,7 @@ pub fn kerberoast(
         get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;    
 
     for service in services {
-        match request_tgs(user.clone(), &service, tgt.clone(), transporter) {
+        match request_tgs(user.clone(), service.clone(), tgt.clone(), transporter) {
             Err(err) => match &err {
                 _ => return Err(err),
             },

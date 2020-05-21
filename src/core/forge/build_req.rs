@@ -35,50 +35,45 @@ pub fn build_as_req(
     return as_req_builder.build_as_req();
 }
 
+pub enum S4u2options {
+    S4u2proxy(Ticket, String),
+    S4u2self(KerberosUser),
+    Normal(String),
+}
+
 /// Helper to easily craft a TGS-REQ message for asking a TGS
 /// from user data and TGT
 pub fn build_tgs_req(
     user: KerberosUser,
     tgt: Ticket,
     cipher: &Cipher,
-    service: &str,
-    tgs_imp: Option<Ticket>,
+    s4u2options: S4u2options,
 ) -> TgsReq {
     let realm = user.realm.clone();
-    let sname = new_nt_srv_inst(service);
-    let mut tgs_req_builder = KdcReqBuilder::new(realm)
-        .push_padata(new_pa_data_ap_req(user, tgt, cipher))
-        .sname(Some(sname));
+    let mut tgs_req_builder = KdcReqBuilder::new(realm);
 
-    if let Some(tgs_imp) = tgs_imp {
-        tgs_req_builder = tgs_req_builder
-            .push_ticket(tgs_imp)
-            .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
-            .push_padata(new_pa_data_pac_options(
-                pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
-            ));
+    match s4u2options {
+        S4u2options::Normal(service) => {
+            tgs_req_builder =
+                tgs_req_builder.sname(Some(new_nt_srv_inst(&service)));
+        }
+        S4u2options::S4u2self(impersonate_user) => {
+            tgs_req_builder = tgs_req_builder
+                .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher))
+                .sname(Some(new_nt_unknown(&user.name)));
+        }
+        S4u2options::S4u2proxy(tgs, service) => {
+            tgs_req_builder = tgs_req_builder
+                .sname(Some(new_nt_srv_inst(&service)))
+                .push_ticket(tgs)
+                .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
+                .push_padata(new_pa_data_pac_options(
+                    pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
+                ));
+        }
     }
 
-    return tgs_req_builder.build_tgs_req();
-}
-
-/// Helper to easily craft a TGS-REQ message for S4U2Self
-/// from user data and TGT
-pub fn build_s4u2self_req(
-    user: KerberosUser,
-    impersonate_user: KerberosUser,
-    tgt: Ticket,
-    cipher: &Cipher,
-) -> TgsReq {
-    let realm = user.realm.clone();
-    let sname = new_nt_unknown(&user.name);
-    let mut tgs_req_builder = KdcReqBuilder::new(realm)
+    return tgs_req_builder
         .push_padata(new_pa_data_ap_req(user, tgt, cipher))
-        .sname(Some(sname));
-
-    tgs_req_builder = tgs_req_builder
-        .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher));
-
-
-    return tgs_req_builder.build_tgs_req();
+        .build_tgs_req();
 }

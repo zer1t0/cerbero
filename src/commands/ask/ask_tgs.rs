@@ -13,7 +13,7 @@ use log::info;
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
     user: KerberosUser,
-    service: &str,
+    service: String,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredentialFormat,
@@ -23,7 +23,7 @@ pub fn ask_tgs(
     let (mut krb_cred_plain, cred_format, tgt_info) =
         get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
 
-    let tgs_info = request_tgs(user, &service, tgt_info, transporter)?;
+    let tgs_info = request_tgs(user, service.clone(), tgt_info, transporter)?;
 
     krb_cred_plain.push(tgs_info);
 
@@ -37,7 +37,7 @@ pub fn ask_tgs(
 pub fn ask_s4u2proxy(
     user: KerberosUser,
     impersonate_user: KerberosUser,
-    service: &str,
+    service: String,
     vault: &dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
@@ -58,7 +58,7 @@ pub fn ask_s4u2proxy(
     let tgs_proxy = request_s4u2proxy(
         user,
         &imp_username,
-        service,
+        service.clone(),
         tgt,
         imp_ticket.ticket,
         transporter,
