@@ -39,51 +39,27 @@ pub fn build_as_req(
 /// from user data and TGT
 pub fn build_tgs_req(
     user: KerberosUser,
-    service: &str,
     tgt: Ticket,
     cipher: &Cipher,
-) -> TgsReq {
-    let mut padatas = Vec::new();
-    let realm = user.realm.clone();
-    let sname = new_nt_srv_inst(service);
-
-    padatas.push(new_pa_data_ap_req(user, tgt, cipher));
-
-    let tgs_req = KdcReqBuilder::new(realm)
-        .padatas(padatas)
-        .sname(Some(sname))
-        .build_tgs_req();
-
-    return tgs_req;
-}
-
-/// Helper to easily craft a TGS-REQ message for S4U2Proxy
-/// from user data and TGT
-pub fn build_s4u2proxy_req(
-    user: KerberosUser,
     service: &str,
-    tgt: Ticket,
-    tgs_imp: Ticket,
-    cipher: &Cipher,
+    tgs_imp: Option<Ticket>,
 ) -> TgsReq {
-    let mut padatas = Vec::new();
     let realm = user.realm.clone();
     let sname = new_nt_srv_inst(service);
+    let mut tgs_req_builder = KdcReqBuilder::new(realm)
+        .push_padata(new_pa_data_ap_req(user, tgt, cipher))
+        .sname(Some(sname));
 
-    padatas.push(new_pa_data_pac_options(
-        pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
-    ));
+    if let Some(tgs_imp) = tgs_imp {
+        tgs_req_builder = tgs_req_builder
+            .push_ticket(tgs_imp)
+            .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
+            .push_padata(new_pa_data_pac_options(
+                pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
+            ));
+    }
 
-    padatas.push(new_pa_data_ap_req(user, tgt, cipher));
-
-    let tgs_req = KdcReqBuilder::new(realm)
-        .padatas(padatas)
-        .sname(Some(sname))
-        .push_ticket(tgs_imp)
-        .add_kdc_option(kdc_options::CONSTRAINED_DELEGATION)
-        .build_tgs_req();
-
-    return tgs_req;
+    return tgs_req_builder.build_tgs_req();
 }
 
 /// Helper to easily craft a TGS-REQ message for S4U2Self
@@ -94,17 +70,15 @@ pub fn build_s4u2self_req(
     tgt: Ticket,
     cipher: &Cipher,
 ) -> TgsReq {
-    let mut padatas = Vec::new();
     let realm = user.realm.clone();
     let sname = new_nt_unknown(&user.name);
+    let mut tgs_req_builder = KdcReqBuilder::new(realm)
+        .push_padata(new_pa_data_ap_req(user, tgt, cipher))
+        .sname(Some(sname));
 
-    padatas.push(new_pa_data_pa_for_user(impersonate_user, cipher));
-    padatas.push(new_pa_data_ap_req(user, tgt, cipher));
+    tgs_req_builder = tgs_req_builder
+        .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher));
 
-    let tgs_req = KdcReqBuilder::new(realm)
-        .padatas(padatas)
-        .sname(Some(sname))
-        .build_tgs_req();
 
-    return tgs_req;
+    return tgs_req_builder.build_tgs_req();
 }

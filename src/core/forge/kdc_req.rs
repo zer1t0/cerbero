@@ -83,11 +83,6 @@ impl KdcReqBuilder {
         self
     }
 
-    pub fn padatas(mut self, padatas: Vec<PaData>) -> Self {
-        self.padatas = padatas;
-        self
-    }
-
     pub fn push_ticket(mut self, ticket: Ticket) -> Self {
         self.additional_tickets.push(ticket);
         self

@@ -16,7 +16,7 @@ mod pa_data;
 
 mod build_req;
 pub use build_req::{
-    build_as_req, build_s4u2proxy_req, build_s4u2self_req, build_tgs_req,
+    build_as_req, build_s4u2self_req, build_tgs_req,
 };
 
 mod decrypters;
