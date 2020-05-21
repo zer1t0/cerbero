@@ -21,8 +21,9 @@ pub fn request_s4u2proxy(
         "Request {} S4U2Proxy TGS for {}",
         service, impersonate_username
     );
-    let cipher = tgt_info.cred_info.key.clone().into();
-    let tgs_req = build_s4u2proxy_req(user, &service, tgt_info, tgs_imp)?;
+    let cipher = tgt_info.cred_info.key.into();
+    let tgs_req =
+        build_s4u2proxy_req(user, &service, tgt_info.ticket, tgs_imp, &cipher);
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 

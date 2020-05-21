@@ -3,6 +3,7 @@ use crate::error::Result;
 use kerberos_constants::etypes;
 use kerberos_crypto::{
     new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
+    checksum_hmac_md5
 };
 use kerberos_asn1::EncryptionKey;
 
@@ -32,6 +33,10 @@ impl Cipher {
 
     pub fn encrypt(&self, key_usage: i32, plaintext: &[u8]) -> Vec<u8> {
         return self.cipher.encrypt(&self.key, key_usage, plaintext);
+    }
+
+    pub fn checksum_hmac_md5(&self, key_usage: i32, text: &[u8]) -> Vec<u8> {
+        return checksum_hmac_md5(&self.key, key_usage, text);
     }
 
     pub fn decrypt(

@@ -14,8 +14,8 @@ pub fn request_tgs(
     transporter: &dyn KerberosTransporter,
 ) -> Result<TicketCredInfo> {
     info!("Request {} TGS for {}", service, user.name);
-    let cipher = ticket_info.cred_info.key.clone().into();
-    let tgs_req = build_tgs_req(user, service, ticket_info)?;
+    let cipher = ticket_info.cred_info.key.into();
+    let tgs_req = build_tgs_req(user, service, ticket_info.ticket, &cipher);
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 

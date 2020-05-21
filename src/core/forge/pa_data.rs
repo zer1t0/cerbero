@@ -1,5 +1,6 @@
 use super::principal_name::new_nt_principal;
 use crate::core::forge::KerberosUser;
+use crate::core::Cipher;
 use chrono::Utc;
 use kerberos_asn1::{
     ApReq, Asn1Object, Authenticator, EncryptedData, PaData, PaEncTsEnc,
@@ -14,13 +15,9 @@ use kerberos_constants::pa_data_types::{
     PA_FOR_USER, PA_PAC_OPTIONS, PA_TGS_REQ,
 };
 use kerberos_constants::{checksum_types, pa_data_types};
-use kerberos_crypto::checksum_hmac_md5;
-use crate::core::Cipher;
 
 /// Helper to create a PA-DATA that contains a PA-ENC-TS-ENC struct
-pub fn new_pa_data_encrypted_timestamp(
-    cipher: &Cipher,
-) -> PaData {
+pub fn new_pa_data_encrypted_timestamp(cipher: &Cipher) -> PaData {
     let timestamp = PaEncTsEnc::from(Utc::now());
     let encrypted_timestamp =
         cipher.encrypt(KEY_USAGE_AS_REQ_TIMESTAMP, &timestamp.build());
@@ -36,14 +33,14 @@ pub fn new_pa_data_encrypted_timestamp(
 /// used in S4U2Self
 pub fn new_pa_data_pa_for_user(
     impersonate_user: KerberosUser,
-    session_key: &[u8],
+    cipher: &Cipher,
 ) -> PaData {
-    let pa_for_user = new_pa_for_user(impersonate_user, session_key);
+    let pa_for_user = new_pa_for_user(impersonate_user, cipher);
     return PaData::new(PA_FOR_USER, pa_for_user.build());
 }
 
 /// Helper to easily create a PA-FOR-USER struct used in S4U2Self
-fn new_pa_for_user(user: KerberosUser, session_key: &[u8]) -> PaForUser {
+fn new_pa_for_user(user: KerberosUser, cipher: &Cipher) -> PaForUser {
     let mut pa_for_user = PaForUser::default();
     pa_for_user.username = new_nt_principal(&user.name);
     pa_for_user.userrealm = user.realm;
@@ -55,11 +52,8 @@ fn new_pa_for_user(user: KerberosUser, session_key: &[u8]) -> PaForUser {
     ck_value.append(&mut pa_for_user.userrealm.clone().into_bytes());
     ck_value.append(&mut pa_for_user.auth_package.clone().into_bytes());
 
-    let cksum = checksum_hmac_md5(
-        session_key,
-        KEY_USAGE_KERB_NON_KERB_CKSUM_SALT,
-        &ck_value,
-    );
+    let cksum =
+        cipher.checksum_hmac_md5(KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, &ck_value);
 
     pa_for_user.cksum.cksumtype = checksum_types::HMAC_MD5;
     pa_for_user.cksum.checksum = cksum;
@@ -81,15 +75,14 @@ pub fn new_pa_data_pac_options(pac_options: u32) -> PaData {
 pub fn new_pa_data_ap_req(
     user: KerberosUser,
     ticket: Ticket,
-    etype: i32,
-    encrypt: &dyn Fn(i32, &[u8]) -> Vec<u8>,
+    cipher: &Cipher,
 ) -> PaData {
     let authenticator = new_authenticator(user);
 
     let encrypted_authenticator =
-        encrypt(KEY_USAGE_TGS_REQ_AUTHEN, &authenticator.build());
+        cipher.encrypt(KEY_USAGE_TGS_REQ_AUTHEN, &authenticator.build());
 
-    let ap_req = new_ap_req(ticket, etype, encrypted_authenticator);
+    let ap_req = new_ap_req(ticket, cipher.etype(), encrypted_authenticator);
     return PaData::new(PA_TGS_REQ, ap_req.build());
 }
 

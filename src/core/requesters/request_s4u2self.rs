@@ -17,8 +17,8 @@ pub fn request_s4u2self(
         "Request {} S4U2Self TGS for {}",
         user.name, impersonate_user.name
     );
-    let cipher = tgt.cred_info.key.clone().into();
-    let tgs_req = build_s4u2self_req(user, impersonate_user, tgt)?;
+    let cipher = tgt.cred_info.key.into();
+    let tgs_req = build_s4u2self_req(user, impersonate_user, tgt.ticket, &cipher);
 
     let tgs_rep = send_recv_tgs(transporter, &tgs_req)?;
 
