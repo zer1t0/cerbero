@@ -19,8 +19,14 @@ pub fn ask_tgs(
     vault: &dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt_info) =
-        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
+    let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
+        user.clone(),
+        vault,
+        user_key,
+        transporter,
+        cred_format,
+        None,
+    )?;
 
     info!("Request {} TGS for {}", service, user.name);
     let tgs_info = request_tgs(
@@ -49,12 +55,18 @@ pub fn ask_s4u2self(
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt_info) =
-        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
+    let (mut krb_cred_plain, cred_format, tgt_info) = get_user_tgt(
+        user.clone(),
+        vault,
+        user_key,
+        transporter,
+        cred_format,
+        None,
+    )?;
 
     info!(
         "Request {} S4U2Self TGS for {}",
-        user.name, impersonate_user.name
+        impersonate_user.name, user.name
     );
     let tgs = request_tgs(
         user,
@@ -87,8 +99,14 @@ pub fn ask_s4u2proxy(
     cred_format: CredentialFormat,
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
-    let (krb_cred_plain, cred_format, tgt) =
-        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
+    let (krb_cred_plain, cred_format, tgt) = get_user_tgt(
+        user.clone(),
+        vault,
+        user_key,
+        transporter,
+        cred_format,
+        None,
+    )?;
 
     let (mut krb_cred_plain, imp_ticket) = get_impersonation_ticket(
         krb_cred_plain,
@@ -98,10 +116,7 @@ pub fn ask_s4u2proxy(
         tgt.clone(),
     )?;
 
-    info!(
-        "Request {} S4U2Proxy TGS for {}",
-        service, imp_username
-    );
+    info!("Request {} S4U2Proxy TGS for {}", service, imp_username);
     let tgs_proxy = request_tgs(
         user,
         tgt,

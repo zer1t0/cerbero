@@ -16,8 +16,9 @@ pub fn get_user_tgt(
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
+    etype: Option<i32>,
 ) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
-    let tgt_result = get_user_tgt_from_file(&user, vault, None);
+    let tgt_result = get_user_tgt_from_file(&user, vault, etype);
     if let Ok(creds) = tgt_result {
         return Ok(creds);
     }
@@ -27,8 +28,17 @@ pub fn get_user_tgt(
     let user_key =
         user_key.ok_or("Unable to request TGT without user credentials")?;
 
+    if let Some(etype) = etype {
+        if !user_key.etypes().contains(&etype) {
+            return Err(format!(
+                "Incompatible etype {} with provided key",
+                etype
+            ))?;
+        }
+    }
+
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user, user_key, transporter)?;
+    let tgt_info = request_tgt(user, user_key, etype, transporter)?;
     let krb_cred_plain = KrbCredPlain::new(vec![tgt_info.clone()]);
     return Ok((krb_cred_plain, cred_format, tgt_info));
 }
@@ -76,7 +86,12 @@ pub fn get_impersonation_ticket(
         None => {
             warn!(
                 "No {} S4U2Self TGS for {} found",
-                impersonate_user.name, user.name
+                user.name, impersonate_user.name,
+            );
+
+            info!(
+                "Request {} S4U2Self TGS for {}",
+                user.name, impersonate_user.name
             );
             let tgs_self = request_tgs(
                 user,

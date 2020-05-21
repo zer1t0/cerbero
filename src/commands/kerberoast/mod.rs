@@ -19,8 +19,14 @@ pub fn kerberoast(
     etype: Option<i32>,
 ) -> Result<()> {
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt) =
-        get_user_tgt(user.clone(), vault, user_key, transporter, cred_format)?;
+    let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
+        user.clone(),
+        vault,
+        user_key,
+        transporter,
+        cred_format,
+        etype,
+    )?;
 
     for service in services {
         match request_tgs(

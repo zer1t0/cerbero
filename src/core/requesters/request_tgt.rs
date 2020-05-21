@@ -12,9 +12,10 @@ use crate::core::Cipher;
 pub fn request_tgt(
     user: KerberosUser,
     user_key: &Key,
+    etype: Option<i32>,
     transporter: &dyn KerberosTransporter,
 ) -> Result<TicketCredInfo> {
-    let cipher = Cipher::generate(user_key, &user, None);
+    let cipher = Cipher::generate(user_key, &user, etype);
     
     let rep = request_as_rep(user.clone(), Some(&cipher), None, transporter)?;
     return extract_krb_cred_from_as_rep(rep, &cipher);

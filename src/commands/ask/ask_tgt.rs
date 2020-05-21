@@ -19,7 +19,7 @@ pub fn ask_tgt(
     let username = user.name.clone();
 
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user, user_key, transporter)?;
+    let tgt_info = request_tgt(user, user_key, None, transporter)?;
 
     let krb_cred_plain = KrbCredPlain::new(vec![tgt_info]);
 
