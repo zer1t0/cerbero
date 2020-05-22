@@ -1,7 +1,7 @@
 use crate::core::CredentialFormat;
+use crate::core::Vault;
 use crate::Result;
 use log::info;
-use crate::core::Vault;
 
 pub fn convert(
     in_vault: &dyn Vault,

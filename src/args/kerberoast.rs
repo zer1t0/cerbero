@@ -3,9 +3,9 @@ use crate::core::CrackFormat;
 use crate::core::CredentialFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
+use kerberos_constants::etypes;
 use kerberos_crypto::Key;
 use std::net::IpAddr;
-use kerberos_constants::etypes;
 
 pub const COMMAND_NAME: &str = "kerberoast";
 
@@ -116,6 +116,19 @@ pub fn command() -> App<'static, 'static> {
                 .help("Format to save retrieved tickets.")
                 .default_value("ccache"),
         )
+        .arg(
+            Arg::with_name("cred-file")
+                .long("cred-file")
+                .alias("ticket-file")
+                .takes_value(true)
+                .value_name("file")
+                .help("File to load/save tickets"),
+        )
+        .arg(
+            Arg::with_name("save")
+                .long("save")
+                .help("Retrieved tickets should be saved"),
+        )
 }
 
 #[derive(Debug)]
@@ -127,11 +140,12 @@ pub struct Arguments {
     pub kdc_port: u16,
     pub credential_format: CredentialFormat,
     pub crack_format: CrackFormat,
-    pub out_file: Option<String>,
     pub services: String,
     pub transport_protocol: TransportProtocol,
     pub verbosity: usize,
     pub etype: Option<i32>,
+    pub save_tickets: bool,
+    pub creds_file: Option<String>,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -150,7 +164,6 @@ impl<'a> ArgumentsParser<'a> {
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
         let credential_format = self.parse_ticket_format();
-        let out_file = self.parse_credentials_file();
         let services = self.parse_services();
 
         return Arguments {
@@ -160,12 +173,13 @@ impl<'a> ArgumentsParser<'a> {
             kdc_ip,
             kdc_port: 88,
             credential_format,
-            out_file,
             services,
             transport_protocol: self.parse_transport_protocol(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
             crack_format: self.parse_crack_format(),
             etype: self.parse_etype(),
+            save_tickets: self.matches.is_present("save"),
+            creds_file: self.parse_credentials_file(),
         };
     }
 

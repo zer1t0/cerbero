@@ -119,7 +119,6 @@ impl From<(Vec<Ticket>, Vec<KrbCredInfo>)> for KrbCredPlain {
     }
 }
 
-
 impl From<TicketCredInfo> for KrbCredPlain {
     fn from(ticket_info: TicketCredInfo) -> Self {
         return Self::new(vec![ticket_info]);

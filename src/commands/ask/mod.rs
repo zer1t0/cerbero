@@ -6,10 +6,10 @@ use ask_tgt::ask_tgt;
 
 use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
+use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
-use crate::core::Vault;
 
 pub fn ask(
     user: KerberosUser,

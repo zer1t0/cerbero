@@ -1,4 +1,3 @@
-
 // Struct to package the user identity with name and domain
 #[derive(Clone, Debug)]
 pub struct KerberosUser {

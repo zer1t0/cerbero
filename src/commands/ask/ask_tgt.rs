@@ -1,11 +1,11 @@
 use crate::core::request_tgt;
 use crate::core::CredentialFormat;
 use crate::core::KerberosUser;
+use crate::core::KrbCredPlain;
 use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
-use crate::core::KrbCredPlain;
 use log::info;
 
 /// Main function to ask a TGT

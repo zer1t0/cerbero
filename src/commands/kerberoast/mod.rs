@@ -11,7 +11,8 @@ use log::info;
 pub fn kerberoast(
     user: KerberosUser,
     services: Vec<String>,
-    vault: &dyn Vault,
+    in_vault: &dyn Vault,
+    out_vault: Option<&dyn Vault>,
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
     cred_format: CredentialFormat,
@@ -21,7 +22,7 @@ pub fn kerberoast(
     let username = user.name.clone();
     let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
         user.clone(),
-        vault,
+        in_vault,
         user_key,
         transporter,
         cred_format,
@@ -52,8 +53,9 @@ pub fn kerberoast(
         }
     }
 
-    info!("Save {} TGSs in {}", username, vault.id());
-    vault.save(krb_cred_plain.into(), cred_format)?;
-
+    if let Some(out_vault) = out_vault {
+        info!("Save {} TGSs in {}", username, out_vault.id());
+        out_vault.save(krb_cred_plain.into(), cred_format)?;
+    }
     return Ok(());
 }

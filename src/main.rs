@@ -139,11 +139,11 @@ mod utils;
 
 use crate::args::{args, Arguments, ArgumentsParser};
 use crate::core::KerberosUser;
+use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
 use crate::utils::{read_file_lines, resolve_and_get_tranporter};
 use log::error;
 use stderrlog;
-use crate::core::FileVault;
 
 fn init_log(verbosity: usize) {
     stderrlog::new()
@@ -218,7 +218,7 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
 
     let in_vault = FileVault::new(in_file);
     let out_vault = FileVault::new(args.out_file);
-    
+
     return commands::convert(&in_vault, &out_vault, args.cred_format);
 }
 
@@ -228,7 +228,7 @@ fn list(args: args::list::Arguments) -> Result<()> {
         None => utils::get_env_ticket_file()
             .ok_or("Specify file or set KRB5CCNAME")?,
     };
-    
+
     let in_vault = FileVault::new(in_file);
     return commands::list(&in_vault, args.etypes, args.flags);
 }
@@ -301,23 +301,43 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         args.transport_protocol,
     )?;
 
-    let creds_file = match args.out_file {
-        Some(filename) => filename,
-        None => utils::get_env_ticket_file()
-            .ok_or("Specify credentials file or set KRB5CCNAME")?,
+    let creds_file = match args.creds_file {
+        Some(filename) => Some(filename),
+        None => utils::get_env_ticket_file(),
     };
 
-    let vault = FileVault::new(creds_file);
+    let in_vault: Box<dyn Vault>;
+    let out_vault: Option<FileVault>;
+
+    if let Some(creds_file) = creds_file {
+        in_vault = Box::new(FileVault::new(creds_file.clone()));
+
+        out_vault = match args.save_tickets {
+            true => Some(FileVault::new(creds_file)),
+            false => None,
+        }
+    } else {
+        in_vault = Box::new(EmptyVault::new());
+
+        out_vault = match args.save_tickets {
+            true => Err("Specify credentials file or set KRB5CCNAME")?,
+            false => None,
+        }
+    }
+
     let user = KerberosUser::new(args.username, args.realm);
+
+    let out_ref_vault = out_vault.as_ref();
 
     return commands::kerberoast(
         user,
         services,
-        &vault,
+        &*in_vault,
+        out_ref_vault.map(|a| a as &dyn Vault),
         args.user_key.as_ref(),
         &*transporter,
         args.credential_format,
         args.crack_format,
-        args.etype
+        args.etype,
     );
 }

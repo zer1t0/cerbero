@@ -1,11 +1,11 @@
 use crate::core::KerberosUser;
 use crate::error::Result;
+use kerberos_asn1::EncryptionKey;
 use kerberos_constants::etypes;
 use kerberos_crypto::{
-    new_kerberos_cipher, AesCipher, AesSizes, KerberosCipher, Key, Rc4Cipher,
-    checksum_hmac_md5
+    checksum_hmac_md5, new_kerberos_cipher, AesCipher, AesSizes,
+    KerberosCipher, Key, Rc4Cipher,
 };
-use kerberos_asn1::EncryptionKey;
 
 pub struct Cipher {
     cipher: Box<dyn KerberosCipher>,

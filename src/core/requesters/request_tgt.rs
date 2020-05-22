@@ -1,12 +1,12 @@
 use super::senders::send_recv_as;
-use crate::core::forge::{build_as_req, extract_krb_cred_from_as_rep};
 use crate::core::forge::KerberosUser;
+use crate::core::forge::{build_as_req, extract_krb_cred_from_as_rep};
+use crate::core::Cipher;
+use crate::core::TicketCredInfo;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
-use kerberos_asn1::{AsRep};
+use kerberos_asn1::AsRep;
 use kerberos_crypto::Key;
-use crate::core::TicketCredInfo;
-use crate::core::Cipher; 
 
 /// Uses user credentials to request a TGT
 pub fn request_tgt(
@@ -16,7 +16,7 @@ pub fn request_tgt(
     transporter: &dyn KerberosTransporter,
 ) -> Result<TicketCredInfo> {
     let cipher = Cipher::generate(user_key, &user, etype);
-    
+
     let rep = request_as_rep(user.clone(), Some(&cipher), None, transporter)?;
     return extract_krb_cred_from_as_rep(rep, &cipher);
 }

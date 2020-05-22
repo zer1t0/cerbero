@@ -2,8 +2,8 @@ use super::validators;
 use crate::core::CrackFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use std::net::IpAddr;
 use kerberos_constants::etypes;
+use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "asreproast";
 

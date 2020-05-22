@@ -4,7 +4,7 @@ use crate::core::KrbCredPlain;
 use crate::Result;
 use kerberos_asn1::{Asn1Object, KrbCred};
 use kerberos_ccache::CCache;
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 use std::fs;
 
 pub struct FileVault {
@@ -18,15 +18,19 @@ impl FileVault {
 }
 
 impl Vault for FileVault {
-    fn id(&self) -> &String {
+    fn id(&self) -> &str {
         return &self.file_path;
     }
-        
+
     fn load(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
         return load_file_creds(&self.file_path);
     }
 
-    fn save(&self, creds: KrbCredPlain, cred_format: CredentialFormat) -> Result<()> {
+    fn save(
+        &self,
+        creds: KrbCredPlain,
+        cred_format: CredentialFormat,
+    ) -> Result<()> {
         return save_file_creds(&self.file_path, creds, cred_format);
     }
 }

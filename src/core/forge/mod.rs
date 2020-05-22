@@ -15,9 +15,9 @@ pub use principal_name::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
 mod pa_data;
 
 mod build_req;
-pub use build_req::{
-    build_as_req, build_tgs_req, S4u2options
-};
+pub use build_req::{build_as_req, build_tgs_req, S4u2options};
 
 mod decrypters;
-pub use decrypters::{extract_ticket_from_tgs_rep, extract_krb_cred_from_as_rep};
+pub use decrypters::{
+    extract_krb_cred_from_as_rep, extract_ticket_from_tgs_rep,
+};

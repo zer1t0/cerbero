@@ -1,7 +1,4 @@
-use kerberos_asn1::{
-    EncKdcRepPart, KrbCredInfo, PrincipalName,
-};
-
+use kerberos_asn1::{EncKdcRepPart, KrbCredInfo, PrincipalName};
 
 pub fn new_krb_cred_info(
     enc_as_rep_part: EncKdcRepPart,

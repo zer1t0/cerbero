@@ -18,8 +18,14 @@ pub fn request_tgs(
     transporter: &dyn KerberosTransporter,
 ) -> Result<TicketCredInfo> {
     let cipher = tgt.cred_info.key.into();
-    let tgs_rep =
-        request_tgs_rep(user, tgt.ticket, &cipher, s4u2options, etypes, transporter)?;
+    let tgs_rep = request_tgs_rep(
+        user,
+        tgt.ticket,
+        &cipher,
+        s4u2options,
+        etypes,
+        transporter,
+    )?;
 
     return extract_ticket_from_tgs_rep(tgs_rep, &cipher);
 }
