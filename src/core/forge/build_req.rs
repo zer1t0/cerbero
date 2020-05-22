@@ -48,9 +48,14 @@ pub fn build_tgs_req(
     tgt: Ticket,
     cipher: &Cipher,
     s4u2options: S4u2options,
+    etypes: Option<Vec<i32>>,
 ) -> TgsReq {
     let realm = user.realm.clone();
     let mut tgs_req_builder = KdcReqBuilder::new(realm);
+
+    if let Some(etypes) = etypes {
+        tgs_req_builder = tgs_req_builder.etypes(etypes);
+    }
 
     match s4u2options {
         S4u2options::Normal(service) => {

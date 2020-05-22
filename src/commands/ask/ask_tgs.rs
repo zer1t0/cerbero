@@ -33,6 +33,7 @@ pub fn ask_tgs(
         user,
         tgt_info,
         S4u2options::Normal(service.clone()),
+        None,
         transporter,
     )?;
 
@@ -72,6 +73,7 @@ pub fn ask_s4u2self(
         user,
         tgt_info,
         S4u2options::S4u2self(impersonate_user),
+        None,
         transporter,
     )?;
 
@@ -121,6 +123,7 @@ pub fn ask_s4u2proxy(
         user,
         tgt,
         S4u2options::S4u2proxy(imp_ticket.ticket, service.clone()),
+        None,
         transporter,
     )?;
 

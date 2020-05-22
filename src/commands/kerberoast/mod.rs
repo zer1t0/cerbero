@@ -33,6 +33,7 @@ pub fn kerberoast(
             user.clone(),
             tgt.clone(),
             S4u2options::Normal(service.clone()),
+            etype.map(|e| vec![e]),
             transporter,
         ) {
             Err(err) => match &err {
