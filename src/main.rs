@@ -167,6 +167,7 @@ fn main_inner(args: Arguments) -> Result<()> {
         Arguments::AsRepRoast(args) => asreproast(args),
         Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
+        Arguments::Craft(args) => craft(args),
         Arguments::KerbeRoast(args) => kerberoast(args),
         Arguments::List(args) => list(args),
     }
@@ -220,6 +221,11 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
     let out_vault = FileVault::new(args.out_file);
 
     return commands::convert(&in_vault, &out_vault, args.cred_format);
+}
+
+fn craft(_args: args::craft::Arguments) -> Result<()> {
+
+    return commands::craft();
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {

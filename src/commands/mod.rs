@@ -10,6 +10,9 @@ pub use brute::brute;
 mod convert;
 pub use convert::convert;
 
+mod craft;
+pub use craft::craft;
+
 mod kerberoast;
 pub use kerberoast::kerberoast;
 
