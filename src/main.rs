@@ -1,14 +1,35 @@
 //! # Cerbero
-//! ## TODOS
-//! - asreproast: produce valid hashcat formats for aes128 and aes256
-//! - asreproast: produce valid john formats
-//! - kerberoast: produce valid hashcat formats for aes128 and aes256
-//! - kerberoast: produce valid john formats
-//! - kerberoast: include swtich to select the desired cipher
-//! - command to extract preauth signatures
 //!
-//! ## Ask module
-//! To request Kerberos tickets.
+//! Kerberos protocol attacker. Tool to perform several tasks
+//! related with Kerberos protocol in an Active Directory pentest.
+//!
+//! ## Installation
+//!
+//! From crates:
+//! ```sh
+//! cargo install cerbero
+//! ```
+//!
+//! From repo:
+//! ```sh
+//! git clone https://gitlab.com/Zer1t0/cerbero.git
+//! cd cerbero/
+//! cargo build --release
+//! ```
+//!
+//! ## Commands
+//! - [ask](#ask)
+//! - [asreproast](#asreproast)
+//! - [brute](#brute)
+//! - [convert](#convert)
+//! - [kerberoast](#kerberoast)
+//! - [list](#list)
+//!
+//! ### Ask
+//! The `ask` command allows to retrieve Kerberos tickets (TGT/TGS) from the KDC
+//! (Domain Controller in Active Directory environment). Moreover also
+//! perform requests to obtain tickets by using the S4U2Self and S4U2Proxy
+//! Kerberos extensions.
 //!
 //! Ask TGT:
 //! ```shell
@@ -29,11 +50,11 @@
 //! ```shell
 //! cerbero ask -u Hades -d under.world -p IamtheKingofD34d!! --impersonate Zeus --spn ldap/under.world
 //! ```
-//! ### TODO
-//! - renew tickets
 //!
-//! ## AsRepRoast module
-//! To discover users that do not require pre-authentication and retrieve a ticket to crack with hashcat or john.
+//!
+//! ### AsRepRoast
+//! `asreproast` can be used to discover users that do not require
+//! pre-authentication and retrieve a ticket to crack with hashcat or john.
 //!
 //! Check many users:
 //! ```shell
@@ -45,13 +66,18 @@
 //! cerbero asreproast under.world users.txt --cipher rc4
 //! ```
 //!
+//! ### Brute
+//! `brute` performs TGTs requests in order to discover user credentials
+//! based on the KDC response. This bruteforce technique allows you to
+//! discover:
+//! + Valid username/password pairs
+//! + Valid usernames
+//! + Expired passwords
+//! + Blocked or disabled users
 //!
-//! ### TODO
-//! - Perform LDAP query to retrieve the users with no pre-authentication required
-//!
-//!
-//! ## Brute module
-//! To discover user credentials by performing kerberos bruteforce attack.
+//! This attack should be performed carefully since can block user
+//! accounts in case of perform many incorrect authentication attemps
+//! for the same user.
 //!
 //! Test many users and passwords:
 //! ```shell
@@ -73,9 +99,9 @@
 //! cerbero brute under.world Zeus Olympus1234
 //! ```
 //!
-//! ## Convert module
-//! To convert ticket files between krb (Windows) and ccache (Linux) format.
-//!
+//! ### Convert
+//! Allows to `convert` ticket files between krb (Windows) and
+//! ccache (Linux) formats.
 //!
 //! Convert ccache to krb:
 //! ```shell
@@ -87,48 +113,26 @@
 //! cerbero convert hades.krb hades.ccache
 //! ```
 //!
-//! ## Craft module
-//! Module to craft tickets, and create Golden and Silver tickets.
-//!
-//! ### TODO
-//! - craft golden tickets
-//! - craft silver tickets
-//!
-//! ## Edit module
-//! To edit several parts of a ticket, such as the target spn
-//!
-//! ### TODO
-//! - edit target spn of a ticket
-//! - split ticket file in several file with one ticket per file
-//! - join several ticket files in just one file
-//!
-//! ## Kerberoast module
+//! ### Kerberoast
 //! To format encrypted part of tickets in order to be cracked by hashcat or john.
 //!
 //! ```shell
 //! cerbero kerberoast -s services.txt --realm under.world --user Hades -p IamtheKingofD34d!!
 //! ```
 //!
-//! ### TODO
-//! - Perform LDAP query to retrieve users with services
-//!
-//!
-//! ## List module
-//! Show contents of a tickets file.
-//!
+//! ### List
+//! `list` shows the tickets information of a credentials file. Similar
+//! to `klist` command
 //!
 //! ```shell
 //! cerbero list hades.ccache
 //! ```
 //!
-//! ### TODO
-//! - Show session keys
-//! - Show keytab contents
-//!
-//! ## Purge module
-//! To delete current files
-//!
-//! TODO
+//! ## Credits
+//! This work is based on great work of other people:
+//! - [Impacket](https://github.com/SecureAuthCorp/impacket) of Alberto Solino [@agsolino](https://github.com/agsolino)
+//! - [Rubeus](https://github.com/GhostPack/Rubeus) of Will [@harmj0y](https://twitter.com/harmj0y) and Elad Shamir [@elad_shamir](https://twitter.com/elad_shamir)
+//! - [Mimikatz](https://github.com/gentilkiwi/mimikatz) of [@gentilkiwi](https://twitter.com/gentilkiwi) 
 
 mod args;
 mod commands;
