@@ -14,6 +14,11 @@ kerberos_constants = "0.0"
 kerberos_crypto = "0.3"
 kerberos_ccache = "0.0"
 
+ms_pac = "0.0"
+ms_dtyp = "0.0"
+ms_samr = "0.0"
+
+
 chrono = "0.4"
 rand = "0.6"
 dns-lookup = "1.0"
