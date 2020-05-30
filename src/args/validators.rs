@@ -1,5 +1,8 @@
 use kerberos_crypto::Key;
+use ms_pac::PISID;
 use std::net::IpAddr;
+
+use std::convert::TryFrom;
 
 pub fn is_rc4_key(v: String) -> Result<(), String> {
     Key::from_rc4_key_string(&v).map_err(|_| {
@@ -37,5 +40,15 @@ pub fn is_aes_256_key(v: String) -> Result<(), String> {
 pub fn is_ip(v: String) -> Result<(), String> {
     v.parse::<IpAddr>()
         .map_err(|_| format!("Invalid IP address '{}'", v))?;
+    return Ok(());
+}
+
+pub fn is_sid(v: String) -> Result<(), String> {
+    PISID::try_from(v.as_str())
+        .map_err(|_| format!(
+            "Invalid sid {}, it must be in format S-1-5-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXX (X as random number)",
+            v)
+        )?;
+
     return Ok(());
 }
