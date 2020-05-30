@@ -52,3 +52,14 @@ pub fn is_sid(v: String) -> Result<(), String> {
 
     return Ok(());
 }
+
+pub fn is_u32(v: String) -> Result<(), String> {
+    v.parse::<u32>().map_err(|_| {
+        format!(
+            "Incorrect value '{}' must be an unsigned integer of 32 bits (u32)",
+            v
+        )
+    })?;
+
+    return Ok(());
+}
