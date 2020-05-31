@@ -128,7 +128,7 @@ fn craft_ticket_info(
         sname: sname,
         enc_part: EncryptedData::new(
             cipher.etype(),
-            None,
+            Some(1),
             encrypted_enc_ticket_part,
         ),
     };
