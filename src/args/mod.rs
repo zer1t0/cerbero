@@ -2,6 +2,7 @@ pub mod ask;
 pub mod asreproast;
 pub mod brute;
 pub mod convert;
+pub mod craft;
 pub mod kerberoast;
 pub mod list;
 mod validators;
@@ -18,6 +19,7 @@ pub fn args() -> App<'static, 'static> {
         .subcommand(asreproast::command())
         .subcommand(brute::command())
         .subcommand(convert::command())
+        .subcommand(craft::command())
         .subcommand(kerberoast::command())
         .subcommand(list::command())
 }
@@ -27,6 +29,7 @@ pub enum Arguments {
     AsRepRoast(asreproast::Arguments),
     Brute(brute::Arguments),
     Convert(convert::Arguments),
+    Craft(craft::Arguments),
     KerbeRoast(kerberoast::Arguments),
     List(list::Arguments),
 }
@@ -55,6 +58,11 @@ impl ArgumentsParser {
             }
             name @ convert::COMMAND_NAME => {
                 return Arguments::Convert(convert::ArgumentsParser::parse(
+                    matches.subcommand_matches(name).unwrap(),
+                ));
+            }
+            name @ craft::COMMAND_NAME => {
+                return Arguments::Craft(craft::ArgumentsParser::parse(
                     matches.subcommand_matches(name).unwrap(),
                 ));
             }

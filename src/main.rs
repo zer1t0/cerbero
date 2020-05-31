@@ -171,6 +171,7 @@ fn main_inner(args: Arguments) -> Result<()> {
         Arguments::AsRepRoast(args) => asreproast(args),
         Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
+        Arguments::Craft(args) => craft(args),
         Arguments::KerbeRoast(args) => kerberoast(args),
         Arguments::List(args) => list(args),
     }
@@ -224,6 +225,30 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
     let out_vault = FileVault::new(args.out_file);
 
     return commands::convert(&in_vault, &out_vault, args.cred_format);
+}
+
+fn craft(args: args::craft::Arguments) -> Result<()> {
+
+    let creds_file = utils::get_ticket_file(
+        args.credential_file,
+        &args.username,
+        &args.credential_format,
+    );
+    
+    let user = KerberosUser::new(args.username, args.realm);
+    let vault = FileVault::new(creds_file);
+    
+    return commands::craft(
+        user,
+        args.service,
+        args.key,
+        args.user_rid,
+        args.realm_sid,
+        &args.groups,
+        None,
+        args.credential_format,
+        &vault
+    );
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {
