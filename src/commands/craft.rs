@@ -1,5 +1,5 @@
 use crate::core::{
-    new_nt_principal, new_pactype, new_principal_or_srv_inst, Cipher,
+    new_nt_principal, new_signed_pac, new_principal_or_srv_inst, Cipher,
     CredentialFormat, KrbCredPlain, TicketCredInfo, Vault,
 };
 use crate::KerberosUser;
@@ -15,7 +15,6 @@ use kerberos_constants::principal_names;
 use kerberos_constants::ticket_flags;
 use kerberos_crypto::Key;
 use ms_dtyp::FILETIME;
-use ms_pac::PACTYPE;
 use ms_pac::PISID;
 
 pub fn craft(
@@ -89,7 +88,7 @@ fn craft_ticket_info(
         caddr: caddr.clone(),
     };
 
-    let signed_pac = create_signed_pac(
+    let signed_pac = new_signed_pac(
         &user.name,
         user_rid,
         &crealm,
@@ -144,40 +143,7 @@ fn craft_ticket_info(
     return TicketCredInfo::new(ticket, krb_cred_info);
 }
 
-fn create_signed_pac(
-    username: &str,
-    user_rid: u32,
-    domain: &str,
-    domain_sid: PISID,
-    groups: &[u32],
-    logon_time: FILETIME,
-    cipher: &Cipher,
-) -> PACTYPE {
-    let mut pactype = new_pactype(
-        username,
-        user_rid,
-        domain,
-        domain_sid,
-        groups,
-        cipher.checksum_type(),
-        logon_time,
-    );
 
-    let raw_pactype = pactype.build();
-
-    let server_sign = cipher
-        .checksum(key_usages::KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, &raw_pactype);
-    let privsrv_sign = cipher
-        .checksum(key_usages::KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, &server_sign);
-
-    let server_checksum = pactype.server_checksum_mut().unwrap();
-    server_checksum.Signature = server_sign;
-
-    let privsrv_checksum = pactype.privsrv_checksum_mut().unwrap();
-    privsrv_checksum.Signature = privsrv_sign;
-
-    return pactype;
-}
 
 fn random_key(etype: i32) -> EncryptionKey {
     return EncryptionKey {

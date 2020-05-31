@@ -1,3 +1,5 @@
+use crate::core::Cipher;
+use kerberos_constants::key_usages;
 use ms_dtyp::FILETIME;
 use ms_dtyp::RID_DOMAIN_USERS;
 use ms_pac::{
@@ -9,7 +11,42 @@ use ms_samr::{
     USER_DONT_EXPIRE_PASSWORD, USER_NORMAL_ACCOUNT,
 };
 
-pub fn new_pactype(
+pub fn new_signed_pac(
+    username: &str,
+    user_rid: u32,
+    domain: &str,
+    domain_sid: PISID,
+    groups: &[u32],
+    logon_time: FILETIME,
+    cipher: &Cipher,
+) -> PACTYPE {
+    let mut pactype = new_pactype(
+        username,
+        user_rid,
+        domain,
+        domain_sid,
+        groups,
+        cipher.checksum_type(),
+        logon_time,
+    );
+
+    let raw_pactype = pactype.build();
+
+    let server_sign = cipher
+        .checksum(key_usages::KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, &raw_pactype);
+    let privsrv_sign = cipher
+        .checksum(key_usages::KEY_USAGE_KERB_NON_KERB_CKSUM_SALT, &server_sign);
+
+    let server_checksum = pactype.server_checksum_mut().unwrap();
+    server_checksum.Signature = server_sign;
+
+    let privsrv_checksum = pactype.privsrv_checksum_mut().unwrap();
+    privsrv_checksum.Signature = privsrv_sign;
+
+    return pactype;
+}
+
+fn new_pactype(
     username: &str,
     user_rid: u32,
     domain: &str,
@@ -20,18 +57,22 @@ pub fn new_pactype(
 ) -> PACTYPE {
     return PACTYPE::from(vec![
         PAC_INFO_BUFFER::LOGON_INFO(new_kerb_validation_info(
-            username, user_rid, domain, domain_sid, groups, logon_time.clone(),
+            username,
+            user_rid,
+            domain,
+            domain_sid,
+            groups,
+            logon_time.clone(),
         )),
-        PAC_INFO_BUFFER::CLIENT_INFO(PAC_CLIENT_INFO::new(logon_time, username)),
+        PAC_INFO_BUFFER::CLIENT_INFO(PAC_CLIENT_INFO::new(
+            logon_time, username,
+        )),
         PAC_INFO_BUFFER::SERVER_CHECKSUM(new_pac_signature(checksum_type)),
         PAC_INFO_BUFFER::PRIVSRV_CHECKSUM(new_pac_signature(checksum_type)),
     ]);
 }
 
 fn new_pac_signature(etype: i32) -> PAC_SIGNATURE_DATA {
-
-
-    
     return PAC_SIGNATURE_DATA::new_empty(etype);
 }
 

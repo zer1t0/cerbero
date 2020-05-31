@@ -18,7 +18,7 @@ pub use principal_name::{
 mod pa_data;
 
 mod pac;
-pub use pac::new_pactype;
+pub use pac::new_signed_pac;
 
 mod build_req;
 pub use build_req::{build_as_req, build_tgs_req, S4u2options};
