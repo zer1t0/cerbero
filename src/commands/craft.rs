@@ -7,13 +7,14 @@ use crate::Result;
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
     Asn1Object, AuthorizationData, EncTicketPart, EncryptedData, EncryptionKey,
-    KrbCredInfo, Ticket, TransitedEncoding, KerberosTime
+    KerberosTime, KrbCredInfo, Ticket, TransitedEncoding,
 };
 use kerberos_constants::ad_types;
 use kerberos_constants::key_usages;
 use kerberos_constants::principal_names;
 use kerberos_constants::ticket_flags;
 use kerberos_crypto::Key;
+use ms_dtyp::FILETIME;
 use ms_pac::PACTYPE;
 use ms_pac::PISID;
 
@@ -88,20 +89,21 @@ fn craft_ticket_info(
         caddr: caddr.clone(),
     };
 
-    let raw_signed_pac = create_signed_pac(
+    let signed_pac = create_signed_pac(
         &user.name,
         user_rid,
         &crealm,
         domain_sid,
         groups,
-        now.timestamp() as u64,
+        FILETIME::from_unix_timestamp(now.timestamp() as u64),
         &cipher,
-    )
-    .build();
+    );
+
+    println!("{:?}", signed_pac);
 
     let ad_win = AuthorizationData {
         ad_type: ad_types::AD_WIN2K_PACK,
-        ad_data: raw_signed_pac,
+        ad_data: signed_pac.build(),
     };
 
     let ad_relevant = AuthorizationData {
@@ -148,7 +150,7 @@ fn create_signed_pac(
     domain: &str,
     domain_sid: PISID,
     groups: &[u32],
-    logon_time: u64,
+    logon_time: FILETIME,
     cipher: &Cipher,
 ) -> PACTYPE {
     let mut pactype = new_pactype(
