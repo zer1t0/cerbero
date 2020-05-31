@@ -2,7 +2,10 @@ mod cipher;
 pub use cipher::{generate_cipher_and_key, Cipher};
 
 mod forge;
-pub use forge::{KerberosUser, S4u2options, new_nt_principal};
+pub use forge::{
+    new_nt_principal, new_pactype, spn_to_service_parts, KerberosUser,
+    S4u2options, new_principal_name, new_principal_or_srv_inst
+};
 
 mod cracking;
 pub use cracking::{as_rep_to_crack_string, tgs_to_crack_string, CrackFormat};

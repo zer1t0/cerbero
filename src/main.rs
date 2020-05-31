@@ -223,9 +223,28 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
     return commands::convert(&in_vault, &out_vault, args.cred_format);
 }
 
-fn craft(_args: args::craft::Arguments) -> Result<()> {
+fn craft(args: args::craft::Arguments) -> Result<()> {
 
-    return commands::craft();
+    let user = KerberosUser::new(args.username, args.realm);
+    let creds_file = utils::get_ticket_file(
+        args.credential_file,
+        &args.username,
+        &args.credential_format,
+    );
+
+    let vault = FileVault::new(creds_file);
+    
+    return commands::craft(
+        user,
+        args.service,
+        args.key,
+        args.user_rid,
+        args.realm_sid,
+        &args.groups,
+        None,
+        args.credential_format,
+        &vault
+    );
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {

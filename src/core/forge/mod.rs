@@ -10,9 +10,15 @@ mod krb_user;
 pub use krb_user::KerberosUser;
 
 mod principal_name;
-pub use principal_name::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
+pub use principal_name::{
+    new_nt_principal, new_nt_srv_inst, new_nt_unknown, new_principal_name,
+    spn_to_service_parts, new_principal_or_srv_inst
+};
 
 mod pa_data;
+
+mod pac;
+pub use pac::new_pactype;
 
 mod build_req;
 pub use build_req::{build_as_req, build_tgs_req, S4u2options};
