@@ -48,6 +48,7 @@ impl Cipher {
             etypes::AES256_CTS_HMAC_SHA1_96 => {
                 checksum_sha_aes(&self.key, key_usage, text, &AesSizes::Aes256)
             }
+            etype => unreachable!(format!("Unknown checksum for etype {}", etype))
         }
     }
 

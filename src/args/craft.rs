@@ -198,10 +198,6 @@ impl<'a> ArgumentsParser<'a> {
             .unwrap()
     }
 
-    fn parse_realm(&self) -> String {
-        self.parse_string("realm")
-    }
-
     fn parse_string(&self, name: &str) -> String {
         self.matches.value_of(name).unwrap().into()
     }

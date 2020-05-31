@@ -225,13 +225,13 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
 
 fn craft(args: args::craft::Arguments) -> Result<()> {
 
-    let user = KerberosUser::new(args.username, args.realm);
     let creds_file = utils::get_ticket_file(
         args.credential_file,
         &args.username,
         &args.credential_format,
     );
-
+    
+    let user = KerberosUser::new(args.username, args.realm);
     let vault = FileVault::new(creds_file);
     
     return commands::craft(

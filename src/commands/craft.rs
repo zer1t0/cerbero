@@ -7,10 +7,9 @@ use crate::Result;
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
     Asn1Object, AuthorizationData, EncTicketPart, EncryptedData, EncryptionKey,
-    KrbCredInfo, PrincipalName, Ticket, TransitedEncoding,
+    KrbCredInfo, Ticket, TransitedEncoding, KerberosTime
 };
 use kerberos_constants::ad_types;
-use kerberos_constants::etypes;
 use kerberos_constants::key_usages;
 use kerberos_constants::principal_names;
 use kerberos_constants::ticket_flags;
@@ -57,7 +56,7 @@ fn craft_ticket_info(
     let expiration_time =
         now.checked_add_signed(Duration::weeks(20 * 52)).unwrap();
 
-    let tkt_flags = ticket_flags::FORWARDABLE
+    let mut tkt_flags = ticket_flags::FORWARDABLE
         | ticket_flags::PROXIABLE
         | ticket_flags::RENEWABLE;
 
@@ -65,37 +64,37 @@ fn craft_ticket_info(
         tkt_flags |= ticket_flags::INITIAL;
     }
 
-    let authtime = now.into();
-    let starttime = now.into();
-    let endtime = expiration_time.into();
-    let renew_till = expiration_time.into();
+    let authtime: KerberosTime = now.into();
+    let starttime: KerberosTime = now.into();
+    let endtime: KerberosTime = expiration_time.into();
+    let renew_till: KerberosTime = expiration_time.into();
     let cname = new_nt_principal(&user.name);
-    let crealm = user.realm;
+    let crealm = user.realm.clone();
     let srealm = user.realm;
     let caddr = None;
 
     let krb_cred_info = KrbCredInfo {
         key: session_key.clone(),
-        prealm: Some(crealm),
-        pname: Some(cname),
+        prealm: Some(crealm.clone()),
+        pname: Some(cname.clone()),
         flags: Some(tkt_flags.into()),
-        authtime: Some(authtime),
-        starttime: Some(starttime),
-        endtime: Some(endtime),
-        renew_till: Some(renew_till),
-        srealm: Some(srealm),
+        authtime: Some(authtime.clone()),
+        starttime: Some(starttime.clone()),
+        endtime: Some(endtime.clone()),
+        renew_till: Some(renew_till.clone()),
+        srealm: Some(srealm.clone()),
         sname: Some(sname.clone()),
-        caddr: caddr,
+        caddr: caddr.clone(),
     };
 
     let raw_signed_pac = create_signed_pac(
         &user.name,
         user_rid,
-        &user.realm,
+        &crealm,
         domain_sid,
         groups,
         now.timestamp() as u64,
-        cipher,
+        &cipher,
     )
     .build();
 
@@ -144,9 +143,9 @@ fn create_signed_pac(
     domain_sid: PISID,
     groups: &[u32],
     logon_time: u64,
-    cipher: Cipher,
+    cipher: &Cipher,
 ) -> PACTYPE {
-    let pactype = new_pactype(
+    let mut pactype = new_pactype(
         username,
         user_rid,
         domain,
@@ -170,66 +169,6 @@ fn create_signed_pac(
     privsrv_checksum.Signature = privsrv_sign;
 
     return pactype;
-}
-
-pub struct EncTicketPartBuilder {
-    ticket_flags: u32,
-    key: EncryptionKey,
-    crealm: String,
-    cname: PrincipalName,
-    authorization_data: Option<AuthorizationData>,
-}
-
-impl EncTicketPartBuilder {
-    pub fn new(username: &str, realm: String) -> Self {
-        let now = Utc::now().timestamp() as u64;
-        return Self {
-            ticket_flags: ticket_flags::FORWARDABLE
-                | ticket_flags::PROXIABLE
-                | ticket_flags::RENEWABLE,
-            key: random_key(etypes::AES256_CTS_HMAC_SHA1_96),
-            crealm: realm,
-            cname: new_nt_principal(username),
-            authorization_data: None,
-        };
-    }
-
-    pub fn add_flag(mut self, flag: u32) -> Self {
-        self.ticket_flags |= flag;
-        self
-    }
-
-    pub fn key(mut self, key: EncryptionKey) -> Self {
-        self.key = key;
-        self
-    }
-
-    pub fn pac(mut self, pac: Vec<u8>) -> Self {
-        self.authorization_data = Some(AuthorizationData {
-            ad_type: ad_types::AD_WIN2K_PACK,
-            ad_data: pac,
-        });
-        self
-    }
-
-    pub fn build(self) -> EncTicketPart {
-        let now = Utc::now();
-        let expiration_time =
-            now.checked_add_signed(Duration::weeks(20 * 52)).unwrap();
-        return EncTicketPart {
-            flags: self.ticket_flags.into(),
-            key: self.key,
-            crealm: self.crealm,
-            cname: self.cname,
-            transited: TransitedEncoding::default(),
-            authtime: now.into(),
-            starttime: Some(now.into()),
-            endtime: expiration_time.into(),
-            renew_till: Some(expiration_time.into()),
-            caddr: None,
-            authorization_data: self.authorization_data,
-        };
-    }
 }
 
 fn random_key(etype: i32) -> EncryptionKey {
