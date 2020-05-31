@@ -27,3 +27,6 @@ mod decrypters;
 pub use decrypters::{
     extract_krb_cred_from_as_rep, extract_ticket_from_tgs_rep,
 };
+
+mod ticket;
+pub use ticket::craft_ticket_info;
