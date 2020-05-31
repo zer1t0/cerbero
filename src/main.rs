@@ -22,6 +22,7 @@
 //! - [asreproast](#asreproast)
 //! - [brute](#brute)
 //! - [convert](#convert)
+//! - [craft](#craft)
 //! - [kerberoast](#kerberoast)
 //! - [list](#list)
 //!
