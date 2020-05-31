@@ -99,11 +99,11 @@ fn craft_ticket_info(
         &cipher,
     );
 
-    println!("{:?}", signed_pac);
+    let raw_signed_pac = signed_pac.build();
 
     let ad_win = AuthorizationData {
         ad_type: ad_types::AD_WIN2K_PACK,
-        ad_data: signed_pac.build(),
+        ad_data: raw_signed_pac,
     };
 
     let ad_relevant = AuthorizationData {
@@ -159,7 +159,7 @@ fn create_signed_pac(
         domain,
         domain_sid,
         groups,
-        cipher.etype(),
+        cipher.checksum_type(),
         logon_time,
     );
 

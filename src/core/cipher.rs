@@ -1,6 +1,7 @@
 use crate::core::KerberosUser;
 use crate::error::Result;
 use kerberos_asn1::EncryptionKey;
+use kerberos_constants::checksum_types;
 use kerberos_constants::etypes;
 use kerberos_crypto::{
     checksum_hmac_md5, checksum_sha_aes, new_kerberos_cipher, AesCipher,
@@ -31,6 +32,19 @@ impl Cipher {
         return self.cipher.etype();
     }
 
+    pub fn checksum_type(&self) -> i32 {
+        match self.etype() {
+            etypes::RC4_HMAC => checksum_types::HMAC_MD5,
+            etypes::AES128_CTS_HMAC_SHA1_96 => {
+                checksum_types::HMAC_SHA1_96_AES128
+            }
+            etypes::AES256_CTS_HMAC_SHA1_96 => {
+                checksum_types::HMAC_SHA1_96_AES256
+            }
+            etype => unreachable!(format!("Unknown checksum for etype {}", etype)),
+        }
+    }
+
     pub fn encrypt(&self, key_usage: i32, plaintext: &[u8]) -> Vec<u8> {
         return self.cipher.encrypt(&self.key, key_usage, plaintext);
     }
@@ -40,15 +54,17 @@ impl Cipher {
     }
 
     pub fn checksum(&self, key_usage: i32, text: &[u8]) -> Vec<u8> {
-        match self.etype() {
-            etypes::RC4_HMAC => self.checksum_hmac_md5(key_usage, text),
-            etypes::AES128_CTS_HMAC_SHA1_96 => {
+        match self.checksum_type() {
+            checksum_types::HMAC_MD5 => self.checksum_hmac_md5(key_usage, text),
+            checksum_types::HMAC_SHA1_96_AES128 => {
                 checksum_sha_aes(&self.key, key_usage, text, &AesSizes::Aes128)
             }
-            etypes::AES256_CTS_HMAC_SHA1_96 => {
+            checksum_types::HMAC_SHA1_96_AES256 => {
                 checksum_sha_aes(&self.key, key_usage, text, &AesSizes::Aes256)
             }
-            etype => unreachable!(format!("Unknown checksum for etype {}", etype))
+            checksum_type => {
+                unreachable!(format!("Unknown checksum type {}", checksum_type))
+            }
         }
     }
 
