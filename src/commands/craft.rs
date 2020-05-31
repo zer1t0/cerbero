@@ -6,7 +6,7 @@ use crate::KerberosUser;
 use crate::Result;
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
-    Asn1Object, AuthorizationData, EncTicketPart, EncryptedData, EncryptionKey,
+    Asn1Object, AuthorizationDataEntry, EncTicketPart, EncryptedData, EncryptionKey,
     KerberosTime, KrbCredInfo, Ticket, TransitedEncoding,
 };
 use kerberos_constants::ad_types;
@@ -101,14 +101,14 @@ fn craft_ticket_info(
 
     let raw_signed_pac = signed_pac.build();
 
-    let ad_win = AuthorizationData {
+    let ad_win = AuthorizationDataEntry {
         ad_type: ad_types::AD_WIN2K_PACK,
         ad_data: raw_signed_pac,
     };
 
-    let ad_relevant = AuthorizationData {
+    let ad_relevant = AuthorizationDataEntry {
         ad_type: ad_types::AD_IF_RELEVANT,
-        ad_data: ad_win.build(),
+        ad_data: vec![ad_win].build(),
     };
 
     let enc_ticket_part = EncTicketPart {
@@ -122,7 +122,7 @@ fn craft_ticket_info(
         endtime: endtime,
         renew_till: Some(renew_till),
         caddr: caddr,
-        authorization_data: Some(ad_relevant),
+        authorization_data: Some(vec![ad_relevant]),
     };
 
     let enc_ticket_part_raw = enc_ticket_part.build();

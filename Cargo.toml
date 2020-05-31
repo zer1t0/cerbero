@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 clap = "2.33"
 kerbeiros = "0.2"
-kerberos_asn1 = "0.1"
+kerberos_asn1 = "0.2"
 kerberos_constants = "0.0"
 kerberos_crypto = "0.3"
 kerberos_ccache = "0.0"
