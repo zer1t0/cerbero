@@ -18,9 +18,6 @@ pub fn as_rep_to_crack_string(
     let etype = as_rep.enc_part.etype;
     let realm = &as_rep.crealm;
 
-    eprintln!("len = {}", as_rep.enc_part.cipher.len());
-    eprintln!("{}", arr_u8_to_hexa_string(&as_rep.enc_part.cipher));
-
     let (salt, ciphertext) =
         divide_salt_and_ciphertext(etype, as_rep.enc_part.cipher.to_vec());
     let salt_hexa = arr_u8_to_hexa_string(&salt);
