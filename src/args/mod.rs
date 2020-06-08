@@ -3,7 +3,7 @@ pub mod asreproast;
 pub mod brute;
 pub mod convert;
 pub mod craft;
-mod hash;
+pub mod hash;
 pub mod kerberoast;
 pub mod list;
 mod validators;

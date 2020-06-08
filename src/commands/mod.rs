@@ -13,6 +13,9 @@ pub use convert::convert;
 mod craft;
 pub use craft::craft;
 
+mod hash;
+pub use hash::hash;
+
 mod kerberoast;
 pub use kerberoast::kerberoast;
 

@@ -185,6 +185,7 @@ fn main_inner(args: Arguments) -> Result<()> {
         Arguments::Brute(args) => brute(args),
         Arguments::Convert(args) => convert(args),
         Arguments::Craft(args) => craft(args),
+        Arguments::Hash(args) => hash(args),
         Arguments::KerbeRoast(args) => kerberoast(args),
         Arguments::List(args) => list(args),
     }
@@ -261,6 +262,15 @@ fn craft(args: args::craft::Arguments) -> Result<()> {
         None,
         args.credential_format,
         &vault
+    );
+}
+
+fn hash(args: args::hash::Arguments) -> Result<()> {
+    init_log(args.verbosity);
+    return commands::hash(
+        &args.realm,
+        &args.username,
+        &args.password,
     );
 }
 
