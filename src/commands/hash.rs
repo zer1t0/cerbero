@@ -16,9 +16,20 @@ pub fn hash(realm: &str, username: &str, password: &str) -> Result<()> {
         &AesSizes::Aes256,
     );
 
-    println!("rc4:{:X?}", rc4_key);
-    println!("aes128:{:X?}", aes_128_key);
-    println!("aes256:{:X?}", aes_256_key);
+    println!("rc4::{}", get_hex(&rc4_key));
+    println!("aes128::{}", get_hex(&aes_128_key));
+    println!("aes256::{}", get_hex(&aes_256_key));
 
     return Ok(());
+}
+
+
+
+fn get_hex(v: &[u8]) -> String {
+    let mut s = String::new();
+    for x in v {
+        s = format!("{}{:02x}", s, x)
+    }
+
+    return s;
 }
