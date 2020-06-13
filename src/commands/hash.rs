@@ -16,9 +16,9 @@ pub fn hash(realm: &str, username: &str, password: &str) -> Result<()> {
         &AesSizes::Aes256,
     );
 
-    println!("rc4::{}", get_hex(&rc4_key));
-    println!("aes128::{}", get_hex(&aes_128_key));
-    println!("aes256::{}", get_hex(&aes_256_key));
+    println!("rc4:{}", get_hex(&rc4_key));
+    println!("aes128:{}", get_hex(&aes_128_key));
+    println!("aes256:{}", get_hex(&aes_256_key));
 
     return Ok(());
 }
