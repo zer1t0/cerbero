@@ -27,7 +27,8 @@ pub fn command() -> App<'static, 'static> {
                 .long("password")
                 .short("p")
                 .takes_value(true)
-                .help("Password of user"),
+                .help("Password of user")
+                .required(true),
         )
         .arg(
             Arg::with_name("verbosity")
