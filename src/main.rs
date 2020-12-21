@@ -23,6 +23,7 @@
 //! - [brute](#brute)
 //! - [convert](#convert)
 //! - [craft](#craft)
+//! - [hash](#hash)
 //! - [kerberoast](#kerberoast)
 //! - [list](#list)
 //!
@@ -124,6 +125,23 @@
 //! Craft a silver ticket (for the service `cifs` hosted by the machine `styx`):
 //! ```shell
 //! cerbero craft --realm under.world --realm-sid S-1-5-21-658410550-3858838999-180593761 --user kratos --ntlm 29f9ab984728cc7d18c8497c9ee76c77 --spn cifs/styx,under.world
+//! ```
+//!
+//! ### Hash
+//! Calculate the Kerberos keys (password hashes) from the user password.
+//!
+//! Calculate RC4 key (NT hash):
+//! ```shell
+//! $ cerbero hash -p 'IamtheKingofD34d!!'
+//! rc4:86e0a04f7a44ed4d4a7eaf2ee977c799
+//! ```
+//!
+//! Calculate all the keys:
+//! ```shell
+//! $ cerbero hash -p 'IamtheKingofD34d!!' -u Hades -d under.world
+//! rc4:86e0a04f7a44ed4d4a7eaf2ee977c799
+//! aes128:fe165dec904772a90a177069e4ea7019
+//! aes256:1304965c35176aeb72e1ae5fdd6c2fe2e901af7223cb75f5eaac25ad667136e7
 //! ```
 //!
 //! ### Kerberoast
