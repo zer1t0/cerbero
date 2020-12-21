@@ -12,7 +12,7 @@ pub fn command() -> App<'static, 'static> {
                 .short("d")
                 .takes_value(true)
                 .help("Domain/Realm for request the ticket")
-                .required(true),
+                .requires("user"),
         )
         .arg(
             Arg::with_name("user")
@@ -20,7 +20,7 @@ pub fn command() -> App<'static, 'static> {
                 .short("u")
                 .takes_value(true)
                 .help("Username for request the ticket")
-                .required(true),
+                .requires("realm"),
         )
         .arg(
             Arg::with_name("password")
@@ -40,8 +40,8 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub realm: String,
-    pub username: String,
+    pub realm: Option<String>,
+    pub username: Option<String>,
     pub password: String,
     pub verbosity: usize,
 }
@@ -58,8 +58,8 @@ impl<'a> ArgumentsParser<'a> {
 
     fn _parse(&self) -> Arguments {
         return Arguments {
-            realm: self.matches.value_of("realm").unwrap().into(),
-            username: self.matches.value_of("user").unwrap().into(),
+            realm: self.matches.value_of("realm").map(|s| s.into()),
+            username: self.matches.value_of("user").map(|s| s.into()),
             password: self.matches.value_of("password").unwrap().into(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
         };
