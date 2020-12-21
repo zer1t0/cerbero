@@ -4,14 +4,14 @@ pub const COMMAND_NAME: &str = "hash";
 
 pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
-        .about("Calculate password hashes")
+        .about("Calculate password hashes/Kerberos keys")
         .arg(
             Arg::with_name("realm")
                 .long("realm")
                 .alias("domain")
                 .short("d")
                 .takes_value(true)
-                .help("Domain/Realm for request the ticket")
+                .help("Domain/Realm of user (required for AES keys)")
                 .requires("user"),
         )
         .arg(
@@ -19,7 +19,7 @@ pub fn command() -> App<'static, 'static> {
                 .long("user")
                 .short("u")
                 .takes_value(true)
-                .help("Username for request the ticket")
+                .help("Username (required for AES keys)")
                 .requires("realm"),
         )
         .arg(
