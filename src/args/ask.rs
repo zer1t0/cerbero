@@ -1,5 +1,5 @@
 use super::validators;
-use crate::core::CredentialFormat;
+use crate::core::{CredentialFormat, KerberosUser};
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
@@ -11,21 +11,13 @@ pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
         .about("Ask for tickets")
         .arg(
-            Arg::with_name("realm")
-                .long("realm")
-                .alias("domain")
-                .short("d")
-                .takes_value(true)
-                .help("Domain/Realm for request the ticket")
-                .required(true),
-        )
-        .arg(
             Arg::with_name("user")
                 .long("user")
                 .short("u")
                 .takes_value(true)
                 .help("Username for request the ticket")
-                .required(true),
+                .required(true)
+                .validator(validators::is_kerberos_user),
         )
         .arg(
             Arg::with_name("impersonate")
@@ -117,8 +109,7 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub realm: String,
-    pub username: String,
+    pub user: KerberosUser,
     pub user_key: Option<Key>,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
@@ -141,8 +132,6 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn _parse(&self) -> Arguments {
-        let realm = self.matches.value_of("realm").unwrap().into();
-        let username: String = self.matches.value_of("user").unwrap().into();
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
         let credential_format = self.parse_ticket_format();
@@ -150,8 +139,7 @@ impl<'a> ArgumentsParser<'a> {
         let service = self.parse_service();
 
         return Arguments {
-            realm,
-            username,
+            user: self.parse_user(),
             user_key,
             kdc_ip,
             kdc_port: 88,
@@ -162,6 +150,15 @@ impl<'a> ArgumentsParser<'a> {
             impersonate_user: self.parse_impersonate_user(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
         };
+    }
+
+    fn parse_user(&self) -> KerberosUser {
+        let user = self.matches.value_of("user").unwrap();
+
+        let parts: Vec<&str> =
+            user.split(|c| ['/', '\\'].contains(&c)).collect();
+
+        return KerberosUser::new(parts[1].to_string(), parts[0].to_string());
     }
 
     fn parse_kdc_ip(&self) -> Option<IpAddr> {

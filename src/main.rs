@@ -167,7 +167,7 @@
 //! This work is based on great work of other people:
 //! - [Impacket](https://github.com/SecureAuthCorp/impacket) of Alberto Solino [@agsolino](https://github.com/agsolino)
 //! - [Rubeus](https://github.com/GhostPack/Rubeus) of Will [@harmj0y](https://twitter.com/harmj0y) and Elad Shamir [@elad_shamir](https://twitter.com/elad_shamir)
-//! - [Mimikatz](https://github.com/gentilkiwi/mimikatz) of [@gentilkiwi](https://twitter.com/gentilkiwi) 
+//! - [Mimikatz](https://github.com/gentilkiwi/mimikatz) of [@gentilkiwi](https://twitter.com/gentilkiwi)
 
 mod args;
 mod commands;
@@ -218,27 +218,28 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let transporter = resolve_and_get_tranporter(
         args.kdc_ip,
-        &args.realm,
+        &args.user.realm,
         args.kdc_port,
         args.transport_protocol,
     )?;
 
     let creds_file = utils::get_ticket_file(
         args.out_file,
-        &args.username,
+        &args.user.name,
         &args.credential_format,
     );
 
     let impersonate_user = match args.impersonate_user {
-        Some(username) => Some(KerberosUser::new(username, args.realm.clone())),
+        Some(username) => {
+            Some(KerberosUser::new(username, args.user.realm.clone()))
+        }
         None => None,
     };
 
     let vault = FileVault::new(creds_file);
-    let user = KerberosUser::new(args.username, args.realm);
 
     return commands::ask(
-        user,
+        args.user,
         impersonate_user,
         args.service,
         &vault,
@@ -264,16 +265,15 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
 }
 
 fn craft(args: args::craft::Arguments) -> Result<()> {
-
     let creds_file = utils::get_ticket_file(
         args.credential_file,
         &args.username,
         &args.credential_format,
     );
-    
+
     let user = KerberosUser::new(args.username, args.realm);
     let vault = FileVault::new(creds_file);
-    
+
     return commands::craft(
         user,
         args.service,
@@ -283,7 +283,7 @@ fn craft(args: args::craft::Arguments) -> Result<()> {
         &args.groups,
         None,
         args.credential_format,
-        &vault
+        &vault,
     );
 }
 

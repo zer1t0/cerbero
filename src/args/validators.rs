@@ -4,6 +4,19 @@ use std::net::IpAddr;
 
 use std::convert::TryFrom;
 
+pub fn is_kerberos_user(v: String) -> Result<(), String> {
+    let parts: Vec<&str> = v.split(|c| ['/', '\\'].contains(&c)).collect();
+
+    if parts.len() != 2 || parts[0].len() == 0 || parts[1].len() == 0 {
+        return Err(format!(
+            "Invalid user '{}', it must be <domain>/<username>",
+            v
+        ));
+    }
+
+    return Ok(());
+}
+
 pub fn is_rc4_key(v: String) -> Result<(), String> {
     Key::from_rc4_key_string(&v).map_err(|_| {
         format!(
