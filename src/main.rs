@@ -14,7 +14,7 @@
 //! ```sh
 //! git clone https://gitlab.com/Zer1t0/cerbero.git
 //! cd cerbero/
-//! cargo build --release
+//! cargo install --path .
 //! ```
 //!
 //! ## Commands
@@ -35,22 +35,32 @@
 //!
 //! Ask TGT:
 //! ```shell
-//! cerbero ask -u Hades -d under.world -p IamtheKingofD34d!!
+//! $ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -vv
+//! INFO - Request TGT for Hades
+//! INFO - Save Hades TGT in Hades.ccache
 //! ```
 //!
 //! Ask TGS:
 //! ```shell
-//! cerbero ask -u Hades -d under.world -p IamtheKingofD34d!! --spn ldap/under.world
+//! $ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -s ldap/under.world -vv
+//! WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
+//! INFO - Request TGT for Hades
+//! INFO - Request ldap/dc01 TGS for Hades
+//! INFO - Save Hades TGS for ldap/dc01 in Hades.ccache
 //! ```
 //!
 //! Perform S4u2self:
 //! ```shell
-//! cerbero ask -u Hades -d under.world -p IamtheKingofD34d!! --impersonate Zeus
+//! $ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus
+//! WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
+//! INFO - Request TGT for Hades
+//! INFO - Request Zeus S4U2Self TGS for Hades
+//! INFO - Save Zeus S4U2Self TGS for Hades in Hades.ccache
 //! ```
 //!
 //! Perform S4u2proxy:
 //! ```shell
-//! cerbero ask -u Hades -d under.world -p IamtheKingofD34d!! --impersonate Zeus --spn ldap/under.world
+//! $ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus -s ldap/under.world
 //! ```
 //!
 //!
@@ -132,13 +142,13 @@
 //!
 //! Calculate RC4 key (NT hash):
 //! ```shell
-//! $ cerbero hash -p 'IamtheKingofD34d!!'
+//! $ cerbero hash 'IamtheKingofD34d!!'
 //! rc4:86e0a04f7a44ed4d4a7eaf2ee977c799
 //! ```
 //!
 //! Calculate all the keys:
 //! ```shell
-//! $ cerbero hash -p 'IamtheKingofD34d!!' -u Hades -d under.world
+//! $ cerbero hash 'IamtheKingofD34d!!' -u under.world/Hades
 //! rc4:86e0a04f7a44ed4d4a7eaf2ee977c799
 //! aes128:fe165dec904772a90a177069e4ea7019
 //! aes256:1304965c35176aeb72e1ae5fdd6c2fe2e901af7223cb75f5eaac25ad667136e7
@@ -157,7 +167,7 @@
 //!
 //! ### List
 //! `list` shows the tickets information of a credentials file. Similar
-//! to `klist` command
+//! to `klist` command.
 //!
 //! ```shell
 //! cerbero list hades.ccache

@@ -25,6 +25,7 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("impersonate")
                 .long("impersonate")
+                .short("i")
                 .takes_value(true)
                 .help("Username to impersonate for request the ticket"),
         )
@@ -69,6 +70,7 @@ pub fn command() -> App<'static, 'static> {
             Arg::with_name("service")
                 .long("service")
                 .alias("spn")
+                .short("s")
                 .takes_value(true)
                 .value_name("spn")
                 .help("SPN of the desired service"),
