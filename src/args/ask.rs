@@ -4,6 +4,7 @@ use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::net::IpAddr;
+use std::convert::TryInto;
 
 pub const COMMAND_NAME: &str = "ask";
 
@@ -137,9 +138,11 @@ impl<'a> ArgumentsParser<'a> {
         let credential_format = self.parse_ticket_format();
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
+        let user: KerberosUser =
+            self.matches.value_of("user").unwrap().try_into().unwrap();
 
         return Arguments {
-            user: self.parse_user(),
+            user,
             user_key,
             kdc_ip,
             kdc_port: 88,
@@ -150,15 +153,6 @@ impl<'a> ArgumentsParser<'a> {
             impersonate_user: self.parse_impersonate_user(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
         };
-    }
-
-    fn parse_user(&self) -> KerberosUser {
-        let user = self.matches.value_of("user").unwrap();
-
-        let parts: Vec<&str> =
-            user.split(|c| ['/', '\\'].contains(&c)).collect();
-
-        return KerberosUser::new(parts[1].to_string(), parts[0].to_string());
     }
 
     fn parse_kdc_ip(&self) -> Option<IpAddr> {

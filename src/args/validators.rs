@@ -1,19 +1,12 @@
 use kerberos_crypto::Key;
 use ms_pac::PISID;
 use std::net::IpAddr;
+use crate::core::KerberosUser;
 
 use std::convert::TryFrom;
 
 pub fn is_kerberos_user(v: String) -> Result<(), String> {
-    let parts: Vec<&str> = v.split(|c| ['/', '\\'].contains(&c)).collect();
-
-    if parts.len() != 2 || parts[0].len() == 0 || parts[1].len() == 0 {
-        return Err(format!(
-            "Invalid user '{}', it must be <domain>/<username>",
-            v
-        ));
-    }
-
+    KerberosUser::try_from(v)?;
     return Ok(());
 }
 
