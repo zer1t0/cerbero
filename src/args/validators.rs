@@ -43,6 +43,21 @@ pub fn is_aes_256_key(v: String) -> Result<(), String> {
     return Ok(());
 }
 
+pub fn is_aes_key(v: String) -> Result<(), String> {
+    if let Ok(_) = Key::from_aes_128_key_string(&v) {
+        return Ok(());
+    }
+
+    Key::from_aes_256_key_string(&v).map_err(|_| {
+        format!(
+            "Invalid AES key '{}', must be a string of 64 or 32 hexadecimals",
+            v
+        )
+    })?;
+
+    return Ok(());
+}
+
 pub fn is_ip(v: String) -> Result<(), String> {
     v.parse::<IpAddr>()
         .map_err(|_| format!("Invalid IP address '{}'", v))?;

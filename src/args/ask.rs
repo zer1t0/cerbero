@@ -3,8 +3,8 @@ use crate::core::{CredentialFormat, KerberosUser};
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
-use std::net::IpAddr;
 use std::convert::TryInto;
+use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "ask";
 
@@ -16,7 +16,9 @@ pub fn command() -> App<'static, 'static> {
                 .long("user")
                 .short("u")
                 .takes_value(true)
-                .help("Username for request the ticket")
+                .help(
+                    "User for request the ticket in format <domain>/<username>",
+                )
                 .required(true)
                 .validator(validators::is_kerberos_user),
         )
@@ -38,26 +40,19 @@ pub fn command() -> App<'static, 'static> {
                 .long("rc4")
                 .alias("ntlm")
                 .takes_value(true)
-                .help("RC4 Kerberos key (NTLM hash of user)")
+                .help("RC4 Kerberos key of user (NT hash)")
                 .validator(validators::is_rc4_key),
         )
         .arg(
-            Arg::with_name("aes-128")
-                .long("aes-128")
+            Arg::with_name("aes")
+                .long("aes")
                 .takes_value(true)
-                .help("AES 128 Kerberos key of user")
-                .validator(validators::is_aes_128_key),
-        )
-        .arg(
-            Arg::with_name("aes-256")
-                .long("aes-256")
-                .takes_value(true)
-                .help("AES 256 Kerberos key of user")
-                .validator(validators::is_aes_256_key),
+                .help("AES Kerberos key of user")
+                .validator(validators::is_aes_key),
         )
         .group(
             ArgGroup::with_name("user_key")
-                .args(&["password", "rc4", "aes-128", "aes-256"])
+                .args(&["password", "rc4", "aes"])
                 .multiple(false),
         )
         .arg(
@@ -165,10 +160,11 @@ impl<'a> ArgumentsParser<'a> {
             return Some(Key::Secret(password.to_string()));
         } else if let Some(ntlm) = self.matches.value_of("rc4") {
             return Some(Key::from_rc4_key_string(ntlm).unwrap());
-        } else if let Some(aes_128_key) = self.matches.value_of("aes-128") {
-            return Some(Key::from_aes_128_key_string(aes_128_key).unwrap());
-        } else if let Some(aes_256_key) = self.matches.value_of("aes-256") {
-            return Some(Key::from_aes_256_key_string(aes_256_key).unwrap());
+        } else if let Some(aes_key) = self.matches.value_of("aes") {
+            if let Ok(key) = Key::from_aes_128_key_string(aes_key) {
+                return Some(key)
+            }
+            return Some(Key::from_aes_256_key_string(aes_key).unwrap());
         }
 
         return None;
