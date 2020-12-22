@@ -13,7 +13,8 @@ pub fn command() -> App<'static, 'static> {
         .about("Create golden and silver tickets")
         .arg(
             Arg::with_name("realm-sid")
-                .long("realm-sid")
+                .long("sid")
+                .visible_alias("realm-sid")
                 .visible_alias("domain-sid")
                 .takes_value(true)
                 .help("SID of the Domain/Realm for ticket")
@@ -80,7 +81,7 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("groups")
                 .long("groups")
-                .alias("groups-rid")
+                .visible_alias("groups-rid")
                 .takes_value(true)
                 .use_delimiter(true)
                 .help("RIDs of groups to include in ticket")
