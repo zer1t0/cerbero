@@ -1,5 +1,6 @@
 use super::validators;
 use crate::core::CredentialFormat;
+use crate::core::KerberosUser;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use ms_pac::PISID;
@@ -10,15 +11,6 @@ pub const COMMAND_NAME: &str = "craft";
 pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
         .about("Create golden and silver tickets")
-        .arg(
-            Arg::with_name("realm")
-                .long("realm")
-                .visible_alias("domain")
-                .short("d")
-                .takes_value(true)
-                .help("Domain/Realm for ticket")
-                .required(true),
-        )
         .arg(
             Arg::with_name("realm-sid")
                 .long("realm-sid")
@@ -34,7 +26,9 @@ pub fn command() -> App<'static, 'static> {
                 .short("u")
                 .takes_value(true)
                 .help("Username for ticket")
-                .required(true),
+                .help("User for ticket in format <domain>/<username>")
+                .required(true)
+                .validator(validators::is_kerberos_user),
         )
         .arg(
             Arg::with_name("user-rid")
@@ -50,7 +44,7 @@ pub fn command() -> App<'static, 'static> {
                 .visible_alias("spn")
                 .takes_value(true)
                 .value_name("spn")
-                .help("SPN of the desired service"),
+                .help("SPN of the desired service (for Silver ticket creation)"),
         )
         .arg(
             Arg::with_name("password")
@@ -64,7 +58,9 @@ pub fn command() -> App<'static, 'static> {
                 .long("rc4")
                 .visible_alias("ntlm")
                 .takes_value(true)
-                .help("RC4 Kerberos key (NT hash) to encrypt and sign the ticket")
+                .help(
+                    "RC4 Kerberos key (NT hash) to encrypt and sign the ticket",
+                )
                 .validator(validators::is_rc4_key),
         )
         .arg(
@@ -78,7 +74,7 @@ pub fn command() -> App<'static, 'static> {
             ArgGroup::with_name("user_key")
                 .args(&["password", "rc4", "aes"])
                 .multiple(false)
-                .required(true)
+                .required(true),
         )
         .arg(
             Arg::with_name("groups")
@@ -96,7 +92,7 @@ pub fn command() -> App<'static, 'static> {
                 .alias("ticket-format")
                 .takes_value(true)
                 .possible_values(&["krb", "ccache"])
-                .help("Format to save retrieved tickets.")
+                .help("Format to save ticket.")
                 .default_value("ccache"),
         )
         .arg(
@@ -116,9 +112,8 @@ pub fn command() -> App<'static, 'static> {
 }
 
 pub struct Arguments {
-    pub realm: String,
     pub realm_sid: PISID,
-    pub username: String,
+    pub user: KerberosUser,
     pub user_rid: u32,
     pub service: Option<String>,
     pub key: Key,
@@ -140,9 +135,8 @@ impl<'a> ArgumentsParser<'a> {
 
     fn _parse(&self) -> Arguments {
         return Arguments {
-            realm: self.parse_string("realm"),
             realm_sid: self.parse_realm_sid(),
-            username: self.parse_string("user"),
+            user: self.matches.value_of("user").unwrap().try_into().unwrap(),
             user_rid: self.parse_u32("user-rid"),
             service: self.parse_service(),
             key: self.parse_key(),
@@ -190,10 +184,6 @@ impl<'a> ArgumentsParser<'a> {
             .unwrap()
             .try_into()
             .unwrap()
-    }
-
-    fn parse_string(&self, name: &str) -> String {
-        self.matches.value_of(name).unwrap().into()
     }
 
     fn parse_u32(&self, name: &str) -> u32 {
