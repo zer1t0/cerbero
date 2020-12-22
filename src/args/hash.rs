@@ -1,4 +1,7 @@
+use super::validators;
+use crate::core::KerberosUser;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use std::convert::TryInto;
 
 pub const COMMAND_NAME: &str = "hash";
 
@@ -6,29 +9,20 @@ pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
         .about("Calculate password hashes/Kerberos keys")
         .arg(
-            Arg::with_name("realm")
-                .long("realm")
-                .alias("domain")
-                .short("d")
+            Arg::with_name("password")
                 .takes_value(true)
-                .help("Domain/Realm of user (required for AES keys)")
-                .requires("user"),
+                .help("Password of user")
+                .required(true),
         )
         .arg(
             Arg::with_name("user")
                 .long("user")
                 .short("u")
                 .takes_value(true)
-                .help("Username (required for AES keys)")
-                .requires("realm"),
-        )
-        .arg(
-            Arg::with_name("password")
-                .long("password")
-                .short("p")
-                .takes_value(true)
-                .help("Password of user")
-                .required(true),
+                .help(
+                    "User in format <domain>/<username> (required for AES keys)",
+                )
+                .validator(validators::is_kerberos_user),
         )
         .arg(
             Arg::with_name("verbosity")
@@ -40,8 +34,7 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub realm: Option<String>,
-    pub username: Option<String>,
+    pub user: Option<KerberosUser>,
     pub password: String,
     pub verbosity: usize,
 }
@@ -58,8 +51,7 @@ impl<'a> ArgumentsParser<'a> {
 
     fn _parse(&self) -> Arguments {
         return Arguments {
-            realm: self.matches.value_of("realm").map(|s| s.into()),
-            username: self.matches.value_of("user").map(|s| s.into()),
+            user:  self.matches.value_of("user").map(|u| u.try_into().unwrap()),
             password: self.matches.value_of("password").unwrap().into(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
         };

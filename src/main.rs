@@ -290,9 +290,8 @@ fn craft(args: args::craft::Arguments) -> Result<()> {
 fn hash(args: args::hash::Arguments) -> Result<()> {
     init_log(args.verbosity);
     return commands::hash(
-        args.realm.as_ref(),
-        args.username.as_ref(),
         &args.password,
+        args.user.as_ref()
     );
 }
 
