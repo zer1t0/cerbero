@@ -379,7 +379,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
 
     let transporter = resolve_and_get_tranporter(
         args.kdc_ip,
-        &args.realm,
+        &args.user.realm,
         args.kdc_port,
         args.transport_protocol,
     )?;
@@ -408,12 +408,10 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         }
     }
 
-    let user = KerberosUser::new(args.username, args.realm);
-
     let out_ref_vault = out_vault.as_ref();
 
     return commands::kerberoast(
-        user,
+        args.user,
         services,
         &*in_vault,
         out_ref_vault.map(|a| a as &dyn Vault),

@@ -1,10 +1,12 @@
 use super::validators;
 use crate::core::CrackFormat;
 use crate::core::CredentialFormat;
+use crate::core::KerberosUser;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_constants::etypes;
 use kerberos_crypto::Key;
+use std::convert::TryInto;
 use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "kerberoast";
@@ -13,21 +15,13 @@ pub fn command() -> App<'static, 'static> {
     SubCommand::with_name(COMMAND_NAME)
         .about("Perform a kerberoast attack")
         .arg(
-            Arg::with_name("realm")
-                .long("realm")
-                .alias("domain")
-                .short("d")
-                .takes_value(true)
-                .help("Domain/Realm for request the ticket")
-                .required(true),
-        )
-        .arg(
             Arg::with_name("user")
                 .long("user")
                 .short("u")
                 .takes_value(true)
-                .help("Username for request the ticket")
-                .required(true),
+                .help("User for request the ticket in format <domain>/<username>")
+                .required(true)
+                .validator(validators::is_kerberos_user),
         )
         .arg(
             Arg::with_name("services")
@@ -133,8 +127,7 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub realm: String,
-    pub username: String,
+    pub user: KerberosUser,
     pub user_key: Option<Key>,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
@@ -159,16 +152,13 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn _parse(&self) -> Arguments {
-        let realm = self.matches.value_of("realm").unwrap().into();
-        let username: String = self.matches.value_of("user").unwrap().into();
         let user_key = self.parse_user_key();
         let kdc_ip = self.parse_kdc_ip();
         let credential_format = self.parse_ticket_format();
         let services = self.parse_services();
 
         return Arguments {
-            realm,
-            username,
+            user: self.matches.value_of("user").unwrap().try_into().unwrap(),
             user_key,
             kdc_ip,
             kdc_port: 88,
