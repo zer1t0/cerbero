@@ -42,6 +42,7 @@ pub fn command() -> App<'static, 'static> {
             Arg::with_name("service")
                 .long("service")
                 .visible_alias("spn")
+                .short("s")
                 .takes_value(true)
                 .value_name("spn")
                 .help("SPN of the desired service (for Silver ticket creation)"),

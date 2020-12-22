@@ -275,6 +275,7 @@ fn convert(args: args::convert::Arguments) -> Result<()> {
 }
 
 fn craft(args: args::craft::Arguments) -> Result<()> {
+    init_log(args.verbosity);
     let creds_file = utils::get_ticket_file(
         args.credential_file,
         &args.user.name,

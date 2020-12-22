@@ -3,6 +3,7 @@ use crate::KerberosUser;
 use crate::Result;
 use kerberos_crypto::Key;
 use ms_pac::PISID;
+use log::info;
 
 pub fn craft(
     user: KerberosUser,
@@ -15,12 +16,19 @@ pub fn craft(
     cred_format: CredentialFormat,
     vault: &dyn Vault,
 ) -> Result<()> {
+    let username = user.name.clone();
+    
     let ticket_info = craft_ticket_info(
-        user, service, user_key, user_rid, realm_sid, groups, etype,
+        user, service.clone(), user_key, user_rid, realm_sid, groups, etype,
     );
 
     let krb_cred_plain = KrbCredPlain::new(vec![ticket_info]);
 
+    if let Some(service) = service {
+        info!("Save {} TGS for {} in {}", username, service, vault.id());
+    } else {
+        info!("Save {} TGT in {}", username, vault.id());        
+    }
     vault.save(krb_cred_plain, cred_format)?;
 
     return Ok(());
