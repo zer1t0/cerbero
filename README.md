@@ -62,7 +62,13 @@ INFO - Save Zeus S4U2Self TGS for Hades in Hades.ccache
 
 Perform S4u2proxy:
 ```shell
-$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus -s ldap/under.world
+$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus -s ldap/under.world -vv
+WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
+INFO - Request TGT for Hades
+WARN - No Zeus S4U2Self TGS for Hades found
+INFO - Request Zeus S4U2Self TGS for Hades
+INFO - Request ldap/under.world S4U2Proxy TGS for Zeus
+INFO - Save Zeus S4U2Proxy TGS for ldap/under.world in Hades.ccache
 ```
 
 
