@@ -86,12 +86,12 @@ pub fn get_impersonation_ticket(
         None => {
             warn!(
                 "No {} S4U2Self TGS for {} found",
-                user.name, impersonate_user.name,
+                impersonate_user.name, user.name,
             );
 
             info!(
                 "Request {} S4U2Self TGS for {}",
-                user.name, impersonate_user.name
+                impersonate_user.name, user.name,
             );
             let tgs_self = request_tgs(
                 user,
