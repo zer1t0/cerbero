@@ -322,6 +322,7 @@ fn hash(args: args::hash::Arguments) -> Result<()> {
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {
+    init_log(0);
     let in_file = match args.in_file {
         Some(filename) => filename,
         None => utils::get_env_ticket_file()
