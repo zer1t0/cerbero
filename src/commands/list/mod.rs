@@ -64,46 +64,46 @@ fn kerberos_flags_to_string(flags: u32) -> String {
     let mut flags_strs = Vec::new();
 
     if (flags & ticket_flags::FORWARDABLE) != 0 {
-        flags_strs.push("F")
+        flags_strs.push("forwardable")
     }
     if (flags & ticket_flags::FORWARDED) != 0 {
-        flags_strs.push("f")
+        flags_strs.push("forwarded")
     }
     if (flags & ticket_flags::PROXIABLE) != 0 {
-        flags_strs.push("P")
+        flags_strs.push("proxiable")
     }
     if (flags & ticket_flags::PROXY) != 0 {
-        flags_strs.push("p")
+        flags_strs.push("proxy")
     }
     if (flags & ticket_flags::MAY_POSTDATE) != 0 {
-        flags_strs.push("D")
+        flags_strs.push("may_postdate")
     }
     if (flags & ticket_flags::POSTDATE) != 0 {
-        flags_strs.push("d")
+        flags_strs.push("postdate")
     }
     if (flags & ticket_flags::RENEWABLE) != 0 {
-        flags_strs.push("R")
+        flags_strs.push("renewable")
     }
     if (flags & ticket_flags::INITIAL) != 0 {
-        flags_strs.push("I")
+        flags_strs.push("initial")
     }
     if (flags & ticket_flags::INVALID) != 0 {
-        flags_strs.push("i")
+        flags_strs.push("invalid")
     }
     if (flags & ticket_flags::HW_AUTHENT) != 0 {
-        flags_strs.push("H")
+        flags_strs.push("hw_authent")
     }
     if (flags & ticket_flags::PRE_AUTHENT) != 0 {
-        flags_strs.push("A")
+        flags_strs.push("pre_authent")
     }
     if (flags & ticket_flags::TRANSITED_POLICY_CHECKED) != 0 {
-        flags_strs.push("T")
+        flags_strs.push("transited_policy_checked")
     }
     if (flags & ticket_flags::OK_AS_DELEGATE) != 0 {
-        flags_strs.push("O")
+        flags_strs.push("ok_as_delegate")
     }
 
-    return flags_strs.join("");
+    return flags_strs.join(" ");
 }
 
 fn etype_to_string(etype: i32) -> String {
