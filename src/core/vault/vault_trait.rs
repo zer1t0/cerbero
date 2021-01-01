@@ -3,7 +3,11 @@ use crate::Result;
 
 pub trait Vault {
     fn id(&self) -> &str;
-    fn load(&self) -> Result<(KrbCredPlain, CredentialFormat)>;
+    // fn get_user_tgt(
+    //    &self,
+    //    user: &KerberosUser,
+    // ) -> Result<Option<TicketCredInfo>>;
+    fn dump(&self) -> Result<(KrbCredPlain, CredentialFormat)>;
     fn save(
         &self,
         creds: KrbCredPlain,

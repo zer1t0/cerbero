@@ -22,7 +22,7 @@ impl Vault for FileVault {
         return &self.file_path;
     }
 
-    fn load(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
+    fn dump(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
         return load_file_creds(&self.file_path);
     }
 

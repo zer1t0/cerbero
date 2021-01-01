@@ -16,7 +16,7 @@ impl Vault for EmptyVault {
         return "Nowhere";
     }
 
-    fn load(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
+    fn dump(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
         return Ok((KrbCredPlain::new(Vec::new()), CredentialFormat::Krb));
     }
 

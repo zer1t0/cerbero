@@ -10,7 +10,7 @@ pub fn list(
     show_etypes: bool,
     show_flags: bool,
 ) -> Result<()> {
-    let (krb_creds, cred_format) = vault.load()?;
+    let (krb_creds, cred_format) = vault.dump()?;
     println!("Ticket cache ({}): FILE:{}", cred_format, vault.id());
 
     for ticket_info in krb_creds.iter() {

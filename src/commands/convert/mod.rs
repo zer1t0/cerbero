@@ -8,7 +8,7 @@ pub fn convert(
     out_vault: &dyn Vault,
     cred_format: Option<CredentialFormat>,
 ) -> Result<()> {
-    let (krb_cred, in_cred_format) = in_vault.load()?;
+    let (krb_cred, in_cred_format) = in_vault.dump()?;
     info!("Read {} with {} format", in_vault.id(), in_cred_format);
 
     let cred_format = match cred_format {

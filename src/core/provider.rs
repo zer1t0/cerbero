@@ -49,7 +49,7 @@ fn get_user_tgt_from_file(
     vault: &dyn Vault,
     etype: Option<i32>,
 ) -> Result<(KrbCredPlain, CredentialFormat, TicketCredInfo)> {
-    let (krb_cred_plain, cred_format) = vault.load()?;
+    let (krb_cred_plain, cred_format) = vault.dump()?;
 
     let ticket_cred_info = krb_cred_plain
         .look_for_tgt(&user)
