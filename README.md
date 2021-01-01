@@ -187,7 +187,7 @@ Hades@UNDER.WORLD => krbtgt/UNDER.WORLD@UNDER.WORLD
 Valid starting: 12/22/2020 17:39:34
 Expires : 12/23/2020 03:39:34
 Renew until: 12/29/2020 17:39:34
-Flags: FRIA
+Flags: forwardable renewable initial pre_authent
 Etype (skey, tkt): aes256-cts-hmac-sha1-96 (18), aes256-cts-hmac-sha1-96 (18)
 ```
 
