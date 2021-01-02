@@ -40,7 +40,7 @@ pub fn get_user_tgt(
     let tgt_info = request_tgt(user, user_key, etype, transporter)?;
 
     info!("Save TGT for {} in {}", user.name, vault.id());
-    vault.append_ticket(tgt_info);
+    vault.add(tgt_info)?;
 
     return Ok(tgt_info);
 }
@@ -51,18 +51,16 @@ fn get_user_tgt_from_file(
     vault: &dyn Vault,
     etype: Option<i32>,
 ) -> Result<TicketCred> {
-    let krb_cred_plain = vault.dump()?;
+    let tgts = vault.get_user_tgts(user)?;
 
-    let tgts_info = krb_cred_plain.user_tgt_realm(user, &user.realm);
-
-    if tgts_info.is_empty() {
+    if tgts.is_empty() {
         return Err(format!("No TGT found for '{}", user.name))?;
     }
 
     if let Some(etype) = etype {
-        tgts_info = tgts_info.etype(etype);
+        tgts = tgts.etype(etype);
 
-        if tgts_info.is_empty() {
+        if tgts.is_empty() {
             return Err(format!(
                 "No TGT with etype '{}' found for '{}'",
                 etype,
@@ -71,7 +69,7 @@ fn get_user_tgt_from_file(
         }
     }
 
-    return Ok(tgts_info.get(0).unwrap().clone());
+    return Ok(tgts.get(0).unwrap().clone());
 }
 
 /// Function to get a TGS of an impersonated user from file

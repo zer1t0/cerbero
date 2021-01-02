@@ -1,13 +1,17 @@
 use super::Vault;
 use crate::core::CredFormat;
-use crate::core::{KrbUser, TicketCreds, TicketCred};
+use crate::core::{KrbUser, TicketCred, TicketCreds};
 use crate::Result;
 
-pub struct EmptyVault {}
+pub struct EmptyVault {
+    ticket_creds: TicketCreds,
+}
 
 impl EmptyVault {
     pub fn new() -> Self {
-        return Self {};
+        return Self {
+            ticket_creds: TicketCreds::empty(),
+        };
     }
 }
 
@@ -16,23 +20,28 @@ impl Vault for EmptyVault {
         return "Nowhere";
     }
 
-    fn get_cred_format(&self) -> Result<CredFormat> {
-        return Ok(CredFormat::Ccache);
-    }
-
-    fn get_user_tgt(&self, _: &KrbUser) -> Result<Option<TicketCred>> {
+    fn support_cred_format(&self) -> Result<Option<CredFormat>> {
         return Ok(None);
     }
 
-    fn append_ticket(&mut self, ticket_info: TicketCred) -> Result<()> {
+    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
+        return Ok(self.ticket_creds.user_tgt_realm(user, &user.realm));
+    }
+
+    fn add(&mut self, ticket_info: TicketCred) -> Result<()> {
+        self.ticket_creds.push(ticket_info);
         return Ok(());
     }
 
     fn dump(&self) -> Result<TicketCreds> {
-        return Ok(TicketCreds::new(Vec::new()));
+        return Ok(self.ticket_creds.clone());
     }
 
-    fn save(&self, _: TicketCreds, _: Option<CredFormat>) -> Result<()> {
+    fn save(&self, _: TicketCreds) -> Result<()> {
+        return Ok(());
+    }
+
+    fn save_as(&self, _: TicketCreds, _: CredFormat) -> Result<()> {
         return Ok(());
     }
 }

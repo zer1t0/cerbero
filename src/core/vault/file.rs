@@ -1,6 +1,6 @@
 use super::Vault;
 use crate::core::CredFormat;
-use crate::core::{TicketCreds, TicketCred};
+use crate::core::{TicketCred, TicketCreds};
 use crate::error::Error;
 use crate::KrbUser;
 use crate::Result;
@@ -17,66 +17,70 @@ impl FileVault {
     pub fn new(file_path: String) -> Self {
         return Self { file_path };
     }
+
+    fn get_cred_format(&self) -> Result<CredFormat> {
+        return get_file_cred_format(&self.file_path);
+    }
 }
+
 
 impl Vault for FileVault {
     fn id(&self) -> &str {
         return &self.file_path;
     }
 
+    fn support_cred_format(&self) -> Result<Option<CredFormat>> {
+        return get_cred_format_by_file(&self.file_path);
+    }
+
     fn dump(&self) -> Result<TicketCreds> {
         return load_file_creds(&self.file_path);
     }
 
-    fn get_cred_format(&self) -> Result<CredFormat> {
-        return get_file_cred_format(&self.file_path);
+    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
+        let tickets = self.dump()?;
+        return Ok(tickets.user_tgt_realm(user, &user.realm));
     }
 
-    fn get_user_tgt(
-        &self,
-        user: &KrbUser,
-    ) -> Result<Option<TicketCred>> {
-        let krb_cred_plain = self.dump()?;
-        return Ok(krb_cred_plain.look_for_tgt(&user));
-    }
-
-    fn append_ticket(&mut self, ticket_info: TicketCred) -> Result<()> {
+    fn add(&mut self, ticket_info: TicketCred) -> Result<()> {
         let mut tickets_info = self.dump()?;
         tickets_info.push(ticket_info);
-        return self.save(tickets_info, None);
+        return self.save(tickets_info);
     }
 
-    fn save(
+    fn save(&self, creds: TicketCreds) -> Result<()> {
+        return self.save_as(creds, self.get_cred_format()?);
+    }
+
+    fn save_as(
         &self,
         creds: TicketCreds,
-        cred_format: Option<CredFormat>,
+        cred_format: CredFormat,
     ) -> Result<()> {
-        let cred_format = match cred_format {
-            Some(cf) => cf,
-            None => self.get_cred_format()?,
-        };
         return save_file_creds(&self.file_path, creds, cred_format);
     }
 }
 
 pub fn load_file_creds(creds_file: &str) -> Result<TicketCreds> {
-    let (krb_cred, _) = load_file_krb_cred(&creds_file)?;
-
-    // Kerberos credentials are usually stored in plain text so this should
-    // work.
-    let creds = TicketCreds::try_from(krb_cred)?;
-    return Ok(creds);
+    match load_file_krb_cred(creds_file) {
+        Ok((krb_cred, _)) => {
+            // Kerberos credentials are usually stored in plain text so this
+            // should work.
+            return TicketCreds::try_from(krb_cred);
+        }
+        Err(err) => {
+            if err.is_not_found_error() || err.is_data_error() {
+                return Ok(TicketCreds::empty());
+            }
+            return Err(err);
+        }
+    }
 }
 
 pub fn get_file_cred_format(creds_file: &str) -> Result<CredFormat> {
-    return get_file_cred_format_with_default(creds_file, CredFormat::Ccache);
-}
-
-pub fn get_file_cred_format_with_default(
-    creds_file: &str,
-    default: CredFormat,
-) -> Result<CredFormat> {
-    return Ok(get_cred_format_by_file(creds_file)?.unwrap_or(default));
+    return Ok(
+        get_cred_format_by_file(creds_file)?.unwrap_or(CredFormat::Ccache)
+    );
 }
 
 /// Deduce the credentials format based on the file content and file extension.

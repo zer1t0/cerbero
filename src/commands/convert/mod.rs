@@ -9,7 +9,10 @@ pub fn convert(
     cred_format: Option<CredFormat>,
 ) -> Result<()> {
     let krb_cred = in_vault.dump()?;
-    let in_cred_format = in_vault.get_cred_format()?;
+    let in_cred_format = in_vault
+        .support_cred_format()?
+        .ok_or("Unknown input file format: Maybe an empty file?")?;
+
     info!("Read {} with {} format", in_vault.id(), in_cred_format);
 
     let cred_format = match cred_format {
@@ -26,7 +29,7 @@ pub fn convert(
         },
     };
 
-    out_vault.save(krb_cred, Some(cred_format))?;
+    out_vault.save_as(krb_cred, cred_format)?;
     info!("Save {} with {} format", out_vault.id(), cred_format);
 
     return Ok(());

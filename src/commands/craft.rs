@@ -29,7 +29,7 @@ pub fn craft(
     } else {
         info!("Save {} TGT in {}", username, vault.id());
     }
-    vault.save(krb_cred_plain, Some(cred_format))?;
+    vault.save_as(krb_cred_plain, cred_format)?;
 
     return Ok(());
 }

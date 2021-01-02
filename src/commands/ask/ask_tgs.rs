@@ -19,20 +19,20 @@ pub fn ask_tgs(
     vault: &dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
-    let tgt_info =
+    let tgt =
         get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
 
     info!("Request {} TGS for {}", service, user.name);
-    let tgs_info = request_tgs(
+    let tgs = request_tgs(
         user,
-        tgt_info,
+        tgt,
         S4u2options::Normal(service.clone()),
         None,
         transporter,
     )?;
 
     info!("Save {} TGS for {} in {}", username, service, vault.id());
-    vault.append_ticket(tgs_info);
+    vault.add(tgs)?;
 
     return Ok(());
 }
@@ -74,7 +74,7 @@ pub fn ask_s4u2self(
         username,
         vault.id()
     );
-    vault.append_ticket(tgs);
+    vault.add(tgs)?;
 
     return Ok(());
 }
@@ -115,15 +115,13 @@ pub fn ask_s4u2proxy(
         transporter,
     )?;
 
-    krb_cred_plain.push(tgs_proxy);
-
     info!(
         "Save {} S4U2Proxy TGS for {} in {}",
         imp_username,
         service,
         vault.id()
     );
-    vault.save(krb_cred_plain, cred_format)?;
+    vault.add(tgs_proxy)?;
 
     return Ok(());
 }

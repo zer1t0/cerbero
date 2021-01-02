@@ -11,7 +11,10 @@ pub fn list(
     show_flags: bool,
 ) -> Result<()> {
     let krb_creds = vault.dump()?;
-    let cred_format = vault.get_cred_format()?;
+    let cred_format = vault
+        .support_cred_format()?
+        .ok_or("Unknown input file format: Maybe an empty file?")?;
+
     println!("Ticket cache ({}): FILE:{}", cred_format, vault.id());
 
     for ticket_info in krb_creds.iter() {

@@ -21,7 +21,7 @@ pub fn ask_tgt(
     let tgt_info = request_tgt(user, user_key, None, transporter)?;
 
     info!("Save {} TGT in {}", username, vault.id());
-    vault.append_ticket(tgt_info);
+    vault.add(tgt_info)?;
 
     return Ok(());
 }

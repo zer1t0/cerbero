@@ -11,7 +11,7 @@ use kerberos_constants::etypes::NO_ENCRYPTION;
 use std::convert::TryFrom;
 use std::slice::Iter;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TicketCreds {
     pub ticket_creds: Vec<TicketCred>,
 }
@@ -19,6 +19,12 @@ pub struct TicketCreds {
 impl TicketCreds {
     pub fn new(ticket_creds: Vec<TicketCred>) -> Self {
         return Self { ticket_creds };
+    }
+
+    pub fn empty() -> Self {
+        return Self {
+            ticket_creds: Vec::new(),
+        };
     }
 
     pub fn push(&mut self, ticket_info: TicketCred) {
@@ -155,6 +161,14 @@ impl TicketCreds {
     /// Filter to only returns TGTs for a given realm.
     pub fn user_tgt_realm(&self, user: &KrbUser, realm: &str) -> Self {
         return self.tgt_realm(realm).user(user);
+    }
+
+    pub fn impersonation_tgss(
+        &self,
+        username: &KrbUser,
+        impersonate_user: &KrbUser,
+    ) -> Self {
+        self.user(impersonate_user).sname(new_nt_unknown(username));
     }
 
     pub fn look_for_tgt(&self, user: &KrbUser) -> Option<TicketCred> {
