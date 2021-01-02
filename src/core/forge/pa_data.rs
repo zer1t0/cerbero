@@ -1,5 +1,5 @@
 use super::principal_name::new_nt_principal;
-use crate::core::forge::KerberosUser;
+use crate::core::forge::KrbUser;
 use crate::core::Cipher;
 use chrono::Utc;
 use kerberos_asn1::{
@@ -32,7 +32,7 @@ pub fn new_pa_data_encrypted_timestamp(cipher: &Cipher) -> PaData {
 /// Helper to create a PA-DATA that contains a PA-FOR-USER struct
 /// used in S4U2Self
 pub fn new_pa_data_pa_for_user(
-    impersonate_user: KerberosUser,
+    impersonate_user: KrbUser,
     cipher: &Cipher,
 ) -> PaData {
     let pa_for_user = new_pa_for_user(impersonate_user, cipher);
@@ -40,7 +40,7 @@ pub fn new_pa_data_pa_for_user(
 }
 
 /// Helper to easily create a PA-FOR-USER struct used in S4U2Self
-fn new_pa_for_user(user: KerberosUser, cipher: &Cipher) -> PaForUser {
+fn new_pa_for_user(user: KrbUser, cipher: &Cipher) -> PaForUser {
     let mut pa_for_user = PaForUser::default();
     pa_for_user.username = new_nt_principal(&user.name);
     pa_for_user.userrealm = user.realm;
@@ -73,7 +73,7 @@ pub fn new_pa_data_pac_options(pac_options: u32) -> PaData {
 
 /// Helper to create a PA-DATA that contains an AP-REQ struct
 pub fn new_pa_data_ap_req(
-    user: KerberosUser,
+    user: KrbUser,
     ticket: Ticket,
     cipher: &Cipher,
 ) -> PaData {
@@ -87,7 +87,7 @@ pub fn new_pa_data_ap_req(
 }
 
 /// Helper to create an encrypt an Authenticator struct
-fn new_authenticator(user: KerberosUser) -> Authenticator {
+fn new_authenticator(user: KrbUser) -> Authenticator {
     let mut authenticator = Authenticator::default();
     authenticator.crealm = user.realm;
     authenticator.cname = new_nt_principal(&user.name);

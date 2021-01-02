@@ -1,7 +1,7 @@
 use super::validators;
 use crate::core::CrackFormat;
-use crate::core::CredentialFormat;
-use crate::core::KerberosUser;
+use crate::core::CredFormat;
+use crate::core::KrbUser;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_constants::etypes;
@@ -120,11 +120,11 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub user: KerberosUser,
+    pub user: KrbUser,
     pub user_key: Option<Key>,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
-    pub credential_format: CredentialFormat,
+    pub credential_format: CredFormat,
     pub crack_format: CrackFormat,
     pub services: String,
     pub transport_protocol: TransportProtocol,
@@ -186,14 +186,14 @@ impl<'a> ArgumentsParser<'a> {
         return None;
     }
 
-    fn parse_ticket_format(&self) -> CredentialFormat {
+    fn parse_ticket_format(&self) -> CredFormat {
         let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
-            return CredentialFormat::Krb;
+            return CredFormat::Krb;
         }
 
-        return CredentialFormat::Ccache;
+        return CredFormat::Ccache;
     }
 
     fn parse_credentials_file(&self) -> Option<String> {

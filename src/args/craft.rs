@@ -1,6 +1,6 @@
 use super::validators;
-use crate::core::CredentialFormat;
-use crate::core::KerberosUser;
+use crate::core::CredFormat;
+use crate::core::KrbUser;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use ms_pac::PISID;
@@ -115,12 +115,12 @@ pub fn command() -> App<'static, 'static> {
 
 pub struct Arguments {
     pub realm_sid: PISID,
-    pub user: KerberosUser,
+    pub user: KrbUser,
     pub user_rid: u32,
     pub service: Option<String>,
     pub key: Key,
     pub groups: Vec<u32>,
-    pub credential_format: CredentialFormat,
+    pub credential_format: CredFormat,
     pub credential_file: Option<String>,
     pub verbosity: usize,
 }
@@ -192,14 +192,14 @@ impl<'a> ArgumentsParser<'a> {
         self.matches.value_of(name).unwrap().parse().unwrap()
     }
 
-    fn parse_credential_format(&self) -> CredentialFormat {
+    fn parse_credential_format(&self) -> CredFormat {
         let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
-            return CredentialFormat::Krb;
+            return CredFormat::Krb;
         }
 
-        return CredentialFormat::Ccache;
+        return CredFormat::Ccache;
     }
 
     fn parse_credential_file(&self) -> Option<String> {

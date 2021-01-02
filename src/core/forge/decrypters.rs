@@ -1,6 +1,6 @@
 use super::krb_cred::new_krb_cred_info;
 use crate::core::Cipher;
-use crate::core::TicketCredInfo;
+use crate::core::TicketCred;
 use crate::error::Result;
 use kerberos_asn1::{
     AsRep, Asn1Object, EncAsRepPart, EncTgsRepPart, EncryptedData, TgsRep,
@@ -11,7 +11,7 @@ use kerberos_constants::key_usages;
 pub fn extract_krb_cred_from_as_rep(
     as_rep: AsRep,
     cipher: &Cipher,
-) -> Result<TicketCredInfo> {
+) -> Result<TicketCred> {
     let raw_enc_as_rep_part =
         decrypt_as_rep_enc_part(cipher, &as_rep.enc_part)?;
 
@@ -21,7 +21,7 @@ pub fn extract_krb_cred_from_as_rep(
     let krb_cred_info =
         new_krb_cred_info(enc_as_rep_part.into(), as_rep.crealm, as_rep.cname);
 
-    return Ok(TicketCredInfo::new(as_rep.ticket, krb_cred_info));
+    return Ok(TicketCred::new(as_rep.ticket, krb_cred_info));
 }
 
 /// Decrypts the AS-REP enc-part by using the use credentials
@@ -45,7 +45,7 @@ fn decrypt_as_rep_enc_part(
 pub fn extract_ticket_from_tgs_rep(
     tgs_rep: TgsRep,
     cipher: &Cipher,
-) -> Result<TicketCredInfo> {
+) -> Result<TicketCred> {
     let enc_tgs_as_rep_raw =
         decrypt_tgs_rep_enc_part(&cipher, &tgs_rep.enc_part)?;
 

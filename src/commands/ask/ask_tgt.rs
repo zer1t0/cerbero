@@ -1,7 +1,6 @@
 use crate::core::request_tgt;
-use crate::core::CredentialFormat;
-use crate::core::KerberosUser;
-use crate::core::KrbCredPlain;
+use crate::core::CredFormat;
+use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
@@ -10,10 +9,10 @@ use log::info;
 
 /// Main function to ask a TGT
 pub fn ask_tgt(
-    user: KerberosUser,
+    user: KrbUser,
     user_key: &Key,
     transporter: &dyn KerberosTransporter,
-    cred_format: CredentialFormat,
+    cred_format: CredFormat,
     vault: &dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
@@ -21,10 +20,8 @@ pub fn ask_tgt(
     info!("Request TGT for {}", user.name);
     let tgt_info = request_tgt(user, user_key, None, transporter)?;
 
-    let krb_cred_plain = KrbCredPlain::new(vec![tgt_info]);
-
     info!("Save {} TGT in {}", username, vault.id());
-    vault.save(krb_cred_plain, cred_format)?;
+    vault.append_ticket(tgt_info);
 
     return Ok(());
 }

@@ -1,12 +1,12 @@
 use kerberos_crypto::Key;
 use ms_pac::PISID;
 use std::net::IpAddr;
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 
 use std::convert::TryFrom;
 
 pub fn is_kerberos_user(v: String) -> Result<(), String> {
-    KerberosUser::try_from(v)?;
+    KrbUser::try_from(v)?;
     return Ok(());
 }
 

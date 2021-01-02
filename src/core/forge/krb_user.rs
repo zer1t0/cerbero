@@ -3,24 +3,24 @@ use std::fmt;
 
 // Struct to package the user identity with name and domain
 #[derive(Clone, Debug)]
-pub struct KerberosUser {
+pub struct KrbUser {
     pub realm: String,
     pub name: String,
 }
 
-impl KerberosUser {
+impl KrbUser {
     pub fn new(name: String, realm: String) -> Self {
         return Self { name, realm };
     }
 }
 
-impl fmt::Display for KerberosUser {
+impl fmt::Display for KrbUser {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}/{}", self.realm, self.name)
     }
 }
 
-impl TryFrom<&str> for KerberosUser {
+impl TryFrom<&str> for KrbUser {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -34,14 +34,14 @@ impl TryFrom<&str> for KerberosUser {
             ));
         }
 
-        return Ok(KerberosUser::new(
+        return Ok(KrbUser::new(
             parts[1].to_string(),
             parts[0].to_string(),
         ));
     }
 }
 
-impl TryFrom<&String> for KerberosUser {
+impl TryFrom<&String> for KrbUser {
     type Error = String;
 
     fn try_from(value: &String) -> Result<Self, Self::Error> {
@@ -49,7 +49,7 @@ impl TryFrom<&String> for KerberosUser {
     }
 }
 
-impl TryFrom<String> for KerberosUser {
+impl TryFrom<String> for KrbUser {
     type Error = String;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {

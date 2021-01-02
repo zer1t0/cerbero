@@ -1,8 +1,8 @@
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 use crate::Result;
 use kerberos_crypto::{aes_hmac_sha1, rc4_hmac_md5, AesSizes};
 
-pub fn hash(password: &str, user: Option<&KerberosUser>) -> Result<()> {
+pub fn hash(password: &str, user: Option<&KrbUser>) -> Result<()> {
     let rc4_key = rc4_hmac_md5::generate_key_from_string(password);
     println!("rc4:{}", get_hex(&rc4_key));
 

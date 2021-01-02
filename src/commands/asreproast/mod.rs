@@ -1,5 +1,5 @@
 use crate::core::request_as_rep;
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 use crate::core::{as_rep_to_crack_string, CrackFormat};
 use crate::error::{Error, Result};
 use crate::transporter::KerberosTransporter;
@@ -13,7 +13,7 @@ pub fn asreproast(
     etype: Option<i32>,
 ) -> Result<()> {
     for username in usernames.iter() {
-        let user = KerberosUser::new(username.clone(), realm.to_string());
+        let user = KrbUser::new(username.clone(), realm.to_string());
 
         let result =
             request_as_rep(user, None, etype.map(|e| vec![e]), &*transporter);

@@ -1,5 +1,5 @@
 use super::validators;
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::convert::TryInto;
 
@@ -34,7 +34,7 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub user: Option<KerberosUser>,
+    pub user: Option<KrbUser>,
     pub password: String,
     pub verbosity: usize,
 }

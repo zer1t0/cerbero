@@ -1,4 +1,4 @@
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 use crate::error::Result;
 use kerberos_asn1::EncryptionKey;
 use kerberos_constants::checksum_types;
@@ -16,7 +16,7 @@ pub struct Cipher {
 impl Cipher {
     pub fn generate(
         user_key: &Key,
-        user: &KerberosUser,
+        user: &KrbUser,
         preferred_etype: Option<i32>,
     ) -> Self {
         let (cipher, key) =
@@ -95,7 +95,7 @@ impl From<EncryptionKey> for Cipher {
 /// (in case of password)
 pub fn generate_cipher_and_key(
     user_key: &Key,
-    user: &KerberosUser,
+    user: &KrbUser,
     preferred_etype: Option<i32>,
 ) -> (Box<dyn KerberosCipher>, Vec<u8>) {
     match user_key {

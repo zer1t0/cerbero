@@ -203,7 +203,7 @@ mod transporter;
 mod utils;
 
 use crate::args::{args, Arguments, ArgumentsParser};
-use crate::core::KerberosUser;
+use crate::core::KrbUser;
 use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
 use crate::utils::{read_file_lines, resolve_and_get_tranporter};
@@ -257,7 +257,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let impersonate_user = match args.impersonate_user {
         Some(username) => {
-            Some(KerberosUser::new(username, args.user.realm.clone()))
+            Some(KrbUser::new(username, args.user.realm.clone()))
         }
         None => None,
     };

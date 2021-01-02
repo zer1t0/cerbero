@@ -1,5 +1,5 @@
 use super::validators;
-use crate::core::CredentialFormat;
+use crate::core::CredFormat;
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::net::IpAddr;
@@ -71,7 +71,7 @@ pub struct Arguments {
     pub passwords: String,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
-    pub cred_format: Option<CredentialFormat>,
+    pub cred_format: Option<CredFormat>,
     pub transport_protocol: TransportProtocol,
     pub verbosity: usize,
 }
@@ -110,7 +110,7 @@ impl<'a> ArgumentsParser<'a> {
         return Some(kdc_ip.parse::<IpAddr>().unwrap());
     }
 
-    fn parse_cred_format(&self) -> Option<CredentialFormat> {
+    fn parse_cred_format(&self) -> Option<CredFormat> {
         if !self.matches.is_present("save-tickets") {
             return None;
         }
@@ -118,10 +118,10 @@ impl<'a> ArgumentsParser<'a> {
         let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
-            return Some(CredentialFormat::Krb);
+            return Some(CredFormat::Krb);
         }
 
-        return Some(CredentialFormat::Ccache);
+        return Some(CredFormat::Ccache);
     }
 
     fn parse_transport_protocol(&self) -> TransportProtocol {

@@ -7,7 +7,7 @@ mod krb_cred;
 pub use krb_cred::new_krb_cred_info;
 
 mod krb_user;
-pub use krb_user::KerberosUser;
+pub use krb_user::KrbUser;
 
 mod principal_name;
 pub use principal_name::{

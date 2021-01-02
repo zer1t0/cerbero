@@ -4,21 +4,21 @@ mod ask_tgt;
 use ask_tgs::{ask_s4u2proxy, ask_s4u2self, ask_tgs};
 use ask_tgt::ask_tgt;
 
-use crate::core::CredentialFormat;
-use crate::core::KerberosUser;
+use crate::core::CredFormat;
+use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
 
 pub fn ask(
-    user: KerberosUser,
-    impersonate_user: Option<KerberosUser>,
+    user: KrbUser,
+    impersonate_user: Option<KrbUser>,
     service: Option<String>,
     vault: &dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<Key>,
-    credential_format: CredentialFormat,
+    credential_format: CredFormat,
 ) -> Result<()> {
     match service {
         Some(service) => match impersonate_user {

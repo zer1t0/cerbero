@@ -1,4 +1,4 @@
-use crate::core::CredentialFormat;
+use crate::core::CredFormat;
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 pub const COMMAND_NAME: &str = "convert";
@@ -40,7 +40,7 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub in_file: Option<String>,
     pub out_file: String,
-    pub cred_format: Option<CredentialFormat>,
+    pub cred_format: Option<CredFormat>,
     pub verbosity: usize,
 }
 
@@ -66,13 +66,13 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_credential_format(&self) -> Option<CredentialFormat> {
+    fn parse_credential_format(&self) -> Option<CredFormat> {
         let format = self.matches.value_of("cred-format")?;
 
         if format == "krb" {
-            return Some(CredentialFormat::Krb);
+            return Some(CredFormat::Krb);
         }
 
-        return Some(CredentialFormat::Ccache);
+        return Some(CredFormat::Ccache);
     }
 }

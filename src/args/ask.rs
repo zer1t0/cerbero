@@ -1,5 +1,5 @@
 use super::validators;
-use crate::core::{CredentialFormat, KerberosUser};
+use crate::core::{CredFormat, KrbUser};
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
@@ -107,11 +107,11 @@ pub fn command() -> App<'static, 'static> {
 
 #[derive(Debug)]
 pub struct Arguments {
-    pub user: KerberosUser,
+    pub user: KrbUser,
     pub user_key: Option<Key>,
     pub kdc_ip: Option<IpAddr>,
     pub kdc_port: u16,
-    pub credential_format: CredentialFormat,
+    pub credential_format: CredFormat,
     pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
@@ -135,7 +135,7 @@ impl<'a> ArgumentsParser<'a> {
         let credential_format = self.parse_ticket_format();
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
-        let user: KerberosUser =
+        let user: KrbUser =
             self.matches.value_of("user").unwrap().try_into().unwrap();
 
         return Arguments {
@@ -172,14 +172,14 @@ impl<'a> ArgumentsParser<'a> {
         return None;
     }
 
-    fn parse_ticket_format(&self) -> CredentialFormat {
+    fn parse_ticket_format(&self) -> CredFormat {
         let format = self.matches.value_of("cred-format").unwrap();
 
         if format == "krb" {
-            return CredentialFormat::Krb;
+            return CredFormat::Krb;
         }
 
-        return CredentialFormat::Ccache;
+        return CredFormat::Ccache;
     }
 
     fn parse_credentials_file(&self) -> Option<String> {

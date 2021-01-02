@@ -1,5 +1,5 @@
-use crate::core::CredentialFormat;
-use crate::core::KerberosUser;
+use crate::core::CredFormat;
+use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::core::{get_user_tgt, request_tgs};
 use crate::core::{tgs_to_crack_string, CrackFormat, S4u2options};
@@ -9,13 +9,13 @@ use kerberos_crypto::Key;
 use log::info;
 
 pub fn kerberoast(
-    user: KerberosUser,
+    user: KrbUser,
     services: Vec<String>,
     in_vault: &dyn Vault,
     out_vault: Option<&dyn Vault>,
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
-    cred_format: CredentialFormat,
+    cred_format: CredFormat,
     crack_format: CrackFormat,
     etype: Option<i32>,
 ) -> Result<()> {

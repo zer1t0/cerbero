@@ -1,6 +1,6 @@
 use super::Vault;
-use crate::core::CredentialFormat;
-use crate::core::KrbCredPlain;
+use crate::core::CredFormat;
+use crate::core::{KrbUser, TicketCreds, TicketCred};
 use crate::Result;
 
 pub struct EmptyVault {}
@@ -16,11 +16,23 @@ impl Vault for EmptyVault {
         return "Nowhere";
     }
 
-    fn dump(&self) -> Result<(KrbCredPlain, CredentialFormat)> {
-        return Ok((KrbCredPlain::new(Vec::new()), CredentialFormat::Krb));
+    fn get_cred_format(&self) -> Result<CredFormat> {
+        return Ok(CredFormat::Ccache);
     }
 
-    fn save(&self, _: KrbCredPlain, _: CredentialFormat) -> Result<()> {
+    fn get_user_tgt(&self, _: &KrbUser) -> Result<Option<TicketCred>> {
+        return Ok(None);
+    }
+
+    fn append_ticket(&mut self, ticket_info: TicketCred) -> Result<()> {
+        return Ok(());
+    }
+
+    fn dump(&self) -> Result<TicketCreds> {
+        return Ok(TicketCreds::new(Vec::new()));
+    }
+
+    fn save(&self, _: TicketCreds, _: Option<CredFormat>) -> Result<()> {
         return Ok(());
     }
 }

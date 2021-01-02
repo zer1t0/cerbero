@@ -1,4 +1,4 @@
-use crate::core::CredentialFormat;
+use crate::core::CredFormat;
 use crate::error::Result;
 use crate::transporter::new_transporter;
 use crate::transporter::{KerberosTransporter, TransportProtocol};
@@ -37,7 +37,7 @@ pub fn resolve_host(realm: &str) -> Result<IpAddr> {
 pub fn get_ticket_file(
     args_file: Option<String>,
     username: &String,
-    cred_format: &CredentialFormat,
+    cred_format: &CredFormat,
 ) -> String {
     if let Some(file) = args_file {
         return file;

@@ -10,13 +10,38 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     String(String),
     KrbError(KrbError),
+
+    /// Errors due to IO, such as failures in network or file operations.
     IOError(String, io::Error),
+
+    /// Errors related to handling of raw data, such as parsing, encrypting,
+    /// etc.
+    DataError(String)
+}
+
+impl Error {
+
+    pub fn is_not_found_error(&self) -> bool {
+        if let Error::IOError(_, ref io_err) = self {
+            return io_err.kind() == io::ErrorKind::NotFound;
+        }
+        return false;
+    }
+
+    pub fn is_data_error(&self) -> bool {
+        if let Error::DataError(_) = self {
+            return true;
+        }
+        return false;
+    }
+
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::String(s) => write!(f, "{}", s),
+            Error::DataError(s) => write!(f, "{}", s),
             Error::KrbError(krb_error) => {
                 write!(f, "{}", create_krb_error_msg(&krb_error))
             }

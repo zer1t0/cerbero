@@ -4,7 +4,7 @@ use super::pa_data::{
     new_pa_data_pa_for_user, new_pa_data_pac_options,
 };
 use super::principal_name::{new_nt_srv_inst, new_nt_unknown};
-use crate::core::forge::KerberosUser;
+use crate::core::forge::KrbUser;
 use crate::core::Cipher;
 use kerberos_asn1::{AsReq, TgsReq, Ticket};
 use kerberos_constants;
@@ -13,7 +13,7 @@ use kerberos_constants::{kdc_options, pa_pac_options};
 /// Helper to easily craft an AS-REQ message for asking a TGT
 /// from user data
 pub fn build_as_req(
-    user: KerberosUser,
+    user: KrbUser,
     cipher: Option<&Cipher>,
     etypes: Option<Vec<i32>>,
 ) -> AsReq {
@@ -37,14 +37,14 @@ pub fn build_as_req(
 
 pub enum S4u2options {
     S4u2proxy(Ticket, String),
-    S4u2self(KerberosUser),
+    S4u2self(KrbUser),
     Normal(String),
 }
 
 /// Helper to easily craft a TGS-REQ message for asking a TGS
 /// from user data and TGT
 pub fn build_tgs_req(
-    user: KerberosUser,
+    user: KrbUser,
     tgt: Ticket,
     cipher: &Cipher,
     s4u2options: S4u2options,
