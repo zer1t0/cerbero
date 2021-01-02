@@ -80,7 +80,7 @@ pub fn brute(
                         }
                     },
 
-                    Error::NetworkError(_, _) => return Err(err),
+                    Error::IOError(_, _) => return Err(err),
 
                     Error::String(err) => {
                         warn!("{}", err);

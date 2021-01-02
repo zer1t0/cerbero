@@ -26,7 +26,7 @@ pub fn asreproast(
             }
             Err(err) => match &err {
                 Error::KrbError(_) => {}
-                Error::NetworkError(_, _) => return Err(err),
+                Error::IOError(_, _) => return Err(err),
                 Error::String(_) => warn!("{}", err),
             },
         }

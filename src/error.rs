@@ -10,7 +10,7 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     String(String),
     KrbError(KrbError),
-    NetworkError(String, io::Error),
+    IOError(String, io::Error),
 }
 
 impl fmt::Display for Error {
@@ -20,7 +20,7 @@ impl fmt::Display for Error {
             Error::KrbError(krb_error) => {
                 write!(f, "{}", create_krb_error_msg(&krb_error))
             }
-            Error::NetworkError(desc, io_error) => {
+            Error::IOError(desc, io_error) => {
                 write!(f, "{}: {}", desc, io_error)
             }
         }
@@ -47,7 +47,7 @@ impl From<KrbError> for Error {
 
 impl From<(&str, io::Error)> for Error {
     fn from(error: (&str, io::Error)) -> Self {
-        return Self::NetworkError(error.0.into(), error.1);
+        return Self::IOError(error.0.into(), error.1);
     }
 }
 
