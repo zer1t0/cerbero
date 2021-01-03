@@ -19,6 +19,7 @@ pub fn get_user_tgt(
     let tgt_result = get_user_tgt_from_file(&user, vault, etype);
 
     if let Ok(tgt_info) = tgt_result {
+        info!("Get TGT for {} from {}", user, vault.id());
         return Ok(tgt_info);
     }
     let err = tgt_result.unwrap_err();

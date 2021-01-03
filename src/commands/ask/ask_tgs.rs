@@ -7,7 +7,8 @@ use crate::core::{
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
-use log::info;
+use log::{info, debug};
+use crate::core::stringifier::ticket_cred_to_string;
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -18,20 +19,25 @@ pub fn ask_tgs(
     cred_format: CredFormat,
     vault: &mut dyn Vault,
 ) -> Result<()> {
-    let username = user.name.clone();
-    let tgt =
-        get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
-    info!("Request {} TGS for {}", service, user.name);
+    info!("Request {} TGS for {}", service, user);
     let tgs = request_tgs(
-        user,
+        user.clone(),
         tgt,
         S4u2options::Normal(service.clone()),
         None,
         transporter,
     )?;
 
-    info!("Save {} TGS for {} in {}", username, service, vault.id());
+    debug!(
+        "{} TGS for {}\n{}",
+        service, user,
+        ticket_cred_to_string(&tgs, 0)
+    );
+
+    info!("Save {} TGS for {} in {}", user, service, vault.id());
     vault.add(tgs)?;
     vault.change_format(cred_format)?;
 
@@ -49,19 +55,14 @@ pub fn ask_s4u2self(
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
     let username = user.name.clone();
-    let tgt_info = get_user_tgt(
-        user.clone(),
-        vault,
-        user_key,
-        transporter,
-        None,
-    )?;
+    let tgt_info =
+        get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
 
     info!(
         "Request {} S4U2Self TGS for {}",
         impersonate_user.name, user.name
     );
-    let tgs = request_tgs(
+    let s4u2self_tgs = request_tgs(
         user,
         tgt_info,
         S4u2options::S4u2self(impersonate_user),
@@ -75,7 +76,7 @@ pub fn ask_s4u2self(
         username,
         vault.id()
     );
-    vault.add(tgs)?;
+    vault.add(s4u2self_tgs)?;
     vault.change_format(cred_format)?;
 
     return Ok(());
@@ -92,13 +93,7 @@ pub fn ask_s4u2proxy(
     cred_format: CredFormat,
 ) -> Result<()> {
     let imp_username = impersonate_user.name.clone();
-    let tgt = get_user_tgt(
-        user.clone(),
-        vault,
-        user_key,
-        transporter,
-        None,
-    )?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
 
     let s4u2self_tgs = get_impersonation_ticket(
         vault,

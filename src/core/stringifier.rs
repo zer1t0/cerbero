@@ -85,8 +85,7 @@ pub fn krb_cred_info_to_string(
          {}renew-till: {}\n\
          {}srealm: {}\n\
          {}sname:\n{}\n\
-         {}caddr: <Not Implemented>
-         ",
+         {}caddr: <Not Implemented>",
         indentation,
         encryption_key_to_string(&kci.key, indent_level + 2),
         indentation,

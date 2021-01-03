@@ -17,12 +17,12 @@ pub fn ask_tgt(
     vault: &mut dyn Vault,
 ) -> Result<()> {
     info!("Request TGT for {}", user);
-    let tgt_info = request_tgt(user.clone(), user_key, None, transporter)?;
+    let tgt = request_tgt(user.clone(), user_key, None, transporter)?;
 
-    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt_info, 0));
+    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Save {} TGT in {}", user, vault.id());
-    vault.add(tgt_info)?;
+    vault.add(tgt)?;
     vault.change_format(cred_format)?;
 
     return Ok(());
