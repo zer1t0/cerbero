@@ -1,3 +1,4 @@
+use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
@@ -7,8 +8,7 @@ use crate::core::{
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
-use log::{info, debug};
-use crate::core::stringifier::ticket_cred_to_string;
+use log::{debug, info};
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -33,7 +33,8 @@ pub fn ask_tgs(
 
     debug!(
         "{} TGS for {}\n{}",
-        service, user,
+        service,
+        user,
         ticket_cred_to_string(&tgs, 0)
     );
 
@@ -53,27 +54,29 @@ pub fn ask_s4u2self(
     user_key: Option<&Key>,
     cred_format: CredFormat,
 ) -> Result<()> {
-    let imp_username = impersonate_user.name.clone();
-    let username = user.name.clone();
-    let tgt_info =
-        get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
-    info!(
-        "Request {} S4U2Self TGS for {}",
-        impersonate_user.name, user.name
-    );
+    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
     let s4u2self_tgs = request_tgs(
-        user,
-        tgt_info,
-        S4u2options::S4u2self(impersonate_user),
+        user.clone(),
+        tgt,
+        S4u2options::S4u2self(impersonate_user.clone()),
         None,
         transporter,
     )?;
 
+    debug!(
+        "{} S4U2Self TGS for {}\n{}",
+        user,
+        impersonate_user,
+        ticket_cred_to_string(&s4u2self_tgs, 0)
+    );
+
     info!(
         "Save {} S4U2Self TGS for {} in {}",
-        imp_username,
-        username,
+        user,
+        impersonate_user,
         vault.id()
     );
     vault.add(s4u2self_tgs)?;
