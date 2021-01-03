@@ -85,17 +85,18 @@ pub fn get_impersonation_ticket(
     let tickets = vault.s4u2self_tgss(&user, &impersonate_user)?;
 
     if !tickets.is_empty() {
+        info!("Get {} S4U2Self TGS for {} from {}", user, impersonate_user, vault.id());
         return Ok(tickets.get(0).unwrap().clone());
     }
 
     warn!(
         "No {} S4U2Self TGS for {} found",
-        impersonate_user.name, user.name,
+        user, impersonate_user,
     );
 
     info!(
         "Request {} S4U2Self TGS for {}",
-        impersonate_user.name, user.name,
+        user, impersonate_user,
     );
 
     let s4u2self_tgs = request_tgs(
