@@ -220,6 +220,12 @@ pub fn kerberos_flags_to_string(flags: u32) -> String {
     if (flags & ticket_flags::OK_AS_DELEGATE) != 0 {
         flags_strs.push("ok_as_delegate")
     }
+    if (flags & ticket_flags::REQUEST_ANONYMOUS) != 0 {
+        flags_strs.push("anonymous")
+    }
+    if (flags & ticket_flags::NAME_CANONICALIZE) != 0 {
+        flags_strs.push("name_canonicalize")
+    }
 
     return format!("{:#06x} -> {}", flags, flags_strs.join(" "));
 }
