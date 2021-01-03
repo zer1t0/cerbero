@@ -22,5 +22,7 @@ pub use provider::{get_impersonation_ticket, get_user_tgt};
 mod requesters;
 pub use requesters::{request_as_rep, request_tgs, request_tgt};
 
+pub mod stringifier;
+
 mod vault;
 pub use vault::{save_file_creds, EmptyVault, FileVault, Vault};
