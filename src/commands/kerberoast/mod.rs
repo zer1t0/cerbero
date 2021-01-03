@@ -11,7 +11,7 @@ use log::info;
 pub fn kerberoast(
     user: KrbUser,
     services: Vec<String>,
-    in_vault: &dyn Vault,
+    in_vault: &mut dyn Vault,
     out_vault: Option<&dyn Vault>,
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
@@ -28,7 +28,7 @@ pub fn kerberoast(
         etype,
     )?;
 
-    let tickets = in_vault.dump()?;
+    let mut tickets = in_vault.dump()?;
 
     for service in services {
         match request_tgs(

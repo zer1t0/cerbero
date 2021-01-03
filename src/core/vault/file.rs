@@ -23,7 +23,6 @@ impl FileVault {
     }
 }
 
-
 impl Vault for FileVault {
     fn id(&self) -> &str {
         return &self.file_path;
@@ -35,11 +34,6 @@ impl Vault for FileVault {
 
     fn dump(&self) -> Result<TicketCreds> {
         return load_file_creds(&self.file_path);
-    }
-
-    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
-        let tickets = self.dump()?;
-        return Ok(tickets.user_tgt_realm(user, &user.realm));
     }
 
     fn add(&mut self, ticket_info: TicketCred) -> Result<()> {
@@ -58,6 +52,27 @@ impl Vault for FileVault {
         cred_format: CredFormat,
     ) -> Result<()> {
         return save_file_creds(&self.file_path, creds, cred_format);
+    }
+
+    fn change_format(
+        &self,
+        cred_format: CredFormat,
+    ) -> Result<()> {
+        return Ok(self.save_as(self.dump()?, cred_format)?);
+    }
+
+    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
+        let tickets = self.dump()?;
+        return Ok(tickets.user_tgt_realm(user, &user.realm));
+    }
+
+    fn s4u2self_tgss(
+        &self,
+        user: &KrbUser,
+        impersonate_user: &KrbUser,
+    ) -> Result<TicketCreds> {
+        let tickets = self.dump()?;
+        return Ok(tickets.s4u2self_tgss(user, impersonate_user));
     }
 }
 
@@ -113,7 +128,7 @@ pub fn get_cred_format_by_file_content(
 pub fn load_file_krb_cred(creds_file: &str) -> Result<(KrbCred, CredFormat)> {
     let data = fs::read(creds_file).map_err(|err| {
         let message = format!("Unable to read the file '{}'", creds_file);
-        (message.as_str(), err)
+        (message, err)
     })?;
 
     match CCache::parse(&data) {
@@ -167,7 +182,7 @@ pub fn save_file_krb_cred(
     fs::write(creds_file, raw_cred).map_err(|err| {
         let message =
             format!("Unable to write credentials in file {}", creds_file);
-        (message.as_str(), err)
+        (message, err)
     })?;
 
     return Ok(());

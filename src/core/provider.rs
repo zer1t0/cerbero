@@ -1,5 +1,5 @@
 use super::Vault;
-use crate::core::{TicketCreds, TicketCred};
+use crate::core::{TicketCred};
 use crate::core::KrbUser;
 use crate::core::{request_tgs, request_tgt, S4u2options};
 use crate::error::Result;
@@ -11,7 +11,7 @@ use log::{info, warn};
 /// or request it if it is necessary
 pub fn get_user_tgt(
     user: KrbUser,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
     user_key: Option<&Key>,
     transporter: &dyn KerberosTransporter,
     etype: Option<i32>,
@@ -37,10 +37,10 @@ pub fn get_user_tgt(
     }
 
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user, user_key, etype, transporter)?;
+    let tgt_info = request_tgt(user.clone(), user_key, etype, transporter)?;
 
     info!("Save TGT for {} in {}", user.name, vault.id());
-    vault.add(tgt_info)?;
+    vault.add(tgt_info.clone())?;
 
     return Ok(tgt_info);
 }
@@ -51,7 +51,7 @@ fn get_user_tgt_from_file(
     vault: &dyn Vault,
     etype: Option<i32>,
 ) -> Result<TicketCred> {
-    let tgts = vault.get_user_tgts(user)?;
+    let mut tgts = vault.get_user_tgts(user)?;
 
     if tgts.is_empty() {
         return Err(format!("No TGT found for '{}", user.name))?;
@@ -75,39 +75,43 @@ fn get_user_tgt_from_file(
 /// Function to get a TGS of an impersonated user from file
 /// or request it if it is necessary
 pub fn get_impersonation_ticket(
-    mut krb_cred_plain: TicketCreds,
+    vault: &mut dyn Vault,
     user: KrbUser,
     impersonate_user: KrbUser,
     transporter: &dyn KerberosTransporter,
     tgt: TicketCred,
-) -> Result<(TicketCreds, TicketCred)> {
-    let result = krb_cred_plain
-        .look_for_impersonation_ticket(&user.name, &impersonate_user.name);
+) -> Result<TicketCred> {
+    let tickets = vault.s4u2self_tgss(&user, &impersonate_user)?;
 
-    match result {
-        Some(ticket_info) => {
-            return Ok((krb_cred_plain, ticket_info));
-        }
-        None => {
-            warn!(
-                "No {} S4U2Self TGS for {} found",
-                impersonate_user.name, user.name,
-            );
-
-            info!(
-                "Request {} S4U2Self TGS for {}",
-                impersonate_user.name, user.name,
-            );
-            let tgs_self = request_tgs(
-                user,
-                tgt,
-                S4u2options::S4u2self(impersonate_user),
-                None,
-                transporter,
-            )?;
-            krb_cred_plain.push(tgs_self.clone());
-
-            return Ok((krb_cred_plain, tgs_self));
-        }
+    if !tickets.is_empty() {
+        return Ok(tickets.get(0).unwrap().clone());
     }
+
+    warn!(
+        "No {} S4U2Self TGS for {} found",
+        impersonate_user.name, user.name,
+    );
+
+    info!(
+        "Request {} S4U2Self TGS for {}",
+        impersonate_user.name, user.name,
+    );
+
+    let s4u2self_tgs = request_tgs(
+        user.clone(),
+        tgt,
+        S4u2options::S4u2self(impersonate_user.clone()),
+        None,
+        transporter,
+    )?;
+
+    info!(
+        "Save {} S4U2Self TGS for {} in {}",
+        impersonate_user.name,
+        user.name,
+        vault.id()
+    );
+    vault.add(s4u2self_tgs.clone())?;
+
+    return Ok(s4u2self_tgs);
 }

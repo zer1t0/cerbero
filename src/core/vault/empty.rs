@@ -24,10 +24,6 @@ impl Vault for EmptyVault {
         return Ok(None);
     }
 
-    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
-        return Ok(self.ticket_creds.user_tgt_realm(user, &user.realm));
-    }
-
     fn add(&mut self, ticket_info: TicketCred) -> Result<()> {
         self.ticket_creds.push(ticket_info);
         return Ok(());
@@ -43,5 +39,21 @@ impl Vault for EmptyVault {
 
     fn save_as(&self, _: TicketCreds, _: CredFormat) -> Result<()> {
         return Ok(());
+    }
+
+    fn change_format(&self, _: CredFormat) -> Result<()> {
+        return Ok(());
+    }
+
+    fn get_user_tgts(&self, user: &KrbUser) -> Result<TicketCreds> {
+        return Ok(self.ticket_creds.user_tgt_realm(user, &user.realm));
+    }
+
+    fn s4u2self_tgss(
+        &self,
+        user: &KrbUser,
+        impersonate_user: &KrbUser,
+    ) -> Result<TicketCreds> {
+        return Ok(self.ticket_creds.s4u2self_tgss(user, impersonate_user));
     }
 }

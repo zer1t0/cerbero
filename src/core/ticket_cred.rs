@@ -35,10 +35,6 @@ impl TicketCreds {
         return self.ticket_creds.iter();
     }
 
-    pub fn len(&self) -> usize {
-        return self.ticket_creds.len();
-    }
-
     pub fn is_empty(&self) -> bool {
         return self.ticket_creds.is_empty();
     }
@@ -66,7 +62,7 @@ impl TicketCreds {
     /// Filter tickets for prealm (realm of the client). Case insensitive.
     pub fn prealm(&self, realm: &str) -> Self {
         self.filter(|tci| {
-            if let Some(prealm) = tci.cred_info.prealm {
+            if let Some(prealm) = &tci.cred_info.prealm {
                 return prealm.to_lowercase() == realm.to_lowercase();
             }
             return false;
@@ -97,7 +93,7 @@ impl TicketCreds {
     /// Filter tickets for srealm (realm of the service). Case insensitive.
     pub fn srealm(&self, realm: &str) -> Self {
         self.filter(|tci| {
-            if let Some(srealm) = tci.cred_info.srealm {
+            if let Some(srealm) = &tci.cred_info.srealm {
                 return srealm.to_lowercase() == realm.to_lowercase();
             }
             return false;
@@ -163,49 +159,17 @@ impl TicketCreds {
         return self.tgt_realm(realm).user(user);
     }
 
-    pub fn impersonation_tgss(
+    /// Returns the s4u2self tgss.
+    pub fn s4u2self_tgss(
         &self,
-        username: &KrbUser,
+        user: &KrbUser,
         impersonate_user: &KrbUser,
     ) -> Self {
-        self.user(impersonate_user).sname(new_nt_unknown(username));
+        return self
+            .user(impersonate_user)
+            .sname(&new_nt_unknown(&user.name));
     }
 
-    pub fn look_for_tgt(&self, user: &KrbUser) -> Option<TicketCred> {
-        let cname = new_nt_principal(&user.name);
-        let tgt_service = new_nt_srv_inst(&format!("krbtgt/{}", user.realm));
-
-        return self.look_for_user_creds(&cname, &tgt_service);
-    }
-
-    pub fn look_for_impersonation_ticket(
-        &self,
-        username: &str,
-        impersonate_username: &str,
-    ) -> Option<TicketCred> {
-        let cname_imp = new_nt_principal(impersonate_username);
-        let service_imp = new_nt_unknown(username);
-
-        return self.look_for_user_creds(&cname_imp, &service_imp);
-    }
-
-    pub fn look_for_user_creds(
-        &self,
-        username: &PrincipalName,
-        service: &PrincipalName,
-    ) -> Option<TicketCred> {
-        for tcred in self.ticket_creds.iter() {
-            if let Some(pname) = &tcred.cred_info.pname {
-                if let Some(sname) = &tcred.cred_info.sname {
-                    if pname == username && sname == service {
-                        return Some(tcred.clone());
-                    }
-                }
-            }
-        }
-
-        return None;
-    }
 }
 
 impl Into<KrbCred> for TicketCreds {

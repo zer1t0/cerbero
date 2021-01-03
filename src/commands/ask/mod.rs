@@ -15,7 +15,7 @@ pub fn ask(
     user: KrbUser,
     impersonate_user: Option<KrbUser>,
     service: Option<String>,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<Key>,
     credential_format: CredFormat,

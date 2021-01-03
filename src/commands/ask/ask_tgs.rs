@@ -16,7 +16,7 @@ pub fn ask_tgs(
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredFormat,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
     let tgt =
@@ -33,6 +33,7 @@ pub fn ask_tgs(
 
     info!("Save {} TGS for {} in {}", username, service, vault.id());
     vault.add(tgs)?;
+    vault.change_format(cred_format)?;
 
     return Ok(());
 }
@@ -41,7 +42,7 @@ pub fn ask_tgs(
 pub fn ask_s4u2self(
     user: KrbUser,
     impersonate_user: KrbUser,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredFormat,
@@ -75,6 +76,7 @@ pub fn ask_s4u2self(
         vault.id()
     );
     vault.add(tgs)?;
+    vault.change_format(cred_format)?;
 
     return Ok(());
 }
@@ -84,7 +86,7 @@ pub fn ask_s4u2proxy(
     user: KrbUser,
     impersonate_user: KrbUser,
     service: String,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredFormat,
@@ -98,8 +100,8 @@ pub fn ask_s4u2proxy(
         None,
     )?;
 
-    let (mut krb_cred_plain, imp_ticket) = get_impersonation_ticket(
-        krb_cred_plain,
+    let s4u2self_tgs = get_impersonation_ticket(
+        vault,
         user.clone(),
         impersonate_user,
         transporter,
@@ -110,7 +112,7 @@ pub fn ask_s4u2proxy(
     let tgs_proxy = request_tgs(
         user,
         tgt,
-        S4u2options::S4u2proxy(imp_ticket.ticket, service.clone()),
+        S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
         None,
         transporter,
     )?;
@@ -122,6 +124,7 @@ pub fn ask_s4u2proxy(
         vault.id()
     );
     vault.add(tgs_proxy)?;
+    vault.change_format(cred_format)?;
 
     return Ok(());
 }

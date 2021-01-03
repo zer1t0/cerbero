@@ -28,6 +28,7 @@ pub fn asreproast(
                 Error::KrbError(_) => {}
                 Error::IOError(_, _) => return Err(err),
                 Error::String(_) => warn!("{}", err),
+                Error::DataError(_) => warn!("{}", err),
             },
         }
     }

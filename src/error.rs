@@ -76,6 +76,12 @@ impl From<(&str, io::Error)> for Error {
     }
 }
 
+impl From<(String, io::Error)> for Error {
+    fn from(error: (String, io::Error)) -> Self {
+        return Self::IOError(error.0, error.1);
+    }
+}
+
 fn create_krb_error_msg(krb_error: &KrbError) -> String {
     let error_string = error_codes::error_code_to_string(krb_error.error_code);
     return format!("Error {}: {}", krb_error.error_code, error_string);

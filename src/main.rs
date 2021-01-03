@@ -262,13 +262,13 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         None => None,
     };
 
-    let vault = FileVault::new(creds_file);
+    let mut vault = FileVault::new(creds_file);
 
     return commands::ask(
         args.user,
         impersonate_user,
         args.service,
-        &vault,
+        &mut vault,
         &*transporter,
         args.user_key,
         args.credential_format,
@@ -406,7 +406,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         None => utils::get_env_ticket_file(),
     };
 
-    let in_vault: Box<dyn Vault>;
+    let mut in_vault: Box<dyn Vault>;
     let out_vault: Option<FileVault>;
 
     if let Some(creds_file) = creds_file {
@@ -430,7 +430,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
     return commands::kerberoast(
         args.user,
         services,
-        &*in_vault,
+        &mut *in_vault,
         out_ref_vault.map(|a| a as &dyn Vault),
         args.user_key.as_ref(),
         &*transporter,

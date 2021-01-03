@@ -85,6 +85,9 @@ pub fn brute(
                     Error::String(err) => {
                         warn!("{}", err);
                     }
+                    Error::DataError(err) => {
+                        warn!("{}", err);
+                    }
                 },
             }
         }

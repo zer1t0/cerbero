@@ -13,7 +13,7 @@ pub fn ask_tgt(
     user_key: &Key,
     transporter: &dyn KerberosTransporter,
     cred_format: CredFormat,
-    vault: &dyn Vault,
+    vault: &mut dyn Vault,
 ) -> Result<()> {
     let username = user.name.clone();
 
@@ -22,6 +22,7 @@ pub fn ask_tgt(
 
     info!("Save {} TGT in {}", username, vault.id());
     vault.add(tgt_info)?;
+    vault.change_format(cred_format)?;
 
     return Ok(());
 }
