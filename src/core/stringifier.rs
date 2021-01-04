@@ -1,17 +1,18 @@
 use crate::core::TicketCred;
 use chrono::Local;
 use kerberos_asn1::{
-    AsRep, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
-    EtypeInfo2Entry, KerberosTime, KrbCredInfo, PaData, PrincipalName, Ticket,
+    AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
+    EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
+    PaData, PrincipalName, Ticket,
 };
-use kerberos_constants::etypes;
-use kerberos_constants::message_types;
-use kerberos_constants::pa_data_types;
-use kerberos_constants::principal_names;
-use kerberos_constants::ticket_flags;
+use kerberos_constants::{
+    etypes, kdc_options, message_types, pa_data_types, principal_names,
+    ticket_flags,
+};
 
 const NONE: &str = "-";
 const UNKNOWN: &str = "???";
+const INDENT_STEP: usize = 4;
 
 pub fn ticket_cred_to_string(tc: &TicketCred, indent_level: usize) -> String {
     let indentation = indent(indent_level);
@@ -25,6 +26,132 @@ pub fn ticket_cred_to_string(tc: &TicketCred, indent_level: usize) -> String {
         indentation,
         krb_cred_info_to_string(&tc.cred_info, indent_level)
     )
+}
+
+pub fn as_req_to_string(ar: &AsReq, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}padata: {}\n\
+         {}req-body:\n{}",
+        indentation,
+        ar.pvno,
+        indentation,
+        msg_type_to_string(ar.msg_type),
+        indentation,
+        &ar.padata
+            .as_ref()
+            .map(|pds| format!(
+                "\n{}",
+                padatas_to_string(&pds, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(NONE.into()),
+        indentation,
+        kdc_req_body_to_string(&ar.req_body, indent_level + INDENT_STEP)
+    )
+}
+
+pub fn kdc_req_body_to_string(krb: &KdcReqBody, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}kdc-options: {}\n\
+         {}cname:\n{}\n\
+         {}realm: {}\n\
+         {}sname:\n{}\n\
+         {}from: {}\n\
+         {}till: {}\n\
+         {}rtime: {}\n\
+         {}nonce: {}\n\
+         {}etypes:\n{}\n\
+         {}addresses: <Not Implemented>\n\
+         {}enc-authorization-data:{}\n\
+         {}additional-tickets:{}",
+        indentation,
+        kdc_options_to_string(krb.kdc_options.flags),
+        indentation,
+        krb.cname
+            .as_ref()
+            .map(|v| principal_name_to_string(&v, indent_level + INDENT_STEP))
+            .unwrap_or(NONE.into()),
+        indentation,
+        krb.realm,
+        indentation,
+        krb.sname
+            .as_ref()
+            .map(|v| principal_name_to_string(&v, indent_level + INDENT_STEP))
+            .unwrap_or(NONE.into()),
+        indentation,
+        krb.from
+            .as_ref()
+            .map(|v| kerberos_time_to_string(&v))
+            .unwrap_or(NONE.into()),
+        indentation,
+        kerberos_time_to_string(&krb.till),
+        indentation,
+        krb.rtime
+            .as_ref()
+            .map(|v| kerberos_time_to_string(&v))
+            .unwrap_or(NONE.into()),
+        indentation,
+        krb.nonce,
+        indentation,
+        etypes_to_string(&krb.etypes, indent_level + INDENT_STEP),
+        indentation,
+        indentation,
+        krb.enc_authorization_data
+            .as_ref()
+            .map(|v| format!(
+                "\n{}",
+                encrypted_data_to_string(&v, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(format!(" {}", NONE)),
+        indentation,
+        krb.additional_tickets
+            .as_ref()
+            .map(|v| format!(
+                "\n{}",
+                tickets_to_string(&v, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(format!(" {}", NONE))
+    )
+}
+
+pub fn kdc_options_to_string(ko: u32) -> String {
+    let options_names = [
+        (kdc_options::FORWARDABLE, "forwardable"),
+        (kdc_options::FORWARDED, "forwarded"),
+        (kdc_options::PROXIABLE, "proxiable"),
+        (kdc_options::PROXY, "proxy"),
+        (kdc_options::ALLOW_POSTDATE, "allow-postdate"),
+        (kdc_options::POSTDATED, "postdated"),
+        (kdc_options::RENEWABLE, "renewable"),
+        (kdc_options::OPT_HARDWARE_AUTH, "opt-hardware-auth"),
+        (
+            kdc_options::CONSTRAINED_DELEGATION,
+            "constrained-delegation",
+        ),
+        (kdc_options::CANONICALIZE, "canonicalize"),
+        (kdc_options::REQUEST_ANONYMOUS, "request-anonymous"),
+        (
+            kdc_options::DISABLE_TRANSITED_CHECK,
+            "disable-transited-check",
+        ),
+        (kdc_options::RENEWABLE_OK, "renewable-ok"),
+        (kdc_options::ENC_TKT_IN_SKEY, "enc-tkt-in-skey"),
+        (kdc_options::RENEW, "renew"),
+        (kdc_options::VALIDATE, "validate"),
+    ];
+
+    let mut names = Vec::new();
+
+    for option in options_names.iter() {
+        if (ko & option.0) != 0 {
+            names.push(option.1)
+        }
+    }
+
+    return format!("{:#06x} -> {}", ko, names.join(" "));
 }
 
 pub fn as_rep_to_string(ar: &AsRep, indent_level: usize) -> String {
@@ -46,17 +173,17 @@ pub fn as_rep_to_string(ar: &AsRep, indent_level: usize) -> String {
             .as_ref()
             .map(|pds| format!(
                 "\n{}",
-                padatas_to_string(&pds, indent_level + 2)
+                padatas_to_string(&pds, indent_level + INDENT_STEP)
             ))
             .unwrap_or(NONE.into()),
         indentation,
         ar.crealm,
         indentation,
-        principal_name_to_string(&ar.cname, indent_level + 2),
+        principal_name_to_string(&ar.cname, indent_level + INDENT_STEP),
         indentation,
-        ticket_to_string(&ar.ticket, indent_level + 2),
+        ticket_to_string(&ar.ticket, indent_level + INDENT_STEP),
         indentation,
-        encrypted_data_to_string(&ar.enc_part, indent_level + 2)
+        encrypted_data_to_string(&ar.enc_part, indent_level + INDENT_STEP)
     )
 }
 
@@ -86,7 +213,7 @@ pub fn padata_to_string(padata: &PaData, indent_level: usize) -> String {
         indentation,
         padata_type_to_string(padata.padata_type),
         indentation,
-        padata_value_to_string(&padata, indent_level + 2)
+        padata_value_to_string(&padata, indent_level + INDENT_STEP)
             .map(|v| format!("\n{}", v))
             .unwrap_or(format!(
                 " {}",
@@ -107,9 +234,37 @@ pub fn padata_value_to_string(
                 return Some(etype_info2_to_string(&etype_info2, indent_level));
             }
         }
+        pa_data_types::PA_PAC_REQUEST => {
+            if let Ok((_, pac_request)) =
+                KerbPaPacRequest::parse(&padata.padata_value)
+            {
+                return Some(pa_pac_request_to_string(
+                    &pac_request,
+                    indent_level,
+                ));
+            }
+        }
+        pa_data_types::PA_ENC_TIMESTAMP => {
+            if let Ok((_, pa_enc_timestamp)) =
+                EncryptedData::parse(&padata.padata_value)
+            {
+                return Some(encrypted_data_to_string(
+                    &pa_enc_timestamp,
+                    indent_level,
+                ));
+            }
+        }
         _ => {}
     };
     return None;
+}
+
+pub fn pa_pac_request_to_string(
+    pr: &KerbPaPacRequest,
+    indent_level: usize,
+) -> String {
+    let indentation = indent(indent_level);
+    format!("{}include-pac: {}", indentation, pr.include_pac)
 }
 
 pub fn padata_type_to_string(padata_type: i32) -> String {
@@ -193,6 +348,23 @@ pub fn msg_type_name(msg_type: i32) -> &'static str {
     }
 }
 
+pub fn tickets_to_string(tickets: &Vec<Ticket>, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    let mut vs = Vec::new();
+
+    for (i, ticket) in tickets.iter().enumerate() {
+        vs.push(format!(
+            "{}[{}]\n\
+             {}",
+            indentation,
+            i,
+            ticket_to_string(ticket, indent_level)
+        ))
+    }
+
+    return vs.join("\n");
+}
+
 pub fn ticket_to_string(tkt: &Ticket, indent_level: usize) -> String {
     let indentation = indent(indent_level);
     format!(
@@ -205,9 +377,9 @@ pub fn ticket_to_string(tkt: &Ticket, indent_level: usize) -> String {
         indentation,
         tkt.realm,
         indentation,
-        principal_name_to_string(&tkt.sname, indent_level + 2),
+        principal_name_to_string(&tkt.sname, indent_level + INDENT_STEP),
         indentation,
-        encrypted_data_to_string(&tkt.enc_part, indent_level + 2)
+        encrypted_data_to_string(&tkt.enc_part, indent_level + INDENT_STEP)
     )
 }
 
@@ -255,13 +427,13 @@ pub fn krb_cred_info_to_string(
          {}sname:\n{}\n\
          {}caddr: <Not Implemented>",
         indentation,
-        encryption_key_to_string(&kci.key, indent_level + 2),
+        encryption_key_to_string(&kci.key, indent_level + INDENT_STEP),
         indentation,
         &kci.prealm.as_ref().unwrap_or(&NONE.to_string()),
         indentation,
         &kci.pname
             .as_ref()
-            .map(|v| principal_name_to_string(&v, indent_level + 2))
+            .map(|v| principal_name_to_string(&v, indent_level + INDENT_STEP))
             .unwrap_or(NONE.into()),
         indentation,
         &kci.flags
@@ -293,7 +465,7 @@ pub fn krb_cred_info_to_string(
         indentation,
         &kci.sname
             .as_ref()
-            .map(|v| principal_name_to_string(&v, indent_level + 2))
+            .map(|v| principal_name_to_string(&v, indent_level + INDENT_STEP))
             .unwrap_or(NONE.into()),
         indentation
     )
@@ -396,6 +568,24 @@ pub fn kerberos_flags_to_string(flags: u32) -> String {
     }
 
     return format!("{:#06x} -> {}", flags, flags_strs.join(" "));
+}
+
+pub fn etypes_to_string(etypes: &Vec<i32>, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    let mut vs = Vec::new();
+
+    for (i, et) in etypes.iter().enumerate() {
+        vs.push(format!(
+            "{}[{}]\n\
+             {}{}",
+            indentation,
+            i,
+            indentation,
+            etype_to_string(*et)
+        ))
+    }
+
+    return vs.join("\n");
 }
 
 fn etype_to_string(etype: i32) -> String {
