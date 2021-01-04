@@ -1,8 +1,8 @@
 use crate::core::TicketCred;
 use chrono::Local;
 use kerberos_asn1::{
-    AsRep, EncryptedData, EncryptionKey, KerberosTime, KrbCredInfo, PaData,
-    PrincipalName, Ticket, EtypeInfo2Entry
+    AsRep, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
+    EtypeInfo2Entry, KerberosTime, KrbCredInfo, PaData, PrincipalName, Ticket,
 };
 use kerberos_constants::etypes;
 use kerberos_constants::message_types;
@@ -79,14 +79,37 @@ pub fn padatas_to_string(padatas: &Vec<PaData>, indent_level: usize) -> String {
 
 pub fn padata_to_string(padata: &PaData, indent_level: usize) -> String {
     let indentation = indent(indent_level);
-    format!(
+
+    return format!(
         "{}padata-type: {}\n\
-         {}padata-value: {}",
+         {}padata-value:{}",
         indentation,
         padata_type_to_string(padata.padata_type),
         indentation,
-        octet_string_to_string(&padata.padata_value)
-    )
+        padata_value_to_string(&padata, indent_level + 2)
+            .map(|v| format!("\n{}", v))
+            .unwrap_or(format!(
+                " {}",
+                octet_string_to_string(&padata.padata_value)
+            ))
+    );
+}
+
+pub fn padata_value_to_string(
+    padata: &PaData,
+    indent_level: usize,
+) -> Option<String> {
+    match padata.padata_type {
+        pa_data_types::PA_ETYPE_INFO2 => {
+            if let Ok((_, etype_info2)) =
+                EtypeInfo2::parse(&padata.padata_value)
+            {
+                return Some(etype_info2_to_string(&etype_info2, indent_level));
+            }
+        }
+        _ => {}
+    };
+    return None;
 }
 
 pub fn padata_type_to_string(padata_type: i32) -> String {
@@ -408,8 +431,30 @@ fn name_type_name(name_type: i32) -> &'static str {
     }
 }
 
+pub fn etype_info2_to_string(
+    padatas: &EtypeInfo2,
+    indent_level: usize,
+) -> String {
+    let indentation = indent(indent_level);
+    let mut vs = Vec::new();
 
-pub fn etype_info2_entry_to_string(entry: EtypeInfo2Entry, indent_level: usize) -> String {
+    for (i, ei) in padatas.iter().enumerate() {
+        vs.push(format!(
+            "{}[{}]\n\
+             {}",
+            indentation,
+            i,
+            etype_info2_entry_to_string(ei, indent_level)
+        ))
+    }
+
+    return vs.join("\n");
+}
+
+pub fn etype_info2_entry_to_string(
+    entry: &EtypeInfo2Entry,
+    indent_level: usize,
+) -> String {
     let indentation = indent(indent_level);
     format!(
         "{}etype: {}\n\
@@ -418,5 +463,12 @@ pub fn etype_info2_entry_to_string(entry: EtypeInfo2Entry, indent_level: usize) 
         indentation,
         etype_to_string(entry.etype),
         indentation,
+        &entry.salt.as_ref().unwrap_or(&NONE.to_string()),
+        indentation,
+        &entry
+            .s2kparams
+            .as_ref()
+            .map(|v| octet_string_to_string(&v))
+            .unwrap_or(NONE.into())
     )
 }
