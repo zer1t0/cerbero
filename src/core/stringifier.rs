@@ -1,10 +1,12 @@
 use crate::core::TicketCred;
 use chrono::Local;
 use kerberos_asn1::{
-    EncryptedData, EncryptionKey, KerberosTime, KrbCredInfo, PrincipalName,
-    Ticket,
+    AsRep, EncryptedData, EncryptionKey, KerberosTime, KrbCredInfo, PaData,
+    PrincipalName, Ticket, EtypeInfo2Entry
 };
 use kerberos_constants::etypes;
+use kerberos_constants::message_types;
+use kerberos_constants::pa_data_types;
 use kerberos_constants::principal_names;
 use kerberos_constants::ticket_flags;
 
@@ -23,6 +25,149 @@ pub fn ticket_cred_to_string(tc: &TicketCred, indent_level: usize) -> String {
         indentation,
         krb_cred_info_to_string(&tc.cred_info, indent_level)
     )
+}
+
+pub fn as_rep_to_string(ar: &AsRep, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}padata: {}\n\
+         {}crealm: {}\n\
+         {}cname:\n{}\n\
+         {}ticket:\n{}\n\
+         {}enc-part:\n{}",
+        indentation,
+        ar.pvno,
+        indentation,
+        msg_type_to_string(ar.msg_type),
+        indentation,
+        &ar.padata
+            .as_ref()
+            .map(|pds| format!(
+                "\n{}",
+                padatas_to_string(&pds, indent_level + 2)
+            ))
+            .unwrap_or(NONE.into()),
+        indentation,
+        ar.crealm,
+        indentation,
+        principal_name_to_string(&ar.cname, indent_level + 2),
+        indentation,
+        ticket_to_string(&ar.ticket, indent_level + 2),
+        indentation,
+        encrypted_data_to_string(&ar.enc_part, indent_level + 2)
+    )
+}
+
+pub fn padatas_to_string(padatas: &Vec<PaData>, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    let mut vs = Vec::new();
+
+    for (i, pd) in padatas.iter().enumerate() {
+        vs.push(format!(
+            "{}[{}]\n\
+             {}",
+            indentation,
+            i,
+            padata_to_string(pd, indent_level)
+        ))
+    }
+
+    return vs.join("\n");
+}
+
+pub fn padata_to_string(padata: &PaData, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}padata-type: {}\n\
+         {}padata-value: {}",
+        indentation,
+        padata_type_to_string(padata.padata_type),
+        indentation,
+        octet_string_to_string(&padata.padata_value)
+    )
+}
+
+pub fn padata_type_to_string(padata_type: i32) -> String {
+    format!("{} -> {}", padata_type, padata_type_name(padata_type))
+}
+
+pub fn padata_type_name(padata_type: i32) -> &'static str {
+    match padata_type {
+        pa_data_types::PA_TGS_REQ => "pa-tgs-req",
+        pa_data_types::PA_ENC_TIMESTAMP => "pa-enc-timestamp",
+        pa_data_types::PA_PW_SALT => "pa-pw-salt",
+        pa_data_types::PA_ENC_UNIX_TIME => "pa-enc-unix-time",
+        pa_data_types::PA_SANDIA_SECUREID => "pa-sandia-secureid",
+        pa_data_types::PA_SESAME => "pa-sesame",
+        pa_data_types::PA_OSF_DCE => "pa-osf-dce",
+        pa_data_types::PA_CYBERSAFE_SECUREID => "pa-cybersafe-secureid",
+        pa_data_types::PA_AFS3_SALT => "pa-afs3-salt",
+        pa_data_types::PA_ETYPE_INFO => "pa-etype-info",
+        pa_data_types::PA_SAM_CHALLENGE => "pa-sam-challenge",
+        pa_data_types::PA_SAM_RESPONSE => "pa-sam-response",
+        pa_data_types::PA_PK_AS_REQ_OLD => "pa-pk-as-req-old",
+        pa_data_types::PA_PK_AS_REP_OLD => "pa-pk-as-rep-old",
+        pa_data_types::PA_PK_AS_REQ => "pa-pk-as-req",
+        pa_data_types::PA_PK_AS_REP => "pa-pk-as-rep",
+        pa_data_types::PA_ETYPE_INFO2 => "pa-etype-info2",
+        pa_data_types::PA_SVR_REFERRAL_INFO => {
+            "pa-srv-referral-info | pa-use-specified-kvno"
+        }
+        pa_data_types::PA_SAM_REDIRECT => "pa-sam-redirect",
+        pa_data_types::PA_GET_FROM_TYPED_DATA => {
+            "pa-get-from-typed-data | td-padata"
+        }
+        pa_data_types::PA_SAM_ETYPE_INFO => "pa-sam-etype-info",
+        pa_data_types::PA_ALT_PRINC => "pa-alt-princ",
+        pa_data_types::PA_SAM_CHALLENGE2 => "pa-sam-challenge2",
+        pa_data_types::PA_SAM_RESPONSE2 => "pa-sam-response2",
+        pa_data_types::PA_EXTRA_TGT => "pa-extra-tgt",
+        pa_data_types::TD_PKINIT_CMS_CERTIFICATES => {
+            "td-pkinit-cms-certificates"
+        }
+        pa_data_types::TD_KRB_PRINCIPAL => "td-krb-principal",
+        pa_data_types::TD_KRB_REALM => "td-krb-realm",
+        pa_data_types::TD_TRUSTED_CERTIFIERS => "td-trusted-certifiers",
+        pa_data_types::TD_CERTIFICATE_INDEX => "td-certificate-index",
+        pa_data_types::TD_APP_DEFINED_ERROR => "td-app-defined-error",
+        pa_data_types::TD_REQ_NONCE => "td-req-nonce",
+        pa_data_types::TD_REQ_SEQ => "td-req-seq",
+        pa_data_types::PA_PAC_REQUEST => "pa-pac-request",
+        pa_data_types::PA_FOR_USER => "pa-for-user",
+        pa_data_types::PA_FX_COOKIE => "pa-fx-cookien",
+        pa_data_types::PA_FX_FAST => "pa-fx-fast",
+        pa_data_types::PA_FX_ERROR => "pa-fx-error",
+        pa_data_types::PA_ENCRYPTED_CHALLENGE => "pa-encrypted-challenge",
+        pa_data_types::KERB_KEY_LIST_REQ => "kerb-key-list-req",
+        pa_data_types::KERB_KEY_LIST_REP => "kerb-key-list-rep",
+        pa_data_types::PA_SUPPORTED_ENCTYPES => "pa-supported-enctypes",
+        pa_data_types::PA_PAC_OPTIONS => "pa-pac-options",
+        _ => UNKNOWN,
+    }
+}
+
+pub fn msg_type_to_string(msg_type: i32) -> String {
+    format!("{} -> {}", msg_type, msg_type_name(msg_type))
+}
+
+pub fn msg_type_name(msg_type: i32) -> &'static str {
+    match msg_type {
+        message_types::KRB_AS_REQ => "krb-as-req",
+        message_types::KRB_AS_REP => "krb-as-rep",
+        message_types::KRB_TGS_REQ => "krb-tgs-req",
+        message_types::KRB_TGS_REP => "krb-tgs-rep",
+        message_types::KRB_AP_REQ => "krb-ap-req",
+        message_types::KRB_AP_REP => "krb-ap-rep",
+        message_types::KRB_RESERVED16 => "krb-reserved16",
+        message_types::KRB_RESERVED17 => "krb-reserved17",
+        message_types::KRB_SAFE => "krb-safe",
+        message_types::KRB_PRIV => "krb-priv",
+        message_types::KRB_CRED => "krb-cred",
+        message_types::KRB_ERROR => "krb-error",
+        _ => UNKNOWN,
+    }
 }
 
 pub fn ticket_to_string(tkt: &Ticket, indent_level: usize) -> String {
@@ -261,4 +406,17 @@ fn name_type_name(name_type: i32) -> &'static str {
         principal_names::NT_ENTERPRISE => "nt-enterprise",
         _ => UNKNOWN,
     }
+}
+
+
+pub fn etype_info2_entry_to_string(entry: EtypeInfo2Entry, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}etype: {}\n\
+         {}salt: {}\n\
+         {}s2kparams: {}",
+        indentation,
+        etype_to_string(entry.etype),
+        indentation,
+    )
 }
