@@ -1,7 +1,8 @@
 use std::io;
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{SocketAddr, UdpSocket, IpAddr};
 
 use super::transporter_trait::KerberosTransporter;
+use crate::transporter::TransportProtocol;
 
 /// Send Kerberos messages over UDP
 #[derive(Debug)]
@@ -18,6 +19,14 @@ impl UdpTransporter {
 impl KerberosTransporter for UdpTransporter {
     fn send_recv(&self, raw: &[u8]) -> io::Result<Vec<u8>> {
         return send_recv_udp(&self.dst_addr, raw);
+    }
+
+    fn protocol(&self) -> TransportProtocol {
+        return TransportProtocol::UDP;
+    }
+
+    fn ip(&self) -> IpAddr {
+        return self.dst_addr.ip();
     }
 }
 

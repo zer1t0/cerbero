@@ -1,9 +1,10 @@
 use std::io;
 use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::{SocketAddr, TcpStream, IpAddr};
 use std::time::Duration;
 
 use super::transporter_trait::KerberosTransporter;
+use crate::transporter::TransportProtocol;
 
 /// Send Kerberos messages over TCP
 #[derive(Debug)]
@@ -20,6 +21,14 @@ impl TcpTransporter {
 impl KerberosTransporter for TcpTransporter {
     fn send_recv(&self, raw: &[u8]) -> io::Result<Vec<u8>> {
         return send_recv_tcp(&self.dst_addr, raw);
+    }
+
+    fn protocol(&self) -> TransportProtocol {
+        return TransportProtocol::TCP;
+    }
+
+    fn ip(&self) -> IpAddr {
+        return self.dst_addr.ip();
     }
 }
 
