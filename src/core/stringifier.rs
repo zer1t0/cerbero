@@ -3,11 +3,11 @@ use chrono::Local;
 use kerberos_asn1::{
     AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
     EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    KrbError, PaData, PrincipalName, TgsRep, TgsReq, Ticket,
+    KrbError, PaData, PrincipalName, TgsRep, TgsReq, Ticket, ApReq
 };
 use kerberos_constants::{
     error_codes, etypes, kdc_options, message_types, pa_data_types,
-    principal_names, ticket_flags,
+    principal_names, ticket_flags, ap_options
 };
 
 const NONE: &str = "-";
@@ -239,7 +239,7 @@ pub fn kdc_req_body_to_string(krb: &KdcReqBody, indent_level: usize) -> String {
     let indentation = indent(indent_level);
     format!(
         "{}kdc-options: {}\n\
-         {}cname:\n{}\n\
+         {}cname:{}\n\
          {}realm: {}\n\
          {}sname:\n{}\n\
          {}from: {}\n\
@@ -255,8 +255,8 @@ pub fn kdc_req_body_to_string(krb: &KdcReqBody, indent_level: usize) -> String {
         indentation,
         krb.cname
             .as_ref()
-            .map(|v| principal_name_to_string(&v, indent_level + INDENT_STEP))
-            .unwrap_or(NONE.into()),
+            .map(|v| format!("\n{}", principal_name_to_string(&v, indent_level + INDENT_STEP)))
+            .unwrap_or(format!(" {}", NONE)),
         indentation,
         krb.realm,
         indentation,
@@ -335,6 +335,46 @@ pub fn kdc_options_to_string(ko: u32) -> String {
     }
 
     return format!("{:#06x} -> {}", ko, names.join(" "));
+}
+
+pub fn ap_req_to_string(ar: &ApReq, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}ap-options: {}\n\
+         {}ticket:\n{}\n\
+         {}authenticator:\n{}",
+        indentation,
+        ar.pvno,
+        indentation,
+        ar.msg_type,
+        indentation,
+        ap_options_to_string(*ar.ap_options),
+        indentation,
+        ticket_to_string(&ar.ticket, indent_level + INDENT_STEP),
+        indentation,
+        encrypted_data_to_string(&ar.authenticator, indent_level + INDENT_STEP),
+    )
+}
+
+pub fn ap_options_to_string(ao: u32) -> String {
+    let ap_options_names = [
+        (ap_options::RESERVED, "reserved"),
+        (ap_options::USE_SESSION_KEY, "use-session-key"),
+        (ap_options::MUTUAL_REQUIRED, "mutual-required"),
+    ];
+
+    let mut names = Vec::new();
+
+    for option in ap_options_names.iter() {
+        if (ao & option
+            .0) != 0 {
+            names.push(option.1)
+        }
+    }
+
+    return format!("{:#06x} -> {}", ao, names.join(" "));
 }
 
 pub fn as_rep_to_string(ar: &AsRep, indent_level: usize) -> String {
@@ -466,6 +506,16 @@ pub fn padata_value_to_string(
             {
                 return Some(encrypted_data_to_string(
                     &pa_enc_timestamp,
+                    indent_level,
+                ));
+            }
+        }
+        pa_data_types::PA_TGS_REQ => {
+            if let Ok((_, pa_tgs_req)) =
+                ApReq::parse(&padata.padata_value)
+            {
+                return Some(ap_req_to_string(
+                    &pa_tgs_req,
                     indent_level,
                 ));
             }
