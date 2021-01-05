@@ -3,11 +3,11 @@ use chrono::Local;
 use kerberos_asn1::{
     AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
     EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    PaData, PrincipalName, Ticket,
+    KrbError, PaData, PrincipalName, Ticket,
 };
 use kerberos_constants::{
-    etypes, kdc_options, message_types, pa_data_types, principal_names,
-    ticket_flags,
+    error_codes, etypes, kdc_options, message_types, pa_data_types,
+    principal_names, ticket_flags,
 };
 
 const NONE: &str = "-";
@@ -26,6 +26,165 @@ pub fn ticket_cred_to_string(tc: &TicketCred, indent_level: usize) -> String {
         indentation,
         krb_cred_info_to_string(&tc.cred_info, indent_level)
     )
+}
+
+pub fn krb_error_to_string(ke: &KrbError, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}ctime: {}\n\
+         {}cusec: {}\n\
+         {}stime: {}\n\
+         {}susec: {}\n\
+         {}error-code: {}\n\
+         {}crealm: {}\n\
+         {}cname:{}\n\
+         {}realm: {}\n\
+         {}sname:\n{}\n\
+         {}e-text: {}\n\
+         {}e-data: {}",
+        indentation,
+        ke.pvno,
+        indentation,
+        msg_type_to_string(ke.msg_type),
+        indentation,
+        ke.ctime
+            .as_ref()
+            .map(|v| kerberos_time_to_string(&v))
+            .unwrap_or(NONE.into()),
+        indentation,
+        ke.cusec.map(|v| format!("{}", v)).unwrap_or(NONE.into()),
+        indentation,
+        kerberos_time_to_string(&ke.stime),
+        indentation,
+        ke.susec,
+        indentation,
+        error_code_to_string(ke.error_code),
+        indentation,
+        ke.crealm.as_ref().unwrap_or(&NONE.into()),
+        indentation,
+        ke.cname
+            .as_ref()
+            .map(|v| format!(
+                "\n{}",
+                principal_name_to_string(&v, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(NONE.into()),
+        indentation,
+        ke.realm,
+        indentation,
+        principal_name_to_string(&ke.sname, indent_level + INDENT_STEP),
+        indentation,
+        ke.e_text.as_ref().unwrap_or(&NONE.into()),
+        indentation,
+        ke.e_data
+            .as_ref()
+            .map(|v| octet_string_to_string(&v))
+            .unwrap_or(NONE.into()),
+    )
+}
+
+pub fn error_code_to_string(ec: i32) -> String {
+    format!("{} -> {}", ec, error_code_name(ec))
+}
+
+pub fn error_code_name(ec: i32) -> &'static str {
+    match ec {
+        error_codes::KDC_ERR_NONE => "kdc-err-none",
+        error_codes::KDC_ERR_NAME_EXP => "kdc-err-name-exp",
+        error_codes::KDC_ERR_SERVICE_EXP => "kdc-err-service-exp",
+        error_codes::KDC_ERR_BAD_PVNO => "kdc-err-bad-pvno",
+        error_codes::KDC_ERR_C_OLD_MAST_KVNO => "kdc-err-c-old-mast-kvno",
+        error_codes::KDC_ERR_S_OLD_MAST_KVNO => "kdc-err-s-old-mast-kvno",
+        error_codes::KDC_ERR_C_PRINCIPAL_UNKNOWN => {
+            "kdc-err-c-principal-unknown"
+        }
+        error_codes::KDC_ERR_S_PRINCIPAL_UNKNOWN => {
+            "kdc-err-s-principal-unknown"
+        }
+        error_codes::KDC_ERR_PRINCIPAL_NOT_UNIQUE => {
+            "kdc-err-principal-not-unique"
+        }
+        error_codes::KDC_ERR_NULL_KEY => "kdc-err-null-key",
+        error_codes::KDC_ERR_CANNOT_POSTDATE => "kdc-err-cannot-postdate",
+        error_codes::KDC_ERR_NEVER_VALID => "kdc-err-never-valid",
+        error_codes::KDC_ERR_POLICY => "kdc-err-policy",
+        error_codes::KDC_ERR_BADOPTION => "kdc-err-badoption",
+        error_codes::KDC_ERR_ETYPE_NOSUPP => "kdc-err-etype-nosupp",
+        error_codes::KDC_ERR_SUMTYPE_NOSUPP => "kdc-err-sumtype-nosupp",
+        error_codes::KDC_ERR_PADATA_TYPE_NOSUPP => "kdc-err-padata-type-nosupp",
+        error_codes::KDC_ERR_TRTYPE_NOSUPP => "kdc-err-trtype-nosupp",
+        error_codes::KDC_ERR_CLIENT_REVOKED => "kdc-err-client-revoked",
+        error_codes::KDC_ERR_SERVICE_REVOKED => "kdc-err-service-revoked",
+        error_codes::KDC_ERR_TGT_REVOKED => "kdc-err-tgt-revoked",
+        error_codes::KDC_ERR_CLIENT_NOTYET => "kdc-err-client-notyet",
+        error_codes::KDC_ERR_SERVICE_NOTYET => "kdc-err-service-notyet",
+        error_codes::KDC_ERR_KEY_EXPIRED => "kdc-err-key-expired",
+        error_codes::KDC_ERR_PREAUTH_FAILED => "kdc-err-preauth-failed",
+        error_codes::KDC_ERR_PREAUTH_REQUIRED => "kdc-err-preauth-required",
+        error_codes::KDC_ERR_SERVER_NOMATCH => "kdc-err-server-nomatch",
+        error_codes::KDC_ERR_MUST_USE_USER2USER => "kdc-err-must-use-user2user",
+        error_codes::KDC_ERR_PATH_NOT_ACCEPTED => "kdc-err-path-not-accepted",
+        error_codes::KDC_ERR_SVC_UNAVAILABLE => "kdc-err-svc-unavailable",
+        error_codes::KRB_AP_ERR_BAD_INTEGRITY => "krb-ap-err-bad-integrity",
+        error_codes::KRB_AP_ERR_TKT_EXPIRED => "krb-ap-tkt-expired",
+        error_codes::KRB_AP_ERR_TKT_NYV => "krb-ap-err-tkt-nyv",
+        error_codes::KRB_AP_ERR_REPEAT => "krb-ap-err-repeat",
+        error_codes::KRB_AP_ERR_NOT_US => "krb-ap-err-not-us",
+        error_codes::KRB_AP_ERR_BADMATCH => "krb-ap-err-badmatch",
+        error_codes::KRB_AP_ERR_SKEW => "krb-ap-err-skew",
+        error_codes::KRB_AP_ERR_BADADDR => "krb-ap-err-badaddr",
+        error_codes::KRB_AP_ERR_BADVERSION => "krb-ap-err-badversion",
+        error_codes::KRB_AP_ERR_MSG_TYPE => "krb-ap-err-msg-type",
+        error_codes::KRB_AP_ERR_MODIFIED => "krb-ap-err-modified",
+        error_codes::KRB_AP_ERR_BADORDER => "krb-ap-err-badorder",
+        error_codes::KRB_AP_ERR_BADKEYVER => "krb-ap-err-badkeyver",
+        error_codes::KRB_AP_ERR_NOKEY => "krb-ap-err-nokey",
+        error_codes::KRB_AP_ERR_MUT_FAIL => "krb-ap-err-mut-fail",
+        error_codes::KRB_AP_ERR_BADDIRECTION => "krb-ap-err-baddirection",
+        error_codes::KRB_AP_ERR_METHOD => "krb-ap-err-method",
+        error_codes::KRB_AP_ERR_BADSEQ => "krb-ap-err-badseq",
+        error_codes::KRB_AP_ERR_INAPP_CKSUM => "krb-ap-err-inapp-cksum",
+        error_codes::KRB_AP_PATH_NOT_ACCEPTED => "krb-ap-path-not-accepted",
+        error_codes::KRB_ERR_RESPONSE_TOO_BIG => "krb-err-response-too-big",
+        error_codes::KRB_ERR_GENERIC => "krb-err-generic",
+        error_codes::KRB_ERR_FIELD_TOOLONG => "krb-err-field-toolong",
+        error_codes::KDC_ERROR_CLIENT_NOT_TRUSTED => {
+            "kdc-error-client-not-trusted"
+        }
+        error_codes::KDC_ERROR_KDC_NOT_TRUSTED => "kdc-error-kdc-not-trusted",
+        error_codes::KDC_ERROR_INVALID_SIG => "kdc-error-invalid-sig",
+        error_codes::KDC_ERR_KEY_TOO_WEAK => "kdc-err-key-too-weak",
+        error_codes::KDC_ERR_CERTIFICATE_MISMATCH => {
+            "kdc-err-certificate-mismatch"
+        }
+        error_codes::KRB_AP_ERR_NO_TGT => "krb-ap-err-no-tgt",
+        error_codes::KDC_ERR_WRONG_REALM => "kdc-err-wrong-realm",
+        error_codes::KRB_AP_ERR_USER_TO_USER_REQUIRED => {
+            "krb-ap-err-user-to-user-required"
+        }
+        error_codes::KDC_ERR_CANT_VERIFY_CERTIFICATE => {
+            "kdc-err-cant-verify-certificate"
+        }
+        error_codes::KDC_ERR_INVALID_CERTIFICATE => {
+            "kdc-err-invalid-certificate"
+        }
+        error_codes::KDC_ERR_REVOKED_CERTIFICATE => {
+            "kdc-err-revoked-certificate"
+        }
+        error_codes::KDC_ERR_REVOCATION_STATUS_UNKNOWN => {
+            "kdc-err-revocation-status-unknown"
+        }
+        error_codes::KDC_ERR_REVOCATION_STATUS_UNAVAILABLE => {
+            "kdc-err-revocation-status-unavailable"
+        }
+        error_codes::KDC_ERR_CLIENT_NAME_MISMATCH => {
+            "kdc-err-client-name-mismatch"
+        }
+        error_codes::KDC_ERR_KDC_NAME_MISMATCH => "kdc-err-kdc-name-mismatch",
+        _ => UNKNOWN,
+    }
 }
 
 pub fn as_req_to_string(ar: &AsReq, indent_level: usize) -> String {

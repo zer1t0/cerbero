@@ -1,9 +1,10 @@
+use crate::core::stringifier::{
+    as_rep_to_string, as_req_to_string, krb_error_to_string,
+};
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_asn1::{AsRep, AsReq, Asn1Object, KrbError, TgsRep, TgsReq};
 use std::io;
-use crate::core::stringifier::as_rep_to_string;
-use crate::core::stringifier::as_req_to_string;
 
 use log::debug;
 
@@ -76,6 +77,10 @@ pub fn send_recv_as(
 
     match rep {
         Rep::KrbError(krb_error) => {
+            debug!(
+                "===<<=== KRB-ERROR ===<<===\n{}",
+                krb_error_to_string(&krb_error, 0)
+            );
             return Err(krb_error)?;
         }
 
@@ -84,7 +89,10 @@ pub fn send_recv_as(
         }
 
         Rep::AsRep(as_rep) => {
-            debug!("===<<=== AS-REP ===<<===\n{}", as_rep_to_string(&as_rep, 0));
+            debug!(
+                "===<<=== AS-REP ===<<===\n{}",
+                as_rep_to_string(&as_rep, 0)
+            );
             return Ok(as_rep);
         }
 
