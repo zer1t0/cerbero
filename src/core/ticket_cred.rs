@@ -244,6 +244,22 @@ impl TicketCred {
     pub fn new(ticket: Ticket, cred_info: KrbCredInfo) -> Self {
         return Self { ticket, cred_info };
     }
+
+    pub fn is_tgt(&self) -> bool {
+        if let Some(sname) = &self.cred_info.sname {
+            if let Some(service) = sname.name_string.get(0) {
+                return service == "krbtgt";
+            }
+        }
+        return false;
+    }
+
+    pub fn service_host(&self) -> Option<&String> {
+        if let Some(sname) = &self.cred_info.sname {
+            return sname.name_string.get(1);
+        }
+        return None;
+    }
 }
 
 impl From<(Ticket, KrbCredInfo)> for TicketCred {

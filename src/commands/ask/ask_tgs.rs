@@ -31,6 +31,22 @@ pub fn ask_tgs(
         transporter,
     )?;
 
+    if tgs.is_tgt() {
+        let cross_domain = tgs
+            .service_host()
+            .ok_or("Unable to get the inter-realm TGT domain")?;
+        info!("Received inter-realm TGT for domain {}", cross_domain);
+
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            cross_domain,
+            user,
+            ticket_cred_to_string(&tgs, 0)
+        );
+
+
+    }
+
     debug!(
         "{} TGS for {}\n{}",
         service,
