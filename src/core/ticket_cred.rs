@@ -79,17 +79,6 @@ impl TicketCreds {
         })
     }
 
-    /// Filter tickets for flags. All the tickets that includes the flags
-    /// provided will match. The tickets can also have additional flags.
-    pub fn flags(&self, flags: u32) -> Self {
-        self.filter(|tci| {
-            if let Some(ticket_flags) = &tci.cred_info.flags {
-                return (ticket_flags.flags & flags) != 0;
-            }
-            return false;
-        })
-    }
-
     /// Filter tickets for srealm (realm of the service). Case insensitive.
     pub fn srealm(&self, realm: &str) -> Self {
         self.filter(|tci| {
