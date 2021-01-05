@@ -3,7 +3,7 @@ use chrono::Local;
 use kerberos_asn1::{
     AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
     EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    KrbError, PaData, PrincipalName, Ticket,
+    KrbError, PaData, PrincipalName, TgsRep, TgsReq, Ticket,
 };
 use kerberos_constants::{
     error_codes, etypes, kdc_options, message_types, pa_data_types,
@@ -211,6 +211,30 @@ pub fn as_req_to_string(ar: &AsReq, indent_level: usize) -> String {
     )
 }
 
+pub fn tgs_req_to_string(tr: &TgsReq, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}padata: {}\n\
+         {}req-body:\n{}",
+        indentation,
+        tr.pvno,
+        indentation,
+        msg_type_to_string(tr.msg_type),
+        indentation,
+        &tr.padata
+            .as_ref()
+            .map(|pds| format!(
+                "\n{}",
+                padatas_to_string(&pds, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(NONE.into()),
+        indentation,
+        kdc_req_body_to_string(&tr.req_body, indent_level + INDENT_STEP)
+    )
+}
+
 pub fn kdc_req_body_to_string(krb: &KdcReqBody, indent_level: usize) -> String {
     let indentation = indent(indent_level);
     format!(
@@ -343,6 +367,39 @@ pub fn as_rep_to_string(ar: &AsRep, indent_level: usize) -> String {
         ticket_to_string(&ar.ticket, indent_level + INDENT_STEP),
         indentation,
         encrypted_data_to_string(&ar.enc_part, indent_level + INDENT_STEP)
+    )
+}
+
+pub fn tgs_rep_to_string(tr: &TgsRep, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+    format!(
+        "{}pvno: {}\n\
+         {}msg-type: {}\n\
+         {}padata: {}\n\
+         {}crealm: {}\n\
+         {}cname:\n{}\n\
+         {}ticket:\n{}\n\
+         {}enc-part:\n{}",
+        indentation,
+        tr.pvno,
+        indentation,
+        msg_type_to_string(tr.msg_type),
+        indentation,
+        &tr.padata
+            .as_ref()
+            .map(|pds| format!(
+                "\n{}",
+                padatas_to_string(&pds, indent_level + INDENT_STEP)
+            ))
+            .unwrap_or(NONE.into()),
+        indentation,
+        tr.crealm,
+        indentation,
+        principal_name_to_string(&tr.cname, indent_level + INDENT_STEP),
+        indentation,
+        ticket_to_string(&tr.ticket, indent_level + INDENT_STEP),
+        indentation,
+        encrypted_data_to_string(&tr.enc_part, indent_level + INDENT_STEP)
     )
 }
 
