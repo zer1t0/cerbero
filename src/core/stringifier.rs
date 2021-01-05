@@ -854,11 +854,11 @@ pub fn etypes_to_string(etypes: &Vec<i32>, indent_level: usize) -> String {
     return vs.join("\n");
 }
 
-fn etype_to_string(etype: i32) -> String {
+pub fn etype_to_string(etype: i32) -> String {
     format!("{} -> {}", etype, etype_name(etype))
 }
 
-fn etype_name(etype: i32) -> &'static str {
+pub fn etype_name(etype: i32) -> &'static str {
     match etype {
         etypes::AES128_CTS_HMAC_SHA1_96 => "aes128-cts-hmac-sha1-96",
         etypes::AES256_CTS_HMAC_SHA1_96 => "aes256-cts-hmac-sha1-96",
@@ -872,7 +872,7 @@ fn etype_name(etype: i32) -> &'static str {
     }
 }
 
-fn name_type_name(name_type: i32) -> &'static str {
+pub fn name_type_name(name_type: i32) -> &'static str {
     match name_type {
         principal_names::NT_UNKNOWN => "nt-unknown",
         principal_names::NT_PRINCIPAL => "nt-principal",

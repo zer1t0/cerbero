@@ -330,7 +330,7 @@ fn list(args: args::list::Arguments) -> Result<()> {
     };
 
     let in_vault = FileVault::new(in_file);
-    return commands::list(&in_vault, args.etypes, args.flags);
+    return commands::list(&in_vault, args.only_tgts, args.srealm.as_ref());
 }
 
 fn brute(args: args::brute::Arguments) -> Result<()> {

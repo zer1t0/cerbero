@@ -11,23 +11,23 @@ pub fn command() -> App<'static, 'static> {
                 .help("File to be described"),
         )
         .arg(
-            Arg::with_name("flags")
-                .long("flags")
-                .short("f")
-                .help("Shows credentials flags"),
+            Arg::with_name("tgt")
+                .long("tgt")
+                .short("t")
+                .help("Only show TGTs"),
         )
         .arg(
-            Arg::with_name("etypes")
-                .long("etypes")
-                .short("e")
-                .help("Shows the encryption types"),
+            Arg::with_name("srealm")
+                .long("srealm")
+                .takes_value(true)
+                .help("Only tickets for services in the given realm")
         )
 }
 
 pub struct Arguments {
     pub in_file: Option<String>,
-    pub flags: bool,
-    pub etypes: bool,
+    pub only_tgts: bool,
+    pub srealm: Option<String>,
 }
 
 pub struct ArgumentsParser<'a> {
@@ -43,8 +43,8 @@ impl<'a> ArgumentsParser<'a> {
     fn _parse(&self) -> Arguments {
         return Arguments {
             in_file: self.matches.value_of("in-file").map(|s| s.into()),
-            flags: self.matches.is_present("flags"),
-            etypes: self.matches.is_present("etypes"),
+            only_tgts: self.matches.is_present("tgt"),
+            srealm: self.matches.value_of("srealm").map(|s| s.into()),
         };
     }
 }
