@@ -1,7 +1,7 @@
 [package]
 name = "cerbero"
 description = "Kerberos protocol attacker"
-version = "0.0.9"
+version = "0.0.10"
 authors = ["Eloy <zer1t0ps@protonmail.com>"]
 edition = "2018"
 license = "AGPL-3.0"
