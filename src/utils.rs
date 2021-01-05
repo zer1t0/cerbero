@@ -2,11 +2,14 @@ use crate::core::CredFormat;
 use crate::error::Result;
 use crate::transporter::new_transporter;
 use crate::transporter::{KerberosTransporter, TransportProtocol};
-use dns_lookup;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::net::{IpAddr, SocketAddr};
+use trust_dns_resolver::config::{
+    NameServerConfig, Protocol, ResolverConfig, ResolverOpts,
+};
+use trust_dns_resolver::Resolver;
 
 pub fn resolve_and_get_tranporter(
     kdc_ip: Option<IpAddr>,
@@ -16,22 +19,45 @@ pub fn resolve_and_get_tranporter(
 ) -> Result<Box<dyn KerberosTransporter>> {
     let kdc_ip = match kdc_ip {
         Some(ip) => ip,
-        None => resolve_host(&realm)?,
+        None => resolve_host(&realm, Vec::new())?,
     };
 
     let kdc_address = SocketAddr::new(kdc_ip, kdc_port);
     return Ok(new_transporter(kdc_address, transport_protocol));
 }
 
-pub fn resolve_host(realm: &str) -> Result<IpAddr> {
-    let ips = dns_lookup::lookup_host(realm)
+pub fn resolve_host(
+    realm: &str,
+    dns_servers: Vec<SocketAddr>,
+) -> Result<IpAddr> {
+    let resolver;
+    if dns_servers.is_empty() {
+        resolver = Resolver::from_system_conf().map_err(|err| {
+            format!("Unable to use dns system configuration: {}", err)
+        })?;
+    } else {
+        let mut resolver_config = ResolverConfig::new();
+        for server in dns_servers {
+            resolver_config.add_name_server(NameServerConfig {
+                socket_addr: server,
+                protocol: Protocol::Tcp,
+                tls_dns_name: None,
+                trust_nx_responses: false,
+            });
+        }
+        resolver =
+            Resolver::new(resolver_config, ResolverOpts::default()).unwrap();
+    }
+    let ips = resolver
+        .lookup_ip(realm)
         .map_err(|err| format!("Error resolving '{}' : '{}'", realm, err))?;
 
-    if ips.len() == 0 {
-        return Err(format!("Error resolving '{}': No entries found", realm))?;
-    }
+    let ip = ips
+        .iter()
+        .next()
+        .ok_or(format!("Error resolving '{}': No entries found", realm))?;
 
-    return Ok(ips[0]);
+    return Ok(ip);
 }
 
 pub fn get_ticket_file(

@@ -45,14 +45,19 @@ pub fn send_recv_tgs(
     transporter: &dyn KerberosTransporter,
     req: &TgsReq,
 ) -> Result<TgsRep> {
-    debug!("===>>=== TGS-REQ ===>>===\n{}", tgs_req_to_string(&req, 0));
+    debug!(
+        "===>>=== TGS-REQ ===>>=== {}\n{}",
+        transporter.ip(),
+        tgs_req_to_string(&req, 0)
+    );
     let rep = send_recv(transporter, &req.build())
         .map_err(|err| ("Error sending TGS-REQ", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
             debug!(
-                "===<<=== KRB-ERROR ===<<===\n{}",
+                "===<<=== KRB-ERROR ===<<=== {}\n{}",
+                transporter.ip(),
                 krb_error_to_string(&krb_error, 0)
             );
             return Err(krb_error)?;
@@ -64,7 +69,8 @@ pub fn send_recv_tgs(
 
         Rep::AsRep(as_rep) => {
             debug!(
-                "===<<=== AS-REP ===<<===\n{}",
+                "===<<=== AS-REP ===<<=== {}\n{}",
+                transporter.ip(),
                 as_rep_to_string(&as_rep, 0)
             );
             return Err("Unexpected: server responded with AS-REP to TGS-REQ")?;
@@ -72,7 +78,8 @@ pub fn send_recv_tgs(
 
         Rep::TgsRep(tgs_rep) => {
             debug!(
-                "===<<=== TGS-REP ===<<===\n{}",
+                "===<<=== TGS-REP ===<<=== {}\n{}",
+                transporter.ip(),
                 tgs_rep_to_string(&tgs_rep, 0)
             );
             return Ok(tgs_rep);
@@ -85,14 +92,17 @@ pub fn send_recv_as(
     transporter: &dyn KerberosTransporter,
     req: &AsReq,
 ) -> Result<AsRep> {
-    debug!("===>>=== AS-REQ ===>>===\n{}", as_req_to_string(&req, 0));
+    debug!("===>>=== AS-REQ ===>>=== {}\n{}",
+           transporter.ip(),
+           as_req_to_string(&req, 0));
     let rep = send_recv(transporter, &req.build())
         .map_err(|err| ("Error sending TGS-REQ", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
             debug!(
-                "===<<=== KRB-ERROR ===<<===\n{}",
+                "===<<=== KRB-ERROR ===<<=== {}\n{}",
+                transporter.ip(),
                 krb_error_to_string(&krb_error, 0)
             );
             return Err(krb_error)?;
@@ -104,7 +114,8 @@ pub fn send_recv_as(
 
         Rep::AsRep(as_rep) => {
             debug!(
-                "===<<=== AS-REP ===<<===\n{}",
+                "===<<=== AS-REP ===<<=== {}\n{}",
+                transporter.ip(),
                 as_rep_to_string(&as_rep, 0)
             );
             return Ok(as_rep);
@@ -112,7 +123,8 @@ pub fn send_recv_as(
 
         Rep::TgsRep(tgs_rep) => {
             debug!(
-                "===<<=== TGS-REP ===<<===\n{}",
+                "===<<=== TGS-REP ===<<=== {}\n{}",
+                transporter.ip(),
                 tgs_rep_to_string(&tgs_rep, 0)
             );
             return Err(

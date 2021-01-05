@@ -24,6 +24,6 @@ ms_samr = "0.0"
 
 chrono = "0.4"
 rand = "0.6"
-dns-lookup = "1.0"
+trust-dns-resolver = "0.20"
 log = "0.4"
 stderrlog = "0.4"

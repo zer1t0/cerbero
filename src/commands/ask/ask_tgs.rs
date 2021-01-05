@@ -6,9 +6,11 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::{KerberosTransporter, new_transporter};
+use crate::utils::resolve_host;
 use kerberos_crypto::Key;
 use log::{debug, info};
+use std::net::SocketAddr;
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -23,7 +25,7 @@ pub fn ask_tgs(
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Request {} TGS for {}", service, user);
-    let tgs = request_tgs(
+    let mut tgs = request_tgs(
         user.clone(),
         tgt,
         S4u2options::Normal(service.clone()),
@@ -32,7 +34,8 @@ pub fn ask_tgs(
     )?;
 
     if tgs.is_tgt() {
-        let cross_domain = tgs
+        let inter_tgt = tgs;
+        let cross_domain = inter_tgt
             .service_host()
             .ok_or("Unable to get the inter-realm TGT domain")?;
         info!("Received inter-realm TGT for domain {}", cross_domain);
@@ -41,10 +44,32 @@ pub fn ask_tgs(
             "{} inter-realm TGT for {}\n{}",
             cross_domain,
             user,
-            ticket_cred_to_string(&tgs, 0)
+            ticket_cred_to_string(&inter_tgt, 0)
         );
 
+        info!("Save {} inter-realm TGT for {} in {}", cross_domain, user, vault.id());
+        vault.add(inter_tgt.clone())?;
 
+        let cross_domain_kdc_ip = resolve_host(
+            &cross_domain,
+            vec![SocketAddr::new(transporter.ip(), 53)],
+        )?;
+
+        debug!("{} KDC is in {}", cross_domain, cross_domain_kdc_ip);
+
+        let cross_transporter = new_transporter(
+            SocketAddr::new(cross_domain_kdc_ip, 88),
+            transporter.protocol(),
+        );
+
+        // error: the request need some changes when it is inter-realm
+        tgs = request_tgs(
+            user.clone(),
+            inter_tgt,
+            S4u2options::Normal(service.clone()),
+            None,
+            &*cross_transporter,
+        )?;
     }
 
     debug!(
