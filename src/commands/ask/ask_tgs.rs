@@ -1,6 +1,7 @@
 use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
+use crate::core::TicketCred;
 use crate::core::Vault;
 use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
@@ -37,43 +38,13 @@ pub fn ask_tgs(
     )?;
 
     if tgs.is_tgt() {
-        let inter_tgt = tgs;
-        let cross_domain = inter_tgt
-            .service_host()
-            .ok_or("Unable to get the inter-realm TGT domain")?;
-
-        info!("Received inter-realm TGT for domain {}", cross_domain);
-
-        debug!(
-            "{} inter-realm TGT for {}\n{}",
-            cross_domain,
-            user,
-            ticket_cred_to_string(&inter_tgt, 0)
-        );
-
-        info!(
-            "Save {} inter-realm TGT for {} in {}",
-            cross_domain,
-            user,
-            vault.id()
-        );
-        vault.add(inter_tgt.clone())?;
-
-        let cross_transporter = resolve_and_get_tranporter(
-            &cross_domain,
-            kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
-            vec![SocketAddr::new(transporter.ip(), 53)],
-            88,
-            transporter.protocol(),
-        )?;
-
-        tgs = request_tgs(
+        tgs = request_inter_realm_tgs(
+            tgs,
             user.clone(),
-            cross_domain.to_string(),
-            inter_tgt,
             S4u2options::Normal(service.clone()),
-            None,
-            &*cross_transporter,
+            vault,
+            transporter,
+            kdcs,
         )?;
     }
 
@@ -90,7 +61,6 @@ pub fn ask_tgs(
 
     return Ok(());
 }
-
 
 /// Main function to perform an S4U2Self operation
 pub fn ask_s4u2self(
@@ -142,6 +112,7 @@ pub fn ask_s4u2proxy(
     transporter: &dyn KerberosTransporter,
     user_key: Option<&Key>,
     cred_format: CredFormat,
+    kdcs: &HashMap<String, IpAddr>,
 ) -> Result<()> {
     let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
@@ -161,14 +132,25 @@ pub fn ask_s4u2proxy(
     );
 
     info!("Request {} S4U2Proxy TGS for {}", service, impersonate_user);
-    let tgs_proxy = request_tgs(
+    let mut tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
         tgt,
-        S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
+        S4u2options::S4u2proxy(s4u2self_tgs.ticket.clone(), service.clone()),
         None,
         transporter,
     )?;
+
+    if tgs_proxy.is_tgt() {
+        tgs_proxy = request_inter_realm_tgs(
+            tgs_proxy,
+            user.clone(),
+            S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
+            vault,
+            transporter,
+            kdcs,
+        )?;
+    }
 
     debug!(
         "{} S4U2Proxy TGS for {}\n{}",
@@ -187,4 +169,51 @@ pub fn ask_s4u2proxy(
     vault.change_format(cred_format)?;
 
     return Ok(());
+}
+
+pub fn request_inter_realm_tgs(
+    inter_tgt: TicketCred,
+    user: KrbUser,
+    service: S4u2options,
+    vault: &mut dyn Vault,
+    transporter: &dyn KerberosTransporter,
+    kdcs: &HashMap<String, IpAddr>,
+) -> Result<TicketCred> {
+    let cross_domain = inter_tgt
+        .service_host()
+        .ok_or("Unable to get the inter-realm TGT domain")?;
+
+    info!("Received inter-realm TGT for domain {}", cross_domain);
+
+    debug!(
+        "{} inter-realm TGT for {}\n{}",
+        cross_domain,
+        user,
+        ticket_cred_to_string(&inter_tgt, 0)
+    );
+
+    info!(
+        "Save {} inter-realm TGT for {} in {}",
+        cross_domain,
+        user,
+        vault.id()
+    );
+    vault.add(inter_tgt.clone())?;
+
+    let cross_transporter = resolve_and_get_tranporter(
+        &cross_domain,
+        kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
+        vec![SocketAddr::new(transporter.ip(), 53)],
+        88,
+        transporter.protocol(),
+    )?;
+
+    return request_tgs(
+        user,
+        cross_domain.to_string(),
+        inter_tgt,
+        service,
+        None,
+        &*cross_transporter,
+    );
 }

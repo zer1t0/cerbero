@@ -34,6 +34,7 @@ pub fn ask(
                     transporter,
                     user_key.as_ref(),
                     credential_format,
+                    kdcs
                 );
             }
             None => {
