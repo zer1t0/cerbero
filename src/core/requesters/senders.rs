@@ -96,7 +96,7 @@ pub fn send_recv_as(
            transporter.ip(),
            as_req_to_string(&req, 0));
     let rep = send_recv(transporter, &req.build())
-        .map_err(|err| ("Error sending TGS-REQ", err))?;
+        .map_err(|err| ("Error sending AS-REQ", err))?;
 
     match rep {
         Rep::KrbError(krb_error) => {
