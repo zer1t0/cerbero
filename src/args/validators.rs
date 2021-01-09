@@ -36,6 +36,14 @@ pub fn is_aes_key(v: String) -> Result<(), String> {
     return Ok(());
 }
 
+pub fn is_kdc_domain_ip (v: String) -> Result<(), String> {
+    let parts: Vec<String> = v.split(":").map(|s| s.into()).collect();
+    is_ip(parts[parts.len() - 1].clone())?;
+
+    return Ok(())
+
+}
+
 pub fn is_ip(v: String) -> Result<(), String> {
     v.parse::<IpAddr>()
         .map_err(|_| format!("Invalid IP address '{}'", v))?;

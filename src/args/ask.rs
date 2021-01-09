@@ -3,6 +3,7 @@ use crate::core::{CredFormat, KrbUser};
 use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
@@ -57,14 +58,15 @@ pub fn command() -> App<'static, 'static> {
                 .multiple(false),
         )
         .arg(
-            Arg::with_name("kdc-ip")
-                .long("kdc-ip")
-                .alias("dc-ip")
+            Arg::with_name("kdc")
+                .long("kdc")
+                .alias("dc")
                 .short("k")
-                .value_name("ip")
+                .value_name("[domain:]ip")
                 .takes_value(true)
+                .use_delimiter(true)
                 .help("The address of the KDC (usually the Domain Controller)")
-                .validator(validators::is_ip),
+                .validator(validators::is_kdc_domain_ip),
         )
         .arg(
             Arg::with_name("service")
@@ -109,7 +111,7 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub user: KrbUser,
     pub user_key: Option<Key>,
-    pub kdc_ip: Option<IpAddr>,
+    pub kdcs: HashMap<String, IpAddr>,
     pub kdc_port: u16,
     pub credential_format: CredFormat,
     pub out_file: Option<String>,
@@ -130,18 +132,19 @@ impl<'a> ArgumentsParser<'a> {
     }
 
     fn _parse(&self) -> Arguments {
+        let user: KrbUser =
+            self.matches.value_of("user").unwrap().try_into().unwrap();
         let user_key = self.parse_user_key();
-        let kdc_ip = self.parse_kdc_ip();
+        let kdcs = self.parse_kdcs(&user.realm);
         let credential_format = self.parse_ticket_format();
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
-        let user: KrbUser =
-            self.matches.value_of("user").unwrap().try_into().unwrap();
+        
 
         return Arguments {
             user,
             user_key,
-            kdc_ip,
+            kdcs,
             kdc_port: 88,
             credential_format,
             out_file,
@@ -152,9 +155,24 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_kdc_ip(&self) -> Option<IpAddr> {
-        let kdc_ip = self.matches.value_of("kdc-ip")?;
-        return Some(kdc_ip.parse::<IpAddr>().unwrap());
+    fn parse_kdcs(&self, default_realm: &str) -> HashMap::<String, IpAddr> {
+        let mut kdcs = HashMap::new();
+        if let Some(kdcs_str) = self.matches.values_of("kdcs") {
+            for kdc_str in kdcs_str {
+                let parts: Vec<&str> = kdc_str.split(":").collect();
+
+                let kdc_ip_str = parts.pop().unwrap();
+                let kdc_ip = kdc_ip_str.parse::<IpAddr>().unwrap();
+                let kdc_realm;
+                if parts.is_empty() {
+                    kdc_realm = default_realm.to_string();
+                } else {
+                    kdc_realm = parts.join(":");
+                }
+                kdcs.insert(kdc_realm, kdc_ip);
+            }
+        }
+        return kdcs;
     }
 
     fn parse_user_key(&self) -> Option<Key> {
@@ -164,7 +182,7 @@ impl<'a> ArgumentsParser<'a> {
             return Some(Key::from_rc4_key_string(ntlm).unwrap());
         } else if let Some(aes_key) = self.matches.value_of("aes") {
             if let Ok(key) = Key::from_aes_128_key_string(aes_key) {
-                return Some(key)
+                return Some(key);
             }
             return Some(Key::from_aes_256_key_string(aes_key).unwrap());
         }
