@@ -3,11 +3,11 @@ use chrono::Local;
 use kerberos_asn1::{
     ApReq, AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
     EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    KrbError, PaData, PaPacOptions, PrincipalName, TgsRep, TgsReq, Ticket,
+    KrbError, PaData, PaPacOptions, PrincipalName, TgsRep, TgsReq, Ticket, PaForUser, Checksum
 };
 use kerberos_constants::{
     ap_options, error_codes, etypes, kdc_options, message_types, pa_data_types,
-    pa_pac_options, principal_names, ticket_flags,
+    pa_pac_options, principal_names, ticket_flags, checksum_types
 };
 
 const NONE: &str = "-";
@@ -527,9 +527,63 @@ pub fn padata_value_to_string(
                 ));
             }
         }
+        pa_data_types::PA_FOR_USER => {
+            if let Ok((_, pa_for_user)) = PaForUser::parse(&padata.padata_value) {
+                return Some(pa_for_user_to_string(&pa_for_user, indent_level));
+            }
+        }
         _ => {}
     };
     return None;
+}
+
+fn pa_for_user_to_string(pu: &PaForUser, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+
+    format!(
+        "{}userName:\n{}\n\
+         {}userRealm: {}\n\
+         {}cksum:\n{}\n\
+         {}auth-package: {}
+         ",
+        indentation,
+        principal_name_to_string(&pu.username, indent_level + INDENT_STEP),
+        indentation,
+        pu.userrealm,
+        indentation,
+        checksum_to_string(&pu.cksum, indent_level + INDENT_STEP),
+        indentation,
+        pu.auth_package,
+    )
+}
+
+fn checksum_to_string(ck: &Checksum, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+
+    format!(
+        "{}cksumtype: {}\n\
+         {}checksum: {}",
+        indentation,
+        checksum_type_to_string(ck.cksumtype),
+        indentation,
+        octet_string_to_string(&ck.checksum),
+    )
+}
+
+fn checksum_type_to_string(ct: i32) -> String {
+    return format!("{:#06x} -> {}", ct, checksum_type_name(ct));
+}
+
+fn checksum_type_name(ct: i32) -> &'static str {
+    match ct {
+        checksum_types::HMAC_MD5 => "hmac-md5",
+        checksum_types::HMAC_SHA1_96_AES128 => "hmac-sha1-96-aes128",
+        checksum_types::HMAC_SHA1_96_AES256 => "hmac-sha1-96-aes256",
+        checksum_types::HMAC_SHA1_DES3_KD => "hmac-sha1-des3-kd",
+        checksum_types::RSA_MD4_DES => "rsa-md4-des",
+        checksum_types::RSA_MD5_DES => "rsa-md5-des",
+        _ => UNKNOWN
+    }
 }
 
 fn pa_pac_options_to_string(po: &PaPacOptions, indent_level: usize) -> String {
