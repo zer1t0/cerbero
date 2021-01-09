@@ -29,7 +29,7 @@ pub fn command() -> App<'static, 'static> {
                 .help("Username for ticket")
                 .help("User for ticket in format <domain>/<username>")
                 .required(true)
-                .validator(validators::is_kerberos_user),
+                .validator(validators::is_krb_user),
         )
         .arg(
             Arg::with_name("user-rid")

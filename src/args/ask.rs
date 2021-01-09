@@ -4,7 +4,7 @@ use crate::transporter::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::collections::HashMap;
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "ask";
@@ -16,19 +16,20 @@ pub fn command() -> App<'static, 'static> {
             Arg::with_name("user")
                 .long("user")
                 .short("u")
+                .value_name("domain/username")
                 .takes_value(true)
-                .help(
-                    "User for request the ticket in format <domain>/<username>",
-                )
+                .help("User for request the ticket")
                 .required(true)
-                .validator(validators::is_kerberos_user),
+                .validator(validators::is_krb_user),
         )
         .arg(
             Arg::with_name("impersonate")
                 .long("impersonate")
                 .short("i")
+                .value_name("[domain/]username")
                 .takes_value(true)
-                .help("Username to impersonate for request the ticket"),
+                .help("Username to impersonate for request the ticket")
+                .validator(validators::is_krb_user_or_username),
         )
         .arg(
             Arg::with_name("password")
@@ -117,7 +118,7 @@ pub struct Arguments {
     pub out_file: Option<String>,
     pub service: Option<String>,
     pub transport_protocol: TransportProtocol,
-    pub impersonate_user: Option<String>,
+    pub impersonate_user: Option<KrbUser>,
     pub verbosity: usize,
 }
 
@@ -139,6 +140,7 @@ impl<'a> ArgumentsParser<'a> {
         let credential_format = self.parse_ticket_format();
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
+        let imp_user = self.parse_impersonate_user(&user.realm);
 
         return Arguments {
             user,
@@ -149,7 +151,7 @@ impl<'a> ArgumentsParser<'a> {
             out_file,
             service,
             transport_protocol: self.parse_transport_protocol(),
-            impersonate_user: self.parse_impersonate_user(),
+            impersonate_user: imp_user,
             verbosity: self.matches.occurrences_of("verbosity") as usize,
         };
     }
@@ -215,7 +217,17 @@ impl<'a> ArgumentsParser<'a> {
         return TransportProtocol::TCP;
     }
 
-    fn parse_impersonate_user(&self) -> Option<String> {
-        return self.matches.value_of("impersonate").map(|s| s.into());
+    fn parse_impersonate_user(&self, default_domain: &str) -> Option<KrbUser> {
+        let user_str = self.matches.value_of("impersonate")?;
+
+        let parts: Vec<&str> = user_str.split("/").collect();
+
+        if parts.len() == 1 {
+            return Some(KrbUser::new(
+                user_str.to_string(),
+                default_domain.to_string(),
+            ));
+        }
+        return Some(KrbUser::try_from(user_str).unwrap());
     }
 }

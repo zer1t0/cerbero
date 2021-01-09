@@ -5,7 +5,15 @@ use crate::core::KrbUser;
 
 use std::convert::TryFrom;
 
-pub fn is_kerberos_user(v: String) -> Result<(), String> {
+pub fn is_krb_user_or_username(v: String) -> Result<(), String> {
+    if v.contains("/") {
+        KrbUser::try_from(v)?;
+    }
+
+    return Ok(());
+}
+
+pub fn is_krb_user(v: String) -> Result<(), String> {
     KrbUser::try_from(v)?;
     return Ok(());
 }

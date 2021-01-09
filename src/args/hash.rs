@@ -22,7 +22,7 @@ pub fn command() -> App<'static, 'static> {
                 .help(
                     "User in format <domain>/<username> (required for AES keys)",
                 )
-                .validator(validators::is_kerberos_user),
+                .validator(validators::is_krb_user),
         )
         .arg(
             Arg::with_name("verbosity")

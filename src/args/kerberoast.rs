@@ -21,7 +21,7 @@ pub fn command() -> App<'static, 'static> {
                 .takes_value(true)
                 .help("User for request the ticket in format <domain>/<username>")
                 .required(true)
-                .validator(validators::is_kerberos_user),
+                .validator(validators::is_krb_user),
         )
         .arg(
             Arg::with_name("services")

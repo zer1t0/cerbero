@@ -258,16 +258,11 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         &args.credential_format,
     );
 
-    let impersonate_user = match args.impersonate_user {
-        Some(username) => Some(KrbUser::new(username, args.user.realm.clone())),
-        None => None,
-    };
-
     let mut vault = FileVault::new(creds_file);
 
     return commands::ask(
         args.user,
-        impersonate_user,
+        args.impersonate_user,
         args.service,
         &mut vault,
         &*transporter,
