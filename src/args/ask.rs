@@ -139,7 +139,6 @@ impl<'a> ArgumentsParser<'a> {
         let credential_format = self.parse_ticket_format();
         let out_file = self.parse_credentials_file();
         let service = self.parse_service();
-        
 
         return Arguments {
             user,
@@ -155,11 +154,11 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_kdcs(&self, default_realm: &str) -> HashMap::<String, IpAddr> {
+    fn parse_kdcs(&self, default_realm: &str) -> HashMap<String, IpAddr> {
         let mut kdcs = HashMap::new();
         if let Some(kdcs_str) = self.matches.values_of("kdcs") {
             for kdc_str in kdcs_str {
-                let parts: Vec<&str> = kdc_str.split(":").collect();
+                let mut parts: Vec<&str> = kdc_str.split(":").collect();
 
                 let kdc_ip_str = parts.pop().unwrap();
                 let kdc_ip = kdc_ip_str.parse::<IpAddr>().unwrap();

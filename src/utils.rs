@@ -12,18 +12,19 @@ use trust_dns_resolver::config::{
 use trust_dns_resolver::Resolver;
 
 pub fn resolve_and_get_tranporter(
-    kdc_ip: Option<IpAddr>,
     realm: &str,
+    kdc_ip: Option<IpAddr>,
+    dns_servers: Vec<SocketAddr>,
     kdc_port: u16,
-    transport_protocol: TransportProtocol,
+    transporter_protocol: TransportProtocol,
 ) -> Result<Box<dyn KerberosTransporter>> {
     let kdc_ip = match kdc_ip {
         Some(ip) => ip,
-        None => resolve_host(&realm, Vec::new())?,
+        None => resolve_host(&realm, dns_servers)?,
     };
 
     let kdc_address = SocketAddr::new(kdc_ip, kdc_port);
-    return Ok(new_transporter(kdc_address, transport_protocol));
+    return Ok(new_transporter(kdc_address, transporter_protocol));
 }
 
 pub fn resolve_host(

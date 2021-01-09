@@ -243,8 +243,9 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
     let transporter = resolve_and_get_tranporter(
-        args.kdc_ip,
         &args.user.realm,
+        args.kdcs.get(&args.user.realm).map(|v| v.clone()),
+        Vec::new(),
         args.kdc_port,
         args.transport_protocol,
     )?;
@@ -347,8 +348,9 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
     };
 
     let transporter = resolve_and_get_tranporter(
-        args.kdc_ip,
         &args.realm,
+        args.kdc_ip,
+        Vec::new(),
         args.kdc_port,
         args.transport_protocol,
     )?;
@@ -371,8 +373,9 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
     };
 
     let transporter = resolve_and_get_tranporter(
-        args.kdc_ip,
         &args.realm,
+        args.kdc_ip,
+        Vec::new(),
         args.kdc_port,
         args.transport_protocol,
     )?;
@@ -395,8 +398,9 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
     };
 
     let transporter = resolve_and_get_tranporter(
-        args.kdc_ip,
         &args.user.realm,
+        args.kdc_ip,
+        Vec::new(),
         args.kdc_port,
         args.transport_protocol,
     )?;

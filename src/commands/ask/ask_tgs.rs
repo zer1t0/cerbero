@@ -6,8 +6,8 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::transporter::{KerberosTransporter, new_transporter};
-use crate::utils::resolve_host;
+use crate::transporter::KerberosTransporter;
+use crate::utils::resolve_and_get_tranporter;
 use kerberos_crypto::Key;
 use log::{debug, info};
 use std::net::SocketAddr;
@@ -48,20 +48,21 @@ pub fn ask_tgs(
             ticket_cred_to_string(&inter_tgt, 0)
         );
 
-        info!("Save {} inter-realm TGT for {} in {}", cross_domain, user, vault.id());
+        info!(
+            "Save {} inter-realm TGT for {} in {}",
+            cross_domain,
+            user,
+            vault.id()
+        );
         vault.add(inter_tgt.clone())?;
 
-        let cross_domain_kdc_ip = resolve_host(
+        let cross_transporter = resolve_and_get_tranporter(
             &cross_domain,
+            None,
             vec![SocketAddr::new(transporter.ip(), 53)],
-        )?;
-
-        debug!("{} KDC is in {}", cross_domain, cross_domain_kdc_ip);
-
-        let cross_transporter = new_transporter(
-            SocketAddr::new(cross_domain_kdc_ip, 88),
+            88,
             transporter.protocol(),
-        );
+        )?;
 
         tgs = request_tgs(
             user.clone(),
