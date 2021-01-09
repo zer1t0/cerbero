@@ -50,8 +50,12 @@ pub fn send_recv_tgs(
         transporter.ip(),
         tgs_req_to_string(&req, 0)
     );
-    let rep = send_recv(transporter, &req.build())
-        .map_err(|err| ("Error sending TGS-REQ", err))?;
+    let rep = send_recv(transporter, &req.build()).map_err(|err| {
+        (
+            format!("Error sending TGS-REQ to {}", transporter.ip()),
+            err,
+        )
+    })?;
 
     match rep {
         Rep::KrbError(krb_error) => {
@@ -92,11 +96,14 @@ pub fn send_recv_as(
     transporter: &dyn KerberosTransporter,
     req: &AsReq,
 ) -> Result<AsRep> {
-    debug!("===>>=== AS-REQ ===>>=== {}\n{}",
-           transporter.ip(),
-           as_req_to_string(&req, 0));
-    let rep = send_recv(transporter, &req.build())
-        .map_err(|err| ("Error sending AS-REQ", err))?;
+    debug!(
+        "===>>=== AS-REQ ===>>=== {}\n{}",
+        transporter.ip(),
+        as_req_to_string(&req, 0)
+    );
+    let rep = send_recv(transporter, &req.build()).map_err(|err| {
+        (format!("Error sending AS-REQ to {}", transporter.ip()), err)
+    })?;
 
     match rep {
         Rep::KrbError(krb_error) => {

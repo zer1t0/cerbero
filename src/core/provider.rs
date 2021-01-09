@@ -101,6 +101,7 @@ pub fn get_impersonation_ticket(
 
     let s4u2self_tgs = request_tgs(
         user.clone(),
+        user.realm.clone(),
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,

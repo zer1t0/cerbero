@@ -3,8 +3,8 @@ use crate::core::forge::KrbUser;
 use crate::core::forge::{
     build_tgs_req, extract_ticket_from_tgs_rep, S4u2options,
 };
-use crate::core::TicketCred;
 use crate::core::Cipher;
+use crate::core::TicketCred;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_asn1::{TgsRep, Ticket};
@@ -12,6 +12,7 @@ use kerberos_asn1::{TgsRep, Ticket};
 /// Use a TGT to request a TGS
 pub fn request_tgs(
     user: KrbUser,
+    server_realm: String,
     tgt: TicketCred,
     s4u2options: S4u2options,
     etypes: Option<Vec<i32>>,
@@ -20,6 +21,7 @@ pub fn request_tgs(
     let cipher = tgt.cred_info.key.into();
     let tgs_rep = request_tgs_rep(
         user,
+        server_realm,
         tgt.ticket,
         &cipher,
         s4u2options,
@@ -32,13 +34,15 @@ pub fn request_tgs(
 
 pub fn request_tgs_rep(
     user: KrbUser,
+    server_realm: String,
     tgt: Ticket,
     cipher: &Cipher,
     s4u2options: S4u2options,
     etypes: Option<Vec<i32>>,
     transporter: &dyn KerberosTransporter,
 ) -> Result<TgsRep> {
-    let tgs_req = build_tgs_req(user, tgt, &cipher, s4u2options, etypes);
+    let tgs_req =
+        build_tgs_req(user, server_realm, tgt, &cipher, s4u2options, etypes);
 
     return send_recv_tgs(transporter, &tgs_req);
 }

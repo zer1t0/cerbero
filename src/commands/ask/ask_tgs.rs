@@ -27,6 +27,7 @@ pub fn ask_tgs(
     info!("Request {} TGS for {}", service, user);
     let mut tgs = request_tgs(
         user.clone(),
+        user.realm.clone(),
         tgt,
         S4u2options::Normal(service.clone()),
         None,
@@ -62,9 +63,9 @@ pub fn ask_tgs(
             transporter.protocol(),
         );
 
-        // error: the request need some changes when it is inter-realm
         tgs = request_tgs(
             user.clone(),
+            cross_domain.to_string(),
             inter_tgt,
             S4u2options::Normal(service.clone()),
             None,
@@ -101,6 +102,7 @@ pub fn ask_s4u2self(
     info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
     let s4u2self_tgs = request_tgs(
         user.clone(),
+        user.realm.clone(),
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
@@ -155,7 +157,8 @@ pub fn ask_s4u2proxy(
 
     info!("Request {} S4U2Proxy TGS for {}", service, impersonate_user);
     let tgs_proxy = request_tgs(
-        user,
+        user.clone(),
+        user.realm.clone(),
         tgt,
         S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
         None,

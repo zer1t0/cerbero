@@ -33,6 +33,7 @@ pub fn kerberoast(
     for service in services {
         match request_tgs(
             user.clone(),
+            user.realm.clone(),
             tgt.clone(),
             S4u2options::Normal(service.clone()),
             etype.map(|e| vec![e]),
