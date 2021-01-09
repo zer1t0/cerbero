@@ -156,7 +156,7 @@ impl<'a> ArgumentsParser<'a> {
 
     fn parse_kdcs(&self, default_realm: &str) -> HashMap<String, IpAddr> {
         let mut kdcs = HashMap::new();
-        if let Some(kdcs_str) = self.matches.values_of("kdcs") {
+        if let Some(kdcs_str) = self.matches.values_of("kdc") {
             for kdc_str in kdcs_str {
                 let mut parts: Vec<&str> = kdc_str.split(":").collect();
 
@@ -168,7 +168,7 @@ impl<'a> ArgumentsParser<'a> {
                 } else {
                     kdc_realm = parts.join(":");
                 }
-                kdcs.insert(kdc_realm, kdc_ip);
+                kdcs.insert(kdc_realm.to_lowercase(), kdc_ip);
             }
         }
         return kdcs;
