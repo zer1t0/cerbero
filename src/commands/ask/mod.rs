@@ -10,6 +10,8 @@ use crate::core::Vault;
 use crate::error::Result;
 use crate::transporter::KerberosTransporter;
 use kerberos_crypto::Key;
+use std::collections::HashMap;
+use std::net::IpAddr;
 
 pub fn ask(
     user: KrbUser,
@@ -19,6 +21,7 @@ pub fn ask(
     transporter: &dyn KerberosTransporter,
     user_key: Option<Key>,
     credential_format: CredFormat,
+    kdcs: &HashMap<String, IpAddr>
 ) -> Result<()> {
     match service {
         Some(service) => match impersonate_user {
@@ -41,6 +44,7 @@ pub fn ask(
                     user_key.as_ref(),
                     credential_format,
                     vault,
+                    kdcs,
                 );
             }
         },

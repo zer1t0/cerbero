@@ -244,7 +244,9 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let transporter = resolve_and_get_tranporter(
         &args.user.realm,
-        args.kdcs.get(&args.user.realm).map(|v| v.clone()),
+        args.kdcs
+            .get(&args.user.realm.to_lowercase())
+            .map(|v| v.clone()),
         Vec::new(),
         args.kdc_port,
         args.transport_protocol,
@@ -257,9 +259,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
     );
 
     let impersonate_user = match args.impersonate_user {
-        Some(username) => {
-            Some(KrbUser::new(username, args.user.realm.clone()))
-        }
+        Some(username) => Some(KrbUser::new(username, args.user.realm.clone())),
         None => None,
     };
 
@@ -273,6 +273,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         &*transporter,
         args.user_key,
         args.credential_format,
+        &args.kdcs,
     );
 }
 
@@ -316,10 +317,7 @@ fn craft(args: args::craft::Arguments) -> Result<()> {
 
 fn hash(args: args::hash::Arguments) -> Result<()> {
     init_log(args.verbosity);
-    return commands::hash(
-        &args.password,
-        args.user.as_ref()
-    );
+    return commands::hash(&args.password, args.user.as_ref());
 }
 
 fn list(args: args::list::Arguments) -> Result<()> {

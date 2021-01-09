@@ -10,7 +10,8 @@ use crate::transporter::KerberosTransporter;
 use crate::utils::resolve_and_get_tranporter;
 use kerberos_crypto::Key;
 use log::{debug, info};
-use std::net::SocketAddr;
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -20,6 +21,7 @@ pub fn ask_tgs(
     user_key: Option<&Key>,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
+    kdcs: &HashMap<String, IpAddr>,
 ) -> Result<()> {
     let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
@@ -39,6 +41,7 @@ pub fn ask_tgs(
         let cross_domain = inter_tgt
             .service_host()
             .ok_or("Unable to get the inter-realm TGT domain")?;
+
         info!("Received inter-realm TGT for domain {}", cross_domain);
 
         debug!(
@@ -58,7 +61,7 @@ pub fn ask_tgs(
 
         let cross_transporter = resolve_and_get_tranporter(
             &cross_domain,
-            None,
+            kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
             vec![SocketAddr::new(transporter.ip(), 53)],
             88,
             transporter.protocol(),
@@ -87,6 +90,7 @@ pub fn ask_tgs(
 
     return Ok(());
 }
+
 
 /// Main function to perform an S4U2Self operation
 pub fn ask_s4u2self(
