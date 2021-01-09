@@ -1,13 +1,13 @@
 use crate::core::TicketCred;
 use chrono::Local;
 use kerberos_asn1::{
-    AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
+    ApReq, AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
     EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    KrbError, PaData, PrincipalName, TgsRep, TgsReq, Ticket, ApReq
+    KrbError, PaData, PaPacOptions, PrincipalName, TgsRep, TgsReq, Ticket,
 };
 use kerberos_constants::{
-    error_codes, etypes, kdc_options, message_types, pa_data_types,
-    principal_names, ticket_flags, ap_options
+    ap_options, error_codes, etypes, kdc_options, message_types, pa_data_types,
+    pa_pac_options, principal_names, ticket_flags,
 };
 
 const NONE: &str = "-";
@@ -255,7 +255,10 @@ pub fn kdc_req_body_to_string(krb: &KdcReqBody, indent_level: usize) -> String {
         indentation,
         krb.cname
             .as_ref()
-            .map(|v| format!("\n{}", principal_name_to_string(&v, indent_level + INDENT_STEP)))
+            .map(|v| format!(
+                "\n{}",
+                principal_name_to_string(&v, indent_level + INDENT_STEP)
+            ))
             .unwrap_or(format!(" {}", NONE)),
         indentation,
         krb.realm,
@@ -368,8 +371,7 @@ pub fn ap_options_to_string(ao: u32) -> String {
     let mut names = Vec::new();
 
     for option in ap_options_names.iter() {
-        if (ao & option
-            .0) != 0 {
+        if (ao & option.0) != 0 {
             names.push(option.1)
         }
     }
@@ -511,11 +513,16 @@ pub fn padata_value_to_string(
             }
         }
         pa_data_types::PA_TGS_REQ => {
-            if let Ok((_, pa_tgs_req)) =
-                ApReq::parse(&padata.padata_value)
+            if let Ok((_, pa_tgs_req)) = ApReq::parse(&padata.padata_value) {
+                return Some(ap_req_to_string(&pa_tgs_req, indent_level));
+            }
+        }
+        pa_data_types::PA_PAC_OPTIONS => {
+            if let Ok((_, pa_pac_options)) =
+                PaPacOptions::parse(&padata.padata_value)
             {
-                return Some(ap_req_to_string(
-                    &pa_tgs_req,
+                return Some(pa_pac_options_to_string(
+                    &pa_pac_options,
                     indent_level,
                 ));
             }
@@ -523,6 +530,35 @@ pub fn padata_value_to_string(
         _ => {}
     };
     return None;
+}
+
+fn pa_pac_options_to_string(po: &PaPacOptions, indent_level: usize) -> String {
+    let indentation = indent(indent_level);
+
+    let pa_pac_options_names = [
+        (pa_pac_options::BRANCH_AWARE, "branch-aware"),
+        (pa_pac_options::CLAIMS, "claims"),
+        (pa_pac_options::FORWARD_TO_FULL_DC, "forward-to-full-dc"),
+        (
+            pa_pac_options::RESOURCE_BASED_CONSTRAINED_DELEGATION,
+            "resource-based-constrained-delegation",
+        ),
+    ];
+
+    let mut names = Vec::new();
+
+    for option in pa_pac_options_names.iter() {
+        if (po.kerberos_flags.flags & option.0) != 0 {
+            names.push(option.1)
+        }
+    }
+
+    return format!(
+        "{}kerberos-flags: {:#06x} -> {}",
+        indentation,
+        po.kerberos_flags.flags,
+        names.join(" ")
+    );
 }
 
 pub fn pa_pac_request_to_string(
