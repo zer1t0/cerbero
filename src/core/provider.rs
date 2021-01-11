@@ -3,7 +3,7 @@ use crate::core::{TicketCred};
 use crate::core::KrbUser;
 use crate::core::{request_tgs, request_tgt, S4u2options};
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_crypto::Key;
 use log::{info, warn};
 
@@ -13,7 +13,7 @@ pub fn get_user_tgt(
     user: KrbUser,
     vault: &mut dyn Vault,
     user_key: Option<&Key>,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     etype: Option<i32>,
 ) -> Result<TicketCred> {
     let tgt_result = get_user_tgt_from_file(&user, vault, etype);
@@ -38,7 +38,7 @@ pub fn get_user_tgt(
     }
 
     info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user.clone(), user_key, etype, transporter)?;
+    let tgt_info = request_tgt(user.clone(), user_key, etype, channel)?;
 
     info!("Save TGT for {} in {}", user.name, vault.id());
     vault.add(tgt_info.clone())?;
@@ -79,7 +79,7 @@ pub fn get_impersonation_ticket(
     vault: &mut dyn Vault,
     user: KrbUser,
     impersonate_user: KrbUser,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     tgt: TicketCred,
 ) -> Result<TicketCred> {
     let tickets = vault.s4u2self_tgss(&user, &impersonate_user)?;
@@ -105,7 +105,7 @@ pub fn get_impersonation_ticket(
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
-        transporter,
+        channel,
     )?;
 
     info!(

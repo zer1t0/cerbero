@@ -4,7 +4,7 @@ use crate::core::Vault;
 use crate::core::{get_user_tgt, request_tgs};
 use crate::core::{tgs_to_crack_string, CrackFormat, S4u2options};
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_crypto::Key;
 use log::info;
 
@@ -14,7 +14,7 @@ pub fn kerberoast(
     in_vault: &mut dyn Vault,
     out_vault: Option<&dyn Vault>,
     user_key: Option<&Key>,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     cred_format: CredFormat,
     crack_format: CrackFormat,
     etype: Option<i32>,
@@ -24,7 +24,7 @@ pub fn kerberoast(
         user.clone(),
         in_vault,
         user_key,
-        transporter,
+        channel,
         etype,
     )?;
 
@@ -37,7 +37,7 @@ pub fn kerberoast(
             tgt.clone(),
             S4u2options::Normal(service.clone()),
             etype.map(|e| vec![e]),
-            transporter,
+            channel,
         ) {
             Err(err) => match &err {
                 _ => return Err(err),

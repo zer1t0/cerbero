@@ -3,7 +3,7 @@ use crate::core::save_file_creds;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::error::{Error, Result};
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_constants::error_codes;
 use kerberos_crypto::Key;
 use log::{debug, error, info, warn};
@@ -12,7 +12,7 @@ pub fn brute(
     realm: &str,
     usernames: Vec<String>,
     passwords: Vec<String>,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     cred_format: Option<CredFormat>,
 ) -> Result<()> {
     let mut non_test_users = Vec::new();
@@ -27,7 +27,7 @@ pub fn brute(
             let user = KrbUser::new(username.clone(), realm.to_string());
             let user_key = Key::Secret(password.clone());
 
-            let result = request_tgt(user, &user_key, None, &*transporter);
+            let result = request_tgt(user, &user_key, None, &*channel);
 
             match result {
                 Ok(tgt_info) => {

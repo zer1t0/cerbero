@@ -8,7 +8,7 @@ use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_crypto::Key;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -18,7 +18,7 @@ pub fn ask(
     impersonate_user: Option<KrbUser>,
     service: Option<String>,
     vault: &mut dyn Vault,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     user_key: Option<Key>,
     credential_format: CredFormat,
     kdcs: &HashMap<String, IpAddr>
@@ -31,7 +31,7 @@ pub fn ask(
                     impersonate_user,
                     service,
                     vault,
-                    transporter,
+                    channel,
                     user_key.as_ref(),
                     credential_format,
                     kdcs
@@ -41,7 +41,7 @@ pub fn ask(
                 return ask_tgs(
                     user,
                     service,
-                    transporter,
+                    channel,
                     user_key.as_ref(),
                     credential_format,
                     vault,
@@ -55,7 +55,7 @@ pub fn ask(
                     user,
                     impersonate_user,
                     vault,
-                    transporter,
+                    channel,
                     user_key.as_ref(),
                     credential_format,
                 );
@@ -65,7 +65,7 @@ pub fn ask(
                     return ask_tgt(
                         user,
                         &user_key,
-                        transporter,
+                        channel,
                         credential_format,
                         vault,
                     );

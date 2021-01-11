@@ -1,7 +1,7 @@
 use crate::core::CredFormat;
 use crate::error::Result;
 use crate::transporter::new_transporter;
-use crate::transporter::{KerberosTransporter, TransportProtocol};
+use crate::transporter::{KrbChannel, TransportProtocol};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -16,15 +16,15 @@ pub fn resolve_and_get_tranporter(
     kdc_ip: Option<IpAddr>,
     dns_servers: Vec<SocketAddr>,
     kdc_port: u16,
-    transporter_protocol: TransportProtocol,
-) -> Result<Box<dyn KerberosTransporter>> {
+    channel_protocol: TransportProtocol,
+) -> Result<Box<dyn KrbChannel>> {
     let kdc_ip = match kdc_ip {
         Some(ip) => ip,
         None => resolve_host(&realm, dns_servers)?,
     };
 
     let kdc_address = SocketAddr::new(kdc_ip, kdc_port);
-    return Ok(new_transporter(kdc_address, transporter_protocol));
+    return Ok(new_transporter(kdc_address, channel_protocol));
 }
 
 pub fn resolve_host(

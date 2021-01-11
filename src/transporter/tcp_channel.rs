@@ -3,22 +3,21 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream, IpAddr};
 use std::time::Duration;
 
-use super::transporter_trait::KerberosTransporter;
-use crate::transporter::TransportProtocol;
+use crate::transporter::{TransportProtocol, KrbChannel};
 
 /// Send Kerberos messages over TCP
 #[derive(Debug)]
-pub struct TcpTransporter {
+pub struct TcpChannel {
     dst_addr: SocketAddr,
 }
 
-impl TcpTransporter {
+impl TcpChannel {
     pub fn new(dst_addr: SocketAddr) -> Self {
         return Self { dst_addr };
     }
 }
 
-impl KerberosTransporter for TcpTransporter {
+impl KrbChannel for TcpChannel {
     fn send_recv(&self, raw: &[u8]) -> io::Result<Vec<u8>> {
         return send_recv_tcp(&self.dst_addr, raw);
     }
@@ -65,7 +64,7 @@ mod tests {
     #[should_panic(expected = "NetworkError")]
     #[test]
     fn test_request_networks_error() {
-        let requester = TcpTransporter::new(SocketAddr::new(
+        let requester = TcpChannel::new(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
             88,
         ));

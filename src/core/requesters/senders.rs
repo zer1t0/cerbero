@@ -3,7 +3,7 @@ use crate::core::stringifier::{
     tgs_req_to_string,
 };
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_asn1::{AsRep, AsReq, Asn1Object, KrbError, TgsRep, TgsReq};
 use std::io;
 
@@ -20,10 +20,10 @@ pub enum Rep {
 /// coded in ASN1/DER format and retrieves the response, by parsing
 /// it to a known Kerberos response
 pub fn send_recv(
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     raw: &[u8],
 ) -> io::Result<Rep> {
-    let raw_rep = transporter.send_recv(raw)?;
+    let raw_rep = channel.send_recv(raw)?;
 
     if let Ok((_, krb_error)) = KrbError::parse(&raw_rep) {
         return Ok(Rep::KrbError(krb_error));
@@ -42,17 +42,17 @@ pub fn send_recv(
 
 /// Function to send a TGS-REQ message and receive a TGS-REP
 pub fn send_recv_tgs(
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     req: &TgsReq,
 ) -> Result<TgsRep> {
     debug!(
         "===>>=== TGS-REQ ===>>=== {}\n{}",
-        transporter.ip(),
+        channel.ip(),
         tgs_req_to_string(&req, 0)
     );
-    let rep = send_recv(transporter, &req.build()).map_err(|err| {
+    let rep = send_recv(channel, &req.build()).map_err(|err| {
         (
-            format!("Error sending TGS-REQ to {}", transporter.ip()),
+            format!("Error sending TGS-REQ to {}", channel.ip()),
             err,
         )
     })?;
@@ -61,7 +61,7 @@ pub fn send_recv_tgs(
         Rep::KrbError(krb_error) => {
             debug!(
                 "===<<=== KRB-ERROR ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 krb_error_to_string(&krb_error, 0)
             );
             return Err(krb_error)?;
@@ -74,7 +74,7 @@ pub fn send_recv_tgs(
         Rep::AsRep(as_rep) => {
             debug!(
                 "===<<=== AS-REP ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 as_rep_to_string(&as_rep, 0)
             );
             return Err("Unexpected: server responded with AS-REP to TGS-REQ")?;
@@ -83,7 +83,7 @@ pub fn send_recv_tgs(
         Rep::TgsRep(tgs_rep) => {
             debug!(
                 "===<<=== TGS-REP ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 tgs_rep_to_string(&tgs_rep, 0)
             );
             return Ok(tgs_rep);
@@ -93,23 +93,23 @@ pub fn send_recv_tgs(
 
 /// Function to send an AS-REQ message and receive an AS-REP
 pub fn send_recv_as(
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     req: &AsReq,
 ) -> Result<AsRep> {
     debug!(
         "===>>=== AS-REQ ===>>=== {}\n{}",
-        transporter.ip(),
+        channel.ip(),
         as_req_to_string(&req, 0)
     );
-    let rep = send_recv(transporter, &req.build()).map_err(|err| {
-        (format!("Error sending AS-REQ to {}", transporter.ip()), err)
+    let rep = send_recv(channel, &req.build()).map_err(|err| {
+        (format!("Error sending AS-REQ to {}", channel.ip()), err)
     })?;
 
     match rep {
         Rep::KrbError(krb_error) => {
             debug!(
                 "===<<=== KRB-ERROR ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 krb_error_to_string(&krb_error, 0)
             );
             return Err(krb_error)?;
@@ -122,7 +122,7 @@ pub fn send_recv_as(
         Rep::AsRep(as_rep) => {
             debug!(
                 "===<<=== AS-REP ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 as_rep_to_string(&as_rep, 0)
             );
             return Ok(as_rep);
@@ -131,7 +131,7 @@ pub fn send_recv_as(
         Rep::TgsRep(tgs_rep) => {
             debug!(
                 "===<<=== TGS-REP ===<<=== {}\n{}",
-                transporter.ip(),
+                channel.ip(),
                 tgs_rep_to_string(&tgs_rep, 0)
             );
             return Err(

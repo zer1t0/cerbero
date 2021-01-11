@@ -1,22 +1,20 @@
+use crate::transporter::{KrbChannel, TransportProtocol};
 use std::io;
-use std::net::{SocketAddr, UdpSocket, IpAddr};
-
-use super::transporter_trait::KerberosTransporter;
-use crate::transporter::TransportProtocol;
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 
 /// Send Kerberos messages over UDP
 #[derive(Debug)]
-pub struct UdpTransporter {
+pub struct UdpChannel {
     dst_addr: SocketAddr,
 }
 
-impl UdpTransporter {
+impl UdpChannel {
     pub fn new(dst_addr: SocketAddr) -> Self {
         return Self { dst_addr };
     }
 }
 
-impl KerberosTransporter for UdpTransporter {
+impl KrbChannel for UdpChannel {
     fn send_recv(&self, raw: &[u8]) -> io::Result<Vec<u8>> {
         return send_recv_udp(&self.dst_addr, raw);
     }

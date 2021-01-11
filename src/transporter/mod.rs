@@ -3,14 +3,14 @@
 
 use std::net::SocketAddr;
 
-mod transporter_trait;
-pub use transporter_trait::KerberosTransporter;
+mod channel_trait;
+pub use channel_trait::KrbChannel;
 
-mod tcp_transporter;
-use tcp_transporter::TcpTransporter;
+mod tcp_channel;
+use tcp_channel::TcpChannel;
 
-mod udp_transporter;
-use udp_transporter::UdpTransporter;
+mod udp_channel;
+use udp_channel::UdpChannel;
 
 /// Transport protocols available to send Kerberos messages
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -23,13 +23,13 @@ pub enum TransportProtocol {
 pub fn new_transporter(
     dst_address: SocketAddr,
     transport_protocol: TransportProtocol,
-) -> Box<dyn KerberosTransporter> {
+) -> Box<dyn KrbChannel> {
     match transport_protocol {
         TransportProtocol::TCP => {
-            return Box::new(TcpTransporter::new(dst_address));
+            return Box::new(TcpChannel::new(dst_address));
         }
         TransportProtocol::UDP => {
-            return Box::new(UdpTransporter::new(dst_address));
+            return Box::new(UdpChannel::new(dst_address));
         }
     }
 }

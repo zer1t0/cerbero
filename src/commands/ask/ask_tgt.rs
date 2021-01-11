@@ -4,7 +4,7 @@ use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use kerberos_crypto::Key;
 use log::{debug, info};
 
@@ -12,12 +12,12 @@ use log::{debug, info};
 pub fn ask_tgt(
     user: KrbUser,
     user_key: &Key,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
 ) -> Result<()> {
     info!("Request TGT for {}", user);
-    let tgt = request_tgt(user.clone(), user_key, None, transporter)?;
+    let tgt = request_tgt(user.clone(), user_key, None, channel)?;
 
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 

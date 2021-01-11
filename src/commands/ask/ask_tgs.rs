@@ -7,7 +7,7 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::transporter::KerberosTransporter;
+use crate::transporter::KrbChannel;
 use crate::utils::resolve_and_get_tranporter;
 use kerberos_crypto::Key;
 use log::{debug, info};
@@ -18,13 +18,13 @@ use std::net::{IpAddr, SocketAddr};
 pub fn ask_tgs(
     user: KrbUser,
     service: String,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
     kdcs: &HashMap<String, IpAddr>,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Request {} TGS for {}", service, user);
@@ -34,7 +34,7 @@ pub fn ask_tgs(
         tgt,
         S4u2options::Normal(service.clone()),
         None,
-        transporter,
+        channel,
     )?;
 
     if tgs.is_tgt() {
@@ -43,7 +43,7 @@ pub fn ask_tgs(
             user.clone(),
             S4u2options::Normal(service.clone()),
             vault,
-            transporter,
+            channel,
             kdcs,
         )?;
     }
@@ -67,11 +67,11 @@ pub fn ask_s4u2self(
     user: KrbUser,
     impersonate_user: KrbUser,
     vault: &mut dyn Vault,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
@@ -81,7 +81,7 @@ pub fn ask_s4u2self(
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
-        transporter,
+        channel,
     )?;
 
     debug!(
@@ -109,19 +109,19 @@ pub fn ask_s4u2proxy(
     impersonate_user: KrbUser,
     service: String,
     vault: &mut dyn Vault,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
     kdcs: &HashMap<String, IpAddr>,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, transporter, None)?;
+    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     let s4u2self_tgs = get_impersonation_ticket(
         vault,
         user.clone(),
         impersonate_user.clone(),
-        transporter,
+        channel,
         tgt.clone(),
     )?;
     debug!(
@@ -138,7 +138,7 @@ pub fn ask_s4u2proxy(
         tgt,
         S4u2options::S4u2proxy(s4u2self_tgs.ticket.clone(), service.clone()),
         None,
-        transporter,
+        channel,
     )?;
 
     if tgs_proxy.is_tgt() {
@@ -147,7 +147,7 @@ pub fn ask_s4u2proxy(
             user.clone(),
             S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
             vault,
-            transporter,
+            channel,
             kdcs,
         )?;
     }
@@ -176,7 +176,7 @@ pub fn request_inter_realm_tgs(
     user: KrbUser,
     service: S4u2options,
     vault: &mut dyn Vault,
-    transporter: &dyn KerberosTransporter,
+    channel: &dyn KrbChannel,
     kdcs: &HashMap<String, IpAddr>,
 ) -> Result<TicketCred> {
     let cross_domain = inter_tgt
@@ -203,9 +203,9 @@ pub fn request_inter_realm_tgs(
     let cross_transporter = resolve_and_get_tranporter(
         &cross_domain,
         kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
-        vec![SocketAddr::new(transporter.ip(), 53)],
+        vec![SocketAddr::new(channel.ip(), 53)],
         88,
-        transporter.protocol(),
+        channel.protocol(),
     )?;
 
     return request_tgs(
