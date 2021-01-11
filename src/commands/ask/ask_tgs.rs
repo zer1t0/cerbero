@@ -205,7 +205,8 @@ pub fn resolve_inter_realm_tgss(
     vault: &mut dyn Vault,
     kdccomm: &mut KdcComm,
 ) -> Result<TicketCred> {
-    while ticket.is_tgt() {
+
+    while ticket.is_tgt() && !ticket.is_for_service(&service) {
         ticket = request_inter_realm_tgs(
             ticket,
             user.clone(),
