@@ -202,11 +202,12 @@ mod core;
 mod error;
 mod utils;
 
+use crate::communication::resolve_host;
 use crate::args::{args, Arguments, ArgumentsParser};
+use crate::communication::{KdcComm, new_krb_channel};
 use crate::core::KrbUser;
 use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
-use crate::communication::resolve_and_get_krb_channel;
 use crate::utils::read_file_lines;
 use log::error;
 use stderrlog;
@@ -243,14 +244,6 @@ fn main_inner(args: Arguments) -> Result<()> {
 fn ask(args: args::ask::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let transporter = resolve_and_get_krb_channel(
-        &args.user.realm,
-        args.kdcs
-            .get_clone(&args.user.realm),
-        Vec::new(),
-        args.transport_protocol,
-    )?;
-
     let creds_file = utils::get_ticket_file(
         args.out_file,
         &args.user.name,
@@ -259,15 +252,16 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
 
     let mut vault = FileVault::new(creds_file);
 
+    let kdccomm = KdcComm::new(args.kdcs, args.transport_protocol);
+
     return commands::ask(
         args.user,
+        args.user_key,
         args.impersonate_user,
         args.service,
         &mut vault,
-        &*transporter,
-        args.user_key,
         args.credential_format,
-        &args.kdcs,
+        kdccomm,
     );
 }
 
@@ -339,18 +333,17 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
         Err(_) => vec![args.passwords],
     };
 
-    let transporter = resolve_and_get_krb_channel(
-        &args.realm,
-        args.kdc_ip,
-        Vec::new(),
-        args.transport_protocol,
-    )?;
+    let kdc_ip = match args.kdc_ip {
+        Some(ip) => ip,
+        None => resolve_host(&args.realm, Vec::new())?
+    };
+    let channel = new_krb_channel(kdc_ip, args.transport_protocol);
 
     return commands::brute(
         &args.realm,
         usernames,
         passwords,
-        &*transporter,
+        &*channel,
         args.cred_format,
     );
 }
@@ -363,18 +356,18 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         Err(_) => vec![args.users],
     };
 
-    let transporter = resolve_and_get_krb_channel(
-        &args.realm,
-        args.kdc_ip,
-        Vec::new(),
-        args.transport_protocol,
-    )?;
+
+    let kdc_ip = match args.kdc_ip {
+        Some(ip) => ip,
+        None => resolve_host(&args.realm, Vec::new())?
+    };
+    let channel = new_krb_channel(kdc_ip, args.transport_protocol);
 
     return commands::asreproast(
         &args.realm,
         usernames,
         args.crack_format,
-        &*transporter,
+        &*channel,
         args.etype,
     );
 }
@@ -387,12 +380,12 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         Err(_) => vec![args.services],
     };
 
-    let transporter = resolve_and_get_krb_channel(
-        &args.user.realm,
-        args.kdc_ip,
-        Vec::new(),
-        args.transport_protocol,
-    )?;
+    let kdc_ip = match args.kdc_ip {
+        Some(ip) => ip,
+        None => resolve_host(&args.user.realm, Vec::new())?
+    };
+    let channel = new_krb_channel(kdc_ip, args.transport_protocol);
+
 
     let creds_file = match args.creds_file {
         Some(filename) => Some(filename),
@@ -426,7 +419,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         &mut *in_vault,
         out_ref_vault.map(|a| a as &dyn Vault),
         args.user_key.as_ref(),
-        &*transporter,
+        &*channel,
         args.credential_format,
         args.crack_format,
         args.etype,

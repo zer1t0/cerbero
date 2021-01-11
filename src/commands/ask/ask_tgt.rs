@@ -1,10 +1,10 @@
+use crate::communication::KdcComm;
 use crate::core::request_tgt;
 use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
-use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
 use log::{debug, info};
 
@@ -12,12 +12,14 @@ use log::{debug, info};
 pub fn ask_tgt(
     user: KrbUser,
     user_key: &Key,
-    channel: &dyn KrbChannel,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
+    mut kdccomm: KdcComm,
 ) -> Result<()> {
+    let channel = kdccomm.create_channel(&user.realm)?;
+
     info!("Request TGT for {}", user);
-    let tgt = request_tgt(user.clone(), user_key, None, channel)?;
+    let tgt = request_tgt(user.clone(), user_key, None, &*channel)?;
 
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 

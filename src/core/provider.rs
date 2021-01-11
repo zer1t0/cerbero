@@ -11,10 +11,10 @@ use log::{info, warn};
 /// or request it if it is necessary
 pub fn get_user_tgt(
     user: KrbUser,
-    vault: &mut dyn Vault,
     user_key: Option<&Key>,
-    channel: &dyn KrbChannel,
     etype: Option<i32>,
+    vault: &mut dyn Vault,
+    channel: &dyn KrbChannel,
 ) -> Result<TicketCred> {
     let tgt_result = get_user_tgt_from_file(&user, vault, etype);
 

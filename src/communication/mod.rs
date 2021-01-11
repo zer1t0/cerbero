@@ -45,16 +45,44 @@ impl Kdcs {
         return self.kdcs.get(&realm.to_lowercase());
     }
 
+    pub fn ips(&self) -> Vec<&IpAddr> {
+        return self.kdcs.iter().map(|(_, ip)| ip).collect();
+    }
+
     pub fn get_clone(&self, realm: &str) -> Option<IpAddr> {
         return self.get(realm).map(|ip| ip.clone());
     }
 }
 
+pub struct KdcComm {
+    kdcs: Kdcs,
+    protocol: TransportProtocol,
+}
+
+impl KdcComm {
+    pub fn new(kdcs: Kdcs, protocol: TransportProtocol) -> Self {
+        return Self { kdcs, protocol };
+    }
+
+    pub fn create_channel(
+        &mut self,
+        realm: &str,
+    ) -> Result<Box<dyn KrbChannel>> {
+        return resolve_krb_channel(
+            realm,
+            &mut self.kdcs,
+            self.protocol,
+        );
+    }
+}
+
+const KERBEROS_PORT: u16 = 88;
 /// Generates a transporter given and address and transport protocol
 pub fn new_krb_channel(
-    dst_address: SocketAddr,
+    dst_ip: IpAddr,
     transport_protocol: TransportProtocol,
 ) -> Box<dyn KrbChannel> {
+    let dst_address = SocketAddr::new(dst_ip, KERBEROS_PORT);
     match transport_protocol {
         TransportProtocol::TCP => {
             return Box::new(TcpChannel::new(dst_address));
@@ -65,21 +93,29 @@ pub fn new_krb_channel(
     }
 }
 
-const KERBEROS_PORT: u16 = 88;
-
-pub fn resolve_and_get_krb_channel(
+pub fn resolve_krb_channel(
     realm: &str,
-    kdc_ip: Option<IpAddr>,
-    dns_servers: Vec<SocketAddr>,
+    kdcs: &mut Kdcs,
     channel_protocol: TransportProtocol,
 ) -> Result<Box<dyn KrbChannel>> {
-    let kdc_ip = match kdc_ip {
-        Some(ip) => ip,
-        None => resolve_host(&realm, dns_servers)?,
-    };
+    let kdc_ip = resolve_kdc_ip(realm, kdcs)?;
+    kdcs.insert(realm.to_string(), kdc_ip.clone());
 
-    let kdc_address = SocketAddr::new(kdc_ip, KERBEROS_PORT);
-    return Ok(new_krb_channel(kdc_address, channel_protocol));
+    return Ok(new_krb_channel(kdc_ip, channel_protocol));
+}
+
+pub fn resolve_kdc_ip(realm: &str, kdcs: &Kdcs) -> Result<IpAddr> {
+    Ok(match kdcs.get_clone(realm) {
+        Some(ip) => ip,
+        None => {
+            let dns_servers = kdcs
+                .ips()
+                .iter()
+                .map(|ip| SocketAddr::new(*ip.clone(), 53))
+                .collect();
+            resolve_host(realm, dns_servers)?
+        }
+    })
 }
 
 pub fn resolve_host(

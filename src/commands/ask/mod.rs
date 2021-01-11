@@ -8,19 +8,17 @@ use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
-use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
-use crate::communication::Kdcs;
+use crate::communication::{KdcComm};
 
 pub fn ask(
     user: KrbUser,
+    user_key: Option<Key>,
     impersonate_user: Option<KrbUser>,
     service: Option<String>,
     vault: &mut dyn Vault,
-    channel: &dyn KrbChannel,
-    user_key: Option<Key>,
     credential_format: CredFormat,
-    kdcs: &Kdcs,
+    kdccomm: KdcComm,
 ) -> Result<()> {
     match service {
         Some(service) => match impersonate_user {
@@ -30,21 +28,19 @@ pub fn ask(
                     impersonate_user,
                     service,
                     vault,
-                    channel,
                     user_key.as_ref(),
                     credential_format,
-                    kdcs
+                    kdccomm
                 );
             }
             None => {
                 return ask_tgs(
                     user,
                     service,
-                    channel,
                     user_key.as_ref(),
                     credential_format,
                     vault,
-                    kdcs,
+                    kdccomm,
                 );
             }
         },
@@ -54,9 +50,9 @@ pub fn ask(
                     user,
                     impersonate_user,
                     vault,
-                    channel,
                     user_key.as_ref(),
                     credential_format,
+                    kdccomm
                 );
             }
             None => match user_key {
@@ -64,9 +60,9 @@ pub fn ask(
                     return ask_tgt(
                         user,
                         &user_key,
-                        channel,
                         credential_format,
                         vault,
+                        kdccomm,
                     );
                 }
                 None => {

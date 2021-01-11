@@ -22,10 +22,10 @@ pub fn kerberoast(
     let username = user.name.clone();
     let tgt = get_user_tgt(
         user.clone(),
-        in_vault,
         user_key,
-        channel,
         etype,
+        in_vault,
+        channel,
     )?;
 
     let mut tickets = in_vault.dump()?;

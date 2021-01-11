@@ -1,4 +1,4 @@
-use crate::communication::{resolve_and_get_krb_channel, Kdcs, KrbChannel};
+use crate::communication::KdcComm;
 use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
@@ -10,19 +10,19 @@ use crate::core::{
 use crate::error::Result;
 use kerberos_crypto::Key;
 use log::{debug, info};
-use std::net::SocketAddr;
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
     user: KrbUser,
     service: String,
-    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
-    kdcs: &Kdcs,
+    mut kdccomm: KdcComm,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
+    let channel = kdccomm.create_channel(&user.realm)?;
+
+    let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Request {} TGS for {}", service, user);
@@ -32,19 +32,16 @@ pub fn ask_tgs(
         tgt,
         S4u2options::Normal(service.clone()),
         None,
-        channel,
+        &*channel,
     )?;
 
-    if tgs.is_tgt() {
-        tgs = request_inter_realm_tgs(
-            tgs,
-            user.clone(),
-            S4u2options::Normal(service.clone()),
-            vault,
-            channel,
-            kdcs,
-        )?;
-    }
+    tgs = resolve_inter_realm_tgss(
+        tgs,
+        user.clone(),
+        service.clone(),
+        vault,
+        &mut kdccomm,
+    )?;
 
     debug!(
         "{} TGS for {}\n{}",
@@ -65,11 +62,13 @@ pub fn ask_s4u2self(
     user: KrbUser,
     impersonate_user: KrbUser,
     vault: &mut dyn Vault,
-    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
+    mut kdccomm: KdcComm,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
+    let channel = kdccomm.create_channel(&user.realm)?;
+
+    let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
@@ -79,7 +78,7 @@ pub fn ask_s4u2self(
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
-        channel,
+        &*channel,
     )?;
 
     debug!(
@@ -107,19 +106,20 @@ pub fn ask_s4u2proxy(
     impersonate_user: KrbUser,
     service: String,
     vault: &mut dyn Vault,
-    channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
-    kdcs: &Kdcs,
+    mut kdccomm: KdcComm,
 ) -> Result<()> {
-    let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
+    let channel = kdccomm.create_channel(&user.realm)?;
+
+    let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     let s4u2self_tgs = get_impersonation_ticket(
         vault,
         user.clone(),
         impersonate_user.clone(),
-        channel,
+        &*channel,
         tgt.clone(),
     )?;
     debug!(
@@ -130,25 +130,14 @@ pub fn ask_s4u2proxy(
     );
 
     info!("Request {} S4U2Proxy TGS for {}", service, impersonate_user);
-    let mut tgs_proxy = request_tgs(
+    let tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
         tgt,
         S4u2options::S4u2proxy(s4u2self_tgs.ticket.clone(), service.clone()),
         None,
-        channel,
+        &*channel,
     )?;
-
-    if tgs_proxy.is_tgt() {
-        tgs_proxy = request_inter_realm_tgs(
-            tgs_proxy,
-            user.clone(),
-            S4u2options::S4u2proxy(s4u2self_tgs.ticket, service.clone()),
-            vault,
-            channel,
-            kdcs,
-        )?;
-    }
 
     debug!(
         "{} S4U2Proxy TGS for {}\n{}",
@@ -174,43 +163,57 @@ pub fn request_inter_realm_tgs(
     user: KrbUser,
     service: S4u2options,
     vault: &mut dyn Vault,
-    channel: &dyn KrbChannel,
-    kdcs: &Kdcs,
+    kdccomm: &mut KdcComm,
 ) -> Result<TicketCred> {
-    let cross_domain = inter_tgt
+    let dst_realm = inter_tgt
         .service_host()
-        .ok_or("Unable to get the inter-realm TGT domain")?;
+        .ok_or("Unable to get the inter-realm TGT domain")?.clone();
 
-    info!("Received inter-realm TGT for domain {}", cross_domain);
+    info!("Received inter-realm TGT for domain {}", dst_realm);
 
     debug!(
         "{} inter-realm TGT for {}\n{}",
-        cross_domain,
+        dst_realm,
         user,
         ticket_cred_to_string(&inter_tgt, 0)
     );
 
     info!(
         "Save {} inter-realm TGT for {} in {}",
-        cross_domain,
+        dst_realm,
         user,
         vault.id()
     );
     vault.add(inter_tgt.clone())?;
 
-    let cross_transporter = resolve_and_get_krb_channel(
-        &cross_domain,
-        kdcs.get_clone(&cross_domain),
-        vec![SocketAddr::new(channel.ip(), 53)],
-        channel.protocol(),
-    )?;
+    let channel = kdccomm.create_channel(&dst_realm)?;
 
     return request_tgs(
         user,
-        cross_domain.to_string(),
+        dst_realm.to_string(),
         inter_tgt,
         service,
         None,
-        &*cross_transporter,
+        &*channel,
     );
+}
+
+pub fn resolve_inter_realm_tgss(
+    mut ticket: TicketCred,
+    user: KrbUser,
+    service: String,
+    vault: &mut dyn Vault,
+    kdccomm: &mut KdcComm,
+) -> Result<TicketCred> {
+    while ticket.is_tgt() {
+        ticket = request_inter_realm_tgs(
+            ticket,
+            user.clone(),
+            S4u2options::Normal(service.clone()),
+            vault,
+            kdccomm,
+        )?;
+    }
+
+    return Ok(ticket);
 }
