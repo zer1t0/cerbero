@@ -249,7 +249,6 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
             .get(&args.user.realm.to_lowercase())
             .map(|v| v.clone()),
         Vec::new(),
-        args.kdc_port,
         args.transport_protocol,
     )?;
 
@@ -345,7 +344,6 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
         &args.realm,
         args.kdc_ip,
         Vec::new(),
-        args.kdc_port,
         args.transport_protocol,
     )?;
 
@@ -370,7 +368,6 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         &args.realm,
         args.kdc_ip,
         Vec::new(),
-        args.kdc_port,
         args.transport_protocol,
     )?;
 
@@ -395,7 +392,6 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         &args.user.realm,
         args.kdc_ip,
         Vec::new(),
-        args.kdc_port,
         args.transport_protocol,
     )?;
 

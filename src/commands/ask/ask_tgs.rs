@@ -203,7 +203,6 @@ pub fn request_inter_realm_tgs(
         &cross_domain,
         kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
         vec![SocketAddr::new(channel.ip(), 53)],
-        88,
         channel.protocol(),
     )?;
 

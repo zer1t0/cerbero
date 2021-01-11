@@ -40,11 +40,12 @@ pub fn new_krb_channel(
     }
 }
 
+const KERBEROS_PORT: u16 = 88;
+
 pub fn resolve_and_get_krb_channel(
     realm: &str,
     kdc_ip: Option<IpAddr>,
     dns_servers: Vec<SocketAddr>,
-    kdc_port: u16,
     channel_protocol: TransportProtocol,
 ) -> Result<Box<dyn KrbChannel>> {
     let kdc_ip = match kdc_ip {
@@ -52,7 +53,7 @@ pub fn resolve_and_get_krb_channel(
         None => resolve_host(&realm, dns_servers)?,
     };
 
-    let kdc_address = SocketAddr::new(kdc_ip, kdc_port);
+    let kdc_address = SocketAddr::new(kdc_ip, KERBEROS_PORT);
     return Ok(new_krb_channel(kdc_address, channel_protocol));
 }
 
