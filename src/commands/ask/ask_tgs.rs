@@ -1,3 +1,4 @@
+use crate::communication::{resolve_and_get_krb_channel, Kdcs, KrbChannel};
 use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
@@ -7,11 +8,9 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::communication::{KrbChannel, resolve_and_get_krb_channel};
 use kerberos_crypto::Key;
 use log::{debug, info};
-use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 
 /// Main function to request a new TGS for a user for the selected service
 pub fn ask_tgs(
@@ -21,7 +20,7 @@ pub fn ask_tgs(
     user_key: Option<&Key>,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
-    kdcs: &HashMap<String, IpAddr>,
+    kdcs: &Kdcs,
 ) -> Result<()> {
     let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
@@ -111,7 +110,7 @@ pub fn ask_s4u2proxy(
     channel: &dyn KrbChannel,
     user_key: Option<&Key>,
     cred_format: CredFormat,
-    kdcs: &HashMap<String, IpAddr>,
+    kdcs: &Kdcs,
 ) -> Result<()> {
     let tgt = get_user_tgt(user.clone(), vault, user_key, channel, None)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
@@ -176,7 +175,7 @@ pub fn request_inter_realm_tgs(
     service: S4u2options,
     vault: &mut dyn Vault,
     channel: &dyn KrbChannel,
-    kdcs: &HashMap<String, IpAddr>,
+    kdcs: &Kdcs,
 ) -> Result<TicketCred> {
     let cross_domain = inter_tgt
         .service_host()
@@ -201,7 +200,7 @@ pub fn request_inter_realm_tgs(
 
     let cross_transporter = resolve_and_get_krb_channel(
         &cross_domain,
-        kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
+        kdcs.get_clone(&cross_domain),
         vec![SocketAddr::new(channel.ip(), 53)],
         channel.protocol(),
     )?;

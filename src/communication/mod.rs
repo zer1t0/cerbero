@@ -10,19 +10,44 @@ use tcp_channel::TcpChannel;
 mod udp_channel;
 use udp_channel::UdpChannel;
 
-
+use crate::Result;
+use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use trust_dns_resolver::config::{
     NameServerConfig, Protocol, ResolverConfig, ResolverOpts,
 };
 use trust_dns_resolver::Resolver;
-use crate::Result;
 
 /// Transport protocols available to send Kerberos messages
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TransportProtocol {
     TCP,
     UDP,
+}
+
+#[derive(Debug)]
+pub struct Kdcs {
+    kdcs: HashMap<String, IpAddr>,
+}
+
+impl Kdcs {
+    pub fn new() -> Self {
+        return Self {
+            kdcs: HashMap::new(),
+        };
+    }
+
+    pub fn insert(&mut self, realm: String, ip: IpAddr) {
+        self.kdcs.insert(realm.to_lowercase(), ip);
+    }
+
+    pub fn get(&self, realm: &str) -> Option<&IpAddr> {
+        return self.kdcs.get(&realm.to_lowercase());
+    }
+
+    pub fn get_clone(&self, realm: &str) -> Option<IpAddr> {
+        return self.get(realm).map(|ip| ip.clone());
+    }
 }
 
 /// Generates a transporter given and address and transport protocol
@@ -56,8 +81,6 @@ pub fn resolve_and_get_krb_channel(
     let kdc_address = SocketAddr::new(kdc_ip, KERBEROS_PORT);
     return Ok(new_krb_channel(kdc_address, channel_protocol));
 }
-
-
 
 pub fn resolve_host(
     realm: &str,

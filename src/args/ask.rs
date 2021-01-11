@@ -1,9 +1,8 @@
 use super::validators;
 use crate::core::{CredFormat, KrbUser};
-use crate::communication::TransportProtocol;
+use crate::communication::{TransportProtocol, Kdcs};
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
-use std::collections::HashMap;
 use std::convert::{TryInto, TryFrom};
 use std::net::IpAddr;
 
@@ -112,7 +111,7 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub user: KrbUser,
     pub user_key: Option<Key>,
-    pub kdcs: HashMap<String, IpAddr>,
+    pub kdcs: Kdcs,
     pub credential_format: CredFormat,
     pub out_file: Option<String>,
     pub service: Option<String>,
@@ -154,8 +153,8 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_kdcs(&self, default_realm: &str) -> HashMap<String, IpAddr> {
-        let mut kdcs = HashMap::new();
+    fn parse_kdcs(&self, default_realm: &str) -> Kdcs {
+        let mut kdcs = Kdcs::new();
         if let Some(kdcs_str) = self.matches.values_of("kdc") {
             for kdc_str in kdcs_str {
                 let mut parts: Vec<&str> = kdc_str.split(":").collect();
@@ -168,7 +167,7 @@ impl<'a> ArgumentsParser<'a> {
                 } else {
                     kdc_realm = parts.join(":");
                 }
-                kdcs.insert(kdc_realm.to_lowercase(), kdc_ip);
+                kdcs.insert(kdc_realm, kdc_ip);
             }
         }
         return kdcs;

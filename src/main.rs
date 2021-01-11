@@ -246,8 +246,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
     let transporter = resolve_and_get_krb_channel(
         &args.user.realm,
         args.kdcs
-            .get(&args.user.realm.to_lowercase())
-            .map(|v| v.clone()),
+            .get_clone(&args.user.realm),
         Vec::new(),
         args.transport_protocol,
     )?;
