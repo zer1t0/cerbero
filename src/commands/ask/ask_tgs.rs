@@ -35,13 +35,16 @@ pub fn ask_tgs(
         &*channel,
     )?;
 
-    tgs = resolve_inter_realm_tgss(
-        tgs,
-        user.clone(),
-        service.clone(),
-        vault,
-        &mut kdccomm,
-    )?;
+    while tgs.is_tgt() && !tgs.is_for_service(&service) {
+
+        tgs = request_inter_realm_tgs(
+            tgs,
+            user.clone(),
+            S4u2options::Normal(service.clone()),
+            vault,
+            &mut kdccomm,
+        )?;
+    }
 
     debug!(
         "{} TGS for {}\n{}",
@@ -57,6 +60,47 @@ pub fn ask_tgs(
     return Ok(());
 }
 
+pub fn request_inter_realm_tgs(
+    inter_tgt: TicketCred,
+    user: KrbUser,
+    service: S4u2options,
+    vault: &mut dyn Vault,
+    kdccomm: &mut KdcComm,
+) -> Result<TicketCred> {
+    let dst_realm = inter_tgt
+        .service_host()
+        .ok_or("Unable to get the inter-realm TGT domain")?
+        .clone();
+
+    info!("Received inter-realm TGT for domain {}", dst_realm);
+
+    debug!(
+        "{} inter-realm TGT for {}\n{}",
+        dst_realm,
+        user,
+        ticket_cred_to_string(&inter_tgt, 0)
+    );
+
+    info!(
+        "Save {} inter-realm TGT for {} in {}",
+        dst_realm,
+        user,
+        vault.id()
+    );
+    vault.add(inter_tgt.clone())?;
+
+    let channel = kdccomm.create_channel(&dst_realm)?;
+
+    return request_tgs(
+        user,
+        dst_realm.to_string(),
+        inter_tgt,
+        service,
+        None,
+        &*channel,
+    );
+}
+
 /// Main function to perform an S4U2Self operation
 pub fn ask_s4u2self(
     user: KrbUser,
@@ -66,20 +110,100 @@ pub fn ask_s4u2self(
     cred_format: CredFormat,
     mut kdccomm: KdcComm,
 ) -> Result<()> {
-    let channel = kdccomm.create_channel(&user.realm)?;
+    let mut channel = kdccomm.create_channel(&user.realm)?;
 
-    let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
+    let mut tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
-    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
-    let s4u2self_tgs = request_tgs(
+    let mut dst_realm = tgt
+        .service_host()
+        .ok_or("Unable to get the TGT domain")?
+        .clone();
+
+    let imp_user_krbtgt = format!("krbtgt/{}", impersonate_user.realm);
+    while !tgt.is_for_service(&imp_user_krbtgt) {
+        tgt = request_tgs(
+            user.clone(),
+            dst_realm.to_string(),
+            tgt,
+            S4u2options::Normal(imp_user_krbtgt.clone()),
+            None,
+            &*channel,
+        )?;
+
+        dst_realm = tgt
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        info!("Received inter-realm TGT for domain {}", dst_realm);
+        let dst_realm = tgt
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&tgt, 0)
+        );
+
+        info!(
+            "Save {} inter-realm TGT for {} in {}",
+            dst_realm,
+            user,
+            vault.id()
+        );
+        vault.add(tgt.clone())?;
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+    }
+
+    info!("Request {} S4U2Self TGS for {}", user, impersonate_user);
+
+    let mut s4u2self_tgs = request_tgs(
         user.clone(),
-        user.realm.clone(),
+        dst_realm,
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
         &*channel,
     )?;
+
+    while s4u2self_tgs.is_tgt() {
+        dst_realm = s4u2self_tgs
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        info!("Received inter-realm TGT for domain {}", dst_realm);
+
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&s4u2self_tgs, 0)
+        );
+
+        info!(
+            "Save {} inter-realm TGT for {} in {}",
+            dst_realm,
+            user,
+            vault.id()
+        );
+        vault.add(s4u2self_tgs.clone())?;
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+
+        s4u2self_tgs = request_tgs(
+            user.clone(),
+            dst_realm,
+            s4u2self_tgs,
+            S4u2options::S4u2self(impersonate_user.clone()),
+            None,
+            &*channel,
+        )?;
+    }
 
     debug!(
         "{} S4U2Self TGS for {}\n{}",
@@ -156,65 +280,4 @@ pub fn ask_s4u2proxy(
     vault.change_format(cred_format)?;
 
     return Ok(());
-}
-
-pub fn request_inter_realm_tgs(
-    inter_tgt: TicketCred,
-    user: KrbUser,
-    service: S4u2options,
-    vault: &mut dyn Vault,
-    kdccomm: &mut KdcComm,
-) -> Result<TicketCred> {
-    let dst_realm = inter_tgt
-        .service_host()
-        .ok_or("Unable to get the inter-realm TGT domain")?.clone();
-
-    info!("Received inter-realm TGT for domain {}", dst_realm);
-
-    debug!(
-        "{} inter-realm TGT for {}\n{}",
-        dst_realm,
-        user,
-        ticket_cred_to_string(&inter_tgt, 0)
-    );
-
-    info!(
-        "Save {} inter-realm TGT for {} in {}",
-        dst_realm,
-        user,
-        vault.id()
-    );
-    vault.add(inter_tgt.clone())?;
-
-    let channel = kdccomm.create_channel(&dst_realm)?;
-
-    return request_tgs(
-        user,
-        dst_realm.to_string(),
-        inter_tgt,
-        service,
-        None,
-        &*channel,
-    );
-}
-
-pub fn resolve_inter_realm_tgss(
-    mut ticket: TicketCred,
-    user: KrbUser,
-    service: String,
-    vault: &mut dyn Vault,
-    kdccomm: &mut KdcComm,
-) -> Result<TicketCred> {
-
-    while ticket.is_tgt() && !ticket.is_for_service(&service) {
-        ticket = request_inter_realm_tgs(
-            ticket,
-            user.clone(),
-            S4u2options::Normal(service.clone()),
-            vault,
-            kdccomm,
-        )?;
-    }
-
-    return Ok(ticket);
 }

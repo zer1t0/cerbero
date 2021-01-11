@@ -3,7 +3,9 @@ use super::pa_data::{
     new_pa_data_ap_req, new_pa_data_encrypted_timestamp,
     new_pa_data_pa_for_user, new_pa_data_pac_options,
 };
-use super::principal_name::{new_nt_srv_inst, new_nt_unknown};
+use super::principal_name::{
+    new_nt_enterprise, new_nt_srv_inst
+};
 use crate::core::forge::KrbUser;
 use crate::core::Cipher;
 use kerberos_asn1::{AsReq, TgsReq, Ticket};
@@ -65,7 +67,10 @@ pub fn build_tgs_req(
         S4u2options::S4u2self(impersonate_user) => {
             tgs_req_builder = tgs_req_builder
                 .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher))
-                .sname(Some(new_nt_unknown(&user.name)));
+                .sname(Some(new_nt_enterprise(&format!(
+                    "{}@{}",
+                    &user.name, &user.realm
+                ))));
         }
         S4u2options::S4u2proxy(tgs, service) => {
             tgs_req_builder = tgs_req_builder
