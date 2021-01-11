@@ -4,7 +4,7 @@ use crate::core::Vault;
 use crate::core::{get_user_tgt, request_tgs};
 use crate::core::{tgs_to_crack_string, CrackFormat, S4u2options};
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
 use log::info;
 

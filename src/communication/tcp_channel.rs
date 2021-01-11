@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream, IpAddr};
 use std::time::Duration;
 
-use crate::transporter::{TransportProtocol, KrbChannel};
+use crate::communication::{TransportProtocol, KrbChannel};
 
 /// Send Kerberos messages over TCP
 #[derive(Debug)]

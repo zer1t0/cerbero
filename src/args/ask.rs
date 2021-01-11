@@ -1,6 +1,6 @@
 use super::validators;
 use crate::core::{CredFormat, KrbUser};
-use crate::transporter::TransportProtocol;
+use crate::communication::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
 use std::collections::HashMap;

@@ -3,7 +3,7 @@ use crate::core::stringifier::{
     tgs_req_to_string,
 };
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_asn1::{AsRep, AsReq, Asn1Object, KrbError, TgsRep, TgsReq};
 use std::io;
 

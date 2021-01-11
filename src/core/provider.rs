@@ -3,7 +3,7 @@ use crate::core::{TicketCred};
 use crate::core::KrbUser;
 use crate::core::{request_tgs, request_tgt, S4u2options};
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
 use log::{info, warn};
 

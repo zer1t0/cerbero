@@ -2,7 +2,7 @@ use super::validators;
 use crate::core::CrackFormat;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
-use crate::transporter::TransportProtocol;
+use crate::communication::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_constants::etypes;
 use kerberos_crypto::Key;

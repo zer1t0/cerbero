@@ -2,7 +2,7 @@ use crate::core::request_as_rep;
 use crate::core::KrbUser;
 use crate::core::{as_rep_to_crack_string, CrackFormat};
 use crate::error::{Error, Result};
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use log::warn;
 
 pub fn asreproast(

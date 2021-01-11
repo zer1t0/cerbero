@@ -1,5 +1,5 @@
 use std::io;
-use crate::transporter::TransportProtocol;
+use crate::communication::TransportProtocol;
 use std::net::IpAddr;
 
 /// Trait implemented by classes which deliver Kerberos messages

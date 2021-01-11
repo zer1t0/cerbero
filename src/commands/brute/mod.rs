@@ -3,7 +3,7 @@ use crate::core::save_file_creds;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::error::{Error, Result};
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_constants::error_codes;
 use kerberos_crypto::Key;
 use log::{debug, error, info, warn};

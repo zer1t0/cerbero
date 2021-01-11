@@ -4,7 +4,7 @@ use crate::core::forge::{build_as_req, extract_krb_cred_from_as_rep};
 use crate::core::Cipher;
 use crate::core::TicketCred;
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_asn1::AsRep;
 use kerberos_crypto::Key;
 

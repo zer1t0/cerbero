@@ -1,4 +1,4 @@
-use crate::transporter::{KrbChannel, TransportProtocol};
+use crate::communication::{KrbChannel, TransportProtocol};
 use std::io;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 

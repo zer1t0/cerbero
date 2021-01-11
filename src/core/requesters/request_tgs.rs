@@ -6,7 +6,7 @@ use crate::core::forge::{
 use crate::core::Cipher;
 use crate::core::TicketCred;
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_asn1::{TgsRep, Ticket};
 
 /// Use a TGT to request a TGS

@@ -7,7 +7,7 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use crate::utils::resolve_and_get_tranporter;
 use kerberos_crypto::Key;
 use log::{debug, info};

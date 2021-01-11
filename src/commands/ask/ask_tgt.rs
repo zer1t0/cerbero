@@ -4,7 +4,7 @@ use crate::core::CredFormat;
 use crate::core::KrbUser;
 use crate::core::Vault;
 use crate::error::Result;
-use crate::transporter::KrbChannel;
+use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
 use log::{debug, info};
 

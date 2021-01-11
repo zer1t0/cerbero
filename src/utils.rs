@@ -1,7 +1,6 @@
+use crate::communication::{new_transporter, KrbChannel, TransportProtocol};
 use crate::core::CredFormat;
 use crate::error::Result;
-use crate::transporter::new_transporter;
-use crate::transporter::{KrbChannel, TransportProtocol};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};

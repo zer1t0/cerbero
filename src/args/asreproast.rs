@@ -1,6 +1,6 @@
 use super::validators;
 use crate::core::CrackFormat;
-use crate::transporter::TransportProtocol;
+use crate::communication::TransportProtocol;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use kerberos_constants::etypes;
 use std::net::IpAddr;
