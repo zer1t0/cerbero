@@ -206,7 +206,8 @@ use crate::args::{args, Arguments, ArgumentsParser};
 use crate::core::KrbUser;
 use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
-use crate::utils::{read_file_lines, resolve_and_get_tranporter};
+use crate::communication::resolve_and_get_krb_channel;
+use crate::utils::read_file_lines;
 use log::error;
 use stderrlog;
 
@@ -242,7 +243,7 @@ fn main_inner(args: Arguments) -> Result<()> {
 fn ask(args: args::ask::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let transporter = resolve_and_get_tranporter(
+    let transporter = resolve_and_get_krb_channel(
         &args.user.realm,
         args.kdcs
             .get(&args.user.realm.to_lowercase())
@@ -340,7 +341,7 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
         Err(_) => vec![args.passwords],
     };
 
-    let transporter = resolve_and_get_tranporter(
+    let transporter = resolve_and_get_krb_channel(
         &args.realm,
         args.kdc_ip,
         Vec::new(),
@@ -365,7 +366,7 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
         Err(_) => vec![args.users],
     };
 
-    let transporter = resolve_and_get_tranporter(
+    let transporter = resolve_and_get_krb_channel(
         &args.realm,
         args.kdc_ip,
         Vec::new(),
@@ -390,7 +391,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         Err(_) => vec![args.services],
     };
 
-    let transporter = resolve_and_get_tranporter(
+    let transporter = resolve_and_get_krb_channel(
         &args.user.realm,
         args.kdc_ip,
         Vec::new(),

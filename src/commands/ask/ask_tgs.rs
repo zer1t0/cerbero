@@ -7,8 +7,7 @@ use crate::core::{
     get_impersonation_ticket, get_user_tgt, request_tgs, S4u2options,
 };
 use crate::error::Result;
-use crate::communication::KrbChannel;
-use crate::utils::resolve_and_get_tranporter;
+use crate::communication::{KrbChannel, resolve_and_get_krb_channel};
 use kerberos_crypto::Key;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -200,7 +199,7 @@ pub fn request_inter_realm_tgs(
     );
     vault.add(inter_tgt.clone())?;
 
-    let cross_transporter = resolve_and_get_tranporter(
+    let cross_transporter = resolve_and_get_krb_channel(
         &cross_domain,
         kdcs.get(&cross_domain.to_lowercase()).map(|v| v.clone()),
         vec![SocketAddr::new(channel.ip(), 53)],
