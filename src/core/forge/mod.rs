@@ -11,8 +11,8 @@ pub use krb_user::KrbUser;
 
 mod principal_name;
 pub use principal_name::{
-    new_nt_principal, new_nt_srv_inst, new_nt_unknown, new_principal_name,
-    spn_to_service_parts, new_principal_or_srv_inst
+    new_nt_principal, new_nt_srv_inst, new_principal_name,
+    spn_to_service_parts, new_principal_or_srv_inst, new_nt_enterprise
 };
 
 mod pa_data;

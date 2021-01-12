@@ -1,6 +1,6 @@
+use crate::core::KrbUser;
 use kerberos_asn1::PrincipalName;
 use kerberos_constants::principal_names;
-
 
 pub fn new_principal_or_srv_inst(name: &str, realm: &str) -> PrincipalName {
     let name_parts = spn_to_service_parts(&name);
@@ -12,7 +12,7 @@ pub fn new_principal_or_srv_inst(name: &str, realm: &str) -> PrincipalName {
 
     return PrincipalName {
         name_type: name_type,
-        name_string: name_parts
+        name_string: name_parts,
     };
 }
 
@@ -24,18 +24,17 @@ pub fn new_nt_srv_inst(service: &str) -> PrincipalName {
     return new_principal_name(service, principal_names::NT_SRV_INST);
 }
 
-pub fn new_nt_unknown(name: &str) -> PrincipalName {
-    return new_principal_name(name, principal_names::NT_UNKNOWN);
-}
-
-pub fn new_nt_enterprise(name: &str) -> PrincipalName {
-    return new_principal_name(name, principal_names::NT_ENTERPRISE);
+pub fn new_nt_enterprise(user: &KrbUser) -> PrincipalName {
+    return new_principal_name(
+        &format!("{}@{}", &user.name, &user.realm),
+        principal_names::NT_ENTERPRISE,
+    );
 }
 
 pub fn new_principal_name(name: &str, name_type: i32) -> PrincipalName {
     return PrincipalName {
         name_type: name_type,
-        name_string: spn_to_service_parts(name)
+        name_string: spn_to_service_parts(name),
     };
 }
 

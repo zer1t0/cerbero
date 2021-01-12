@@ -1,6 +1,8 @@
 //! Structs to allow handle easier tickets and their associated KrbCredInfo
 
-use crate::core::forge::{new_nt_principal, new_nt_srv_inst, new_nt_unknown};
+use crate::core::forge::{
+    new_nt_enterprise, new_nt_principal, new_nt_srv_inst,
+};
 use crate::core::KrbUser;
 use crate::error::Error;
 use kerberos_asn1::{
@@ -154,11 +156,8 @@ impl TicketCreds {
         user: &KrbUser,
         impersonate_user: &KrbUser,
     ) -> Self {
-        return self
-            .user(impersonate_user)
-            .sname(&new_nt_unknown(&user.name));
+        return self.user(impersonate_user).sname(&new_nt_enterprise(&user));
     }
-
 }
 
 impl Into<KrbCred> for TicketCreds {

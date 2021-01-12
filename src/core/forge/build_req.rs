@@ -67,10 +67,7 @@ pub fn build_tgs_req(
         S4u2options::S4u2self(impersonate_user) => {
             tgs_req_builder = tgs_req_builder
                 .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher))
-                .sname(Some(new_nt_enterprise(&format!(
-                    "{}@{}",
-                    &user.name, &user.realm
-                ))));
+                .sname(Some(new_nt_enterprise(&user)));
         }
         S4u2options::S4u2proxy(tgs, service) => {
             tgs_req_builder = tgs_req_builder

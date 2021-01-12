@@ -3,8 +3,9 @@ pub use cipher::{generate_cipher_and_key, Cipher};
 
 mod forge;
 pub use forge::{
-    new_nt_principal, new_signed_pac, spn_to_service_parts, KrbUser,
-    S4u2options, new_principal_name, new_principal_or_srv_inst, craft_ticket_info
+    craft_ticket_info, new_nt_principal, new_principal_name,
+    new_principal_or_srv_inst, new_signed_pac, spn_to_service_parts, KrbUser,
+    S4u2options,
 };
 
 mod cracking;
@@ -14,10 +15,12 @@ mod cred_format;
 pub use cred_format::CredFormat;
 
 mod ticket_cred;
-pub use ticket_cred::{TicketCreds, TicketCred};
+pub use ticket_cred::{TicketCred, TicketCreds};
 
 mod provider;
-pub use provider::{get_impersonation_ticket, get_user_tgt};
+pub use provider::{
+    get_impersonation_ticket, get_user_tgt, request_s4u2self_tgs,
+};
 
 mod requesters;
 pub use requesters::{request_as_rep, request_tgs, request_tgt};

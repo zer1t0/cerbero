@@ -1,11 +1,12 @@
 use super::Vault;
-use crate::core::{TicketCred};
+use crate::communication::{KdcComm, KrbChannel};
+use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::KrbUser;
+use crate::core::TicketCred;
 use crate::core::{request_tgs, request_tgt, S4u2options};
 use crate::error::Result;
-use crate::communication::KrbChannel;
 use kerberos_crypto::Key;
-use log::{info, warn};
+use log::{debug, info, warn};
 
 /// Function to get a TGT from the credentials file
 /// or request it if it is necessary
@@ -64,8 +65,7 @@ fn get_user_tgt_from_file(
         if tgts.is_empty() {
             return Err(format!(
                 "No TGT with etype '{}' found for '{}'",
-                etype,
-                user.name
+                etype, user.name
             ))?;
         }
     }
@@ -76,42 +76,158 @@ fn get_user_tgt_from_file(
 /// Function to get a TGS of an impersonated user from file
 /// or request it if it is necessary
 pub fn get_impersonation_ticket(
-    vault: &mut dyn Vault,
     user: KrbUser,
     impersonate_user: KrbUser,
-    channel: &dyn KrbChannel,
     tgt: TicketCred,
+    vault: &mut dyn Vault,
+    kdccomm: &mut KdcComm,
 ) -> Result<TicketCred> {
     let tickets = vault.s4u2self_tgss(&user, &impersonate_user)?;
 
     if !tickets.is_empty() {
-        info!("Get {} S4U2Self TGS for {} from {}", user, impersonate_user, vault.id());
-        return Ok(tickets.get(0).unwrap().clone());
+        info!(
+            "Get {} S4U2Self TGS for {} from {}",
+            user,
+            impersonate_user,
+            vault.id()
+        );
+        let s4u2self_tgs = tickets.get(0).unwrap();
+
+        debug!(
+            "{} S4U2Self TGS for {}\n{}",
+            user,
+            impersonate_user,
+            ticket_cred_to_string(&s4u2self_tgs, 0)
+        );
+
+        return Ok(s4u2self_tgs.clone());
     }
 
-    warn!(
-        "No {} S4U2Self TGS for {} found",
-        user, impersonate_user,
-    );
+    warn!("No {} S4U2Self TGS for {} found", user, impersonate_user,);
 
-    info!(
-        "Request {} S4U2Self TGS for {}",
-        user, impersonate_user,
-    );
+    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
 
-    let s4u2self_tgs = request_tgs(
+    let s4u2self_tgs = request_s4u2self_tgs(
+        user,
+        impersonate_user,
+        tgt,
+        vault,
+        kdccomm,
+    )?;
+
+    return Ok(s4u2self_tgs);
+}
+
+pub fn request_s4u2self_tgs(
+    user: KrbUser,
+    impersonate_user: KrbUser,
+    mut tgt: TicketCred,
+    vault: &mut dyn Vault,
+    kdccomm: &mut KdcComm,
+) -> Result<TicketCred> {
+    let mut dst_realm = tgt
+        .service_host()
+        .ok_or("Unable to get the TGT domain")?
+        .clone();
+
+    let mut channel = kdccomm.create_channel(&user.realm)?;
+
+    let imp_user_krbtgt = format!("krbtgt/{}", impersonate_user.realm);
+    while !tgt.is_for_service(&imp_user_krbtgt) {
+        tgt = request_tgs(
+            user.clone(),
+            dst_realm.to_string(),
+            tgt,
+            S4u2options::Normal(imp_user_krbtgt.clone()),
+            None,
+            &*channel,
+        )?;
+
+        dst_realm = tgt
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        info!("Received inter-realm TGT for domain {}", dst_realm);
+        let dst_realm = tgt
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&tgt, 0)
+        );
+
+        info!(
+            "Save {} inter-realm TGT for {} in {}",
+            dst_realm,
+            user,
+            vault.id()
+        );
+        vault.add(tgt.clone())?;
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+    }
+
+    info!("Request {} S4U2Self TGS for {}", user, impersonate_user);
+
+    let mut s4u2self_tgs = request_tgs(
         user.clone(),
-        user.realm.clone(),
+        dst_realm,
         tgt,
         S4u2options::S4u2self(impersonate_user.clone()),
         None,
-        channel,
+        &*channel,
     )?;
+
+    while s4u2self_tgs.is_tgt() {
+        dst_realm = s4u2self_tgs
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        info!("Received inter-realm TGT for domain {}", dst_realm);
+
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&s4u2self_tgs, 0)
+        );
+
+        info!(
+            "Save {} inter-realm TGT for {} in {}",
+            dst_realm,
+            user,
+            vault.id()
+        );
+        vault.add(s4u2self_tgs.clone())?;
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+
+        s4u2self_tgs = request_tgs(
+            user.clone(),
+            dst_realm,
+            s4u2self_tgs,
+            S4u2options::S4u2self(impersonate_user.clone()),
+            None,
+            &*channel,
+        )?;
+    }
+
+    debug!(
+        "{} S4U2Self TGS for {}\n{}",
+        user,
+        impersonate_user,
+        ticket_cred_to_string(&s4u2self_tgs, 0)
+    );
 
     info!(
         "Save {} S4U2Self TGS for {} in {}",
-        impersonate_user.name,
-        user.name,
+        user,
+        impersonate_user,
         vault.id()
     );
     vault.add(s4u2self_tgs.clone())?;
