@@ -146,7 +146,7 @@ pub fn ask_s4u2proxy(
     )?;
 
     info!("Request {} S4U2Proxy TGS for {}", service, impersonate_user);
-    let tgs_proxy = request_tgs(
+    let mut tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
         tgt,
@@ -154,6 +154,19 @@ pub fn ask_s4u2proxy(
         None,
         &*channel,
     )?;
+
+    while tgs_proxy.is_tgt() && !tgs_proxy.is_for_service(&service) {
+        tgs_proxy = request_inter_realm_tgs(
+            tgs_proxy,
+            user.clone(),
+            S4u2options::S4u2proxy(
+                s4u2self_tgs.ticket.clone(),
+                service.clone(),
+            ),
+            vault,
+            &mut kdccomm,
+        )?;
+    }
 
     debug!(
         "{} S4U2Proxy TGS for {}\n{}",
