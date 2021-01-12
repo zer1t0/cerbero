@@ -26,6 +26,22 @@ pub fn ask_tgs(
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
+    request_regular_tgs(user, service, tgt, vault, &mut kdccomm)?;
+
+    vault.change_format(cred_format)?;
+
+    return Ok(());
+}
+
+pub fn request_regular_tgs(
+    user: KrbUser,
+    service: String,
+    tgt: TicketCred,
+    vault: &mut dyn Vault,
+    mut kdccomm: &mut KdcComm,
+) -> Result<TicketCred> {
+    let channel = kdccomm.create_channel(&user.realm)?;
+
     info!("Request {} TGS for {}", service, user);
     let mut tgs = request_tgs(
         user.clone(),
@@ -54,10 +70,9 @@ pub fn ask_tgs(
     );
 
     info!("Save {} TGS for {} in {}", user, service, vault.id());
-    vault.add(tgs)?;
-    vault.change_format(cred_format)?;
+    vault.add(tgs.clone())?;
 
-    return Ok(());
+    return Ok(tgs);
 }
 
 pub fn request_inter_realm_tgs(
@@ -149,18 +164,31 @@ pub fn ask_s4u2proxy(
     let mut tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
-        tgt,
+        tgt.clone(),
         S4u2options::S4u2proxy(s4u2self_tgs.ticket.clone(), service.clone()),
         None,
         &*channel,
     )?;
 
-    while tgs_proxy.is_tgt() && !tgs_proxy.is_for_service(&service) {
+    if tgs_proxy.is_tgt() {
+        let dst_realm = tgs_proxy
+            .service_host()
+            .ok_or("Unable to get the inter-realm TGT domain")?
+            .clone();
+
+        let inter_tgt = request_regular_tgs(
+            user.clone(),
+            format!("krbtgt/{}", dst_realm),
+            tgt.clone(),
+            vault,
+            &mut kdccomm,
+        )?;
+
         tgs_proxy = request_inter_realm_tgs(
-            tgs_proxy,
+            inter_tgt.clone(),
             user.clone(),
             S4u2options::S4u2proxy(
-                s4u2self_tgs.ticket.clone(),
+                tgs_proxy.ticket,
                 service.clone(),
             ),
             vault,
