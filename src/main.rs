@@ -123,12 +123,18 @@
 //!
 //! Convert ccache to krb:
 //! ```shell
-//! cerbero convert hades.ccache hades.krb
+//! $ cerbero convert -i anakin.ccache -o anakin.krb -vv
+//! INFO - Read anakin.ccache with ccache format
+//! INFO - Detected krb format from output file extension
+//! INFO - Save anakin.krb with krb format
 //! ```
 //!
 //! Convert krb to ccache:
 //! ```shell
-//! cerbero convert hades.krb hades.ccache
+//! $ cerbero convert -i anakin.krb -o anakin.ccache -vv
+//! INFO - Read anakin.krb with krb format
+//! INFO - Detected ccache format from output file extension
+//! INFO - Save anakin.ccache with ccache format
 //! ```
 //! ### Craft
 //! To `craft` golden and silver tickets.
@@ -178,15 +184,15 @@
 //! to `klist` command.
 //!
 //! ```shell
-//! $ cerbero list hades.ccache -fe
+//! $ cerbero list hades.ccache
 //! Ticket cache (ccache): FILE:hades.ccache
 //!
 //! Hades@UNDER.WORLD => krbtgt/UNDER.WORLD@UNDER.WORLD
-//! Valid starting: 12/22/2020 17:39:34
-//! Expires : 12/23/2020 03:39:34
-//! Renew until: 12/29/2020 17:39:34
-//! Flags: forwardable renewable initial pre_authent
-//! Etype (skey, tkt): aes256-cts-hmac-sha1-96 (18), aes256-cts-hmac-sha1-96 (18)
+//! Valid starting: 01/12/2021 12:08:09
+//! Expires: 01/12/2021 22:08:09
+//! Renew until: 01/19/2021 12:08:09
+//! Flags: 0x40e10000 -> forwardable renewable initial pre_authent name_canonicalize
+//! Etype (skey, tkt): 18 -> aes256-cts-hmac-sha1-96, 18 -> aes256-cts-hmac-sha1-96
 //! ```
 //!
 //! ## Credits
