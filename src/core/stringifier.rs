@@ -973,6 +973,9 @@ pub fn name_type_name(name_type: i32) -> &'static str {
         principal_names::NT_X500_PRINCIPAL => "nt-x500-principal",
         principal_names::NT_SMTP_NAME => "nt-smtp-name",
         principal_names::NT_ENTERPRISE => "nt-enterprise",
+        principal_names::NT_MS_PRINCIPAL => "nt-ms-principal",
+        principal_names::NT_MS_PRINCIPAL_AND_ID => "nt-ms-principal-and-id",
+        principal_names::NT_ENT_PRINCIPAL_AND_ID => "nt-ent-principal-and-id",
         _ => UNKNOWN,
     }
 }
