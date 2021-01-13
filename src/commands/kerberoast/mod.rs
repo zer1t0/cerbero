@@ -9,7 +9,7 @@ use crate::error::Result;
 use crate::utils;
 use kerberos_asn1::PrincipalName;
 use kerberos_crypto::Key;
-use log::info;
+use log::{info, warn};
 
 struct KerberoastService {
     user: KrbUser,
@@ -40,28 +40,35 @@ pub fn kerberoast(
     etype: Option<i32>,
     mut kdccomm: KdcComm,
 ) -> Result<()> {
-    let services = parse_kerberoast_file(&user_services_file, &user.realm)?;
+    let krbts_srvs = parse_kerberoast_file(&user_services_file, &user.realm)?;
 
     let channel = kdccomm.create_channel(&user.realm)?;
     let tgt = get_user_tgt(user.clone(), user_key, etype, in_vault, &*channel)?;
 
     let mut tickets = in_vault.dump()?;
 
-    for service in services {
+    for krbst_srv in krbts_srvs {
+        let service = krbst_srv.service();
+
         match request_regular_tgs(
             user.clone(),
-            service.service(),
+            service.clone(),
             tgt.clone(),
             etype.map(|e| vec![e]),
             &mut kdccomm,
         ) {
-            Err(err) => match &err {
-                _ => return Err(err),
-            },
+            Err(err) => {
+                warn!(
+                    "Error asking TGS for {} {}: {}",
+                    &krbst_srv.user,
+                    &service.to_string(),
+                    err
+                );
+            }
             Ok(tgs) => {
                 let crack_str = tgs_to_crack_string(
-                    &service.user.name,
-                    &service.service().to_string(),
+                    &krbst_srv.user.name,
+                    &service.to_string(),
                     &tgs.ticket,
                     crack_format,
                 );
@@ -80,6 +87,14 @@ pub fn kerberoast(
 
 const SEPARATOR: &'static str = ":";
 
+/// Parse a line that specifies a service to be kerberoasted.
+/// The line must include an user and optionally an SPN. The following formats
+/// are supported:
+/// * `user`
+/// * `domain/user`
+/// * `user:spn`
+/// * `domain/user:spn`
+///
 fn parse_kerberoast_service(
     line: &str,
     default_realm: &str,
@@ -119,11 +134,12 @@ fn parse_kerberoast_service(
         return Ok(KerberoastService::new(user, None));
     }
 
-    let service_str = parts.join(SEPARATOR);
+    let spn = parts.join(SEPARATOR);
 
-    return Ok(KerberoastService::new(user, Some(service_str)));
+    return Ok(KerberoastService::new(user, Some(spn)));
 }
 
+/// Parse a file that includes services to be kerberoasted.
 fn parse_kerberoast_file(
     filename: &str,
     default_realm: &str,
