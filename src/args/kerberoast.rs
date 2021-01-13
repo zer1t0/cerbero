@@ -1,13 +1,13 @@
 use super::validators;
+use crate::communication::Kdcs;
+use crate::communication::TransportProtocol;
 use crate::core::CrackFormat;
 use crate::core::CredFormat;
 use crate::core::KrbUser;
-use crate::communication::TransportProtocol;
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_constants::etypes;
 use kerberos_crypto::Key;
 use std::convert::TryInto;
-use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "kerberoast";
 
@@ -19,7 +19,9 @@ pub fn command() -> App<'static, 'static> {
                 .long("user")
                 .short("u")
                 .takes_value(true)
-                .help("User for request the ticket in format <domain>/<username>")
+                .help(
+                    "User for request the ticket in format <domain>/<username>",
+                )
                 .required(true)
                 .validator(validators::is_krb_user),
         )
@@ -59,14 +61,15 @@ pub fn command() -> App<'static, 'static> {
                 .multiple(false),
         )
         .arg(
-            Arg::with_name("kdc-ip")
-                .long("kdc-ip")
-                .alias("dc-ip")
+            Arg::with_name("kdc")
+                .long("kdc")
+                .visible_alias("dc")
                 .short("k")
-                .value_name("ip")
+                .value_name("[domain:]ip")
                 .takes_value(true)
+                .use_delimiter(true)
                 .help("The address of the KDC (usually the Domain Controller)")
-                .validator(validators::is_ip),
+                .validator(validators::is_kdc_domain_ip),
         )
         .arg(
             Arg::with_name("udp")
@@ -122,7 +125,7 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub user: KrbUser,
     pub user_key: Option<Key>,
-    pub kdc_ip: Option<IpAddr>,
+    pub kdcs: Kdcs,
     pub credential_format: CredFormat,
     pub crack_format: CrackFormat,
     pub services: String,
@@ -145,14 +148,16 @@ impl<'a> ArgumentsParser<'a> {
 
     fn _parse(&self) -> Arguments {
         let user_key = self.parse_user_key();
-        let kdc_ip = self.parse_kdc_ip();
         let credential_format = self.parse_ticket_format();
         let services = self.parse_services();
+        let user: KrbUser =
+            self.matches.value_of("user").unwrap().try_into().unwrap();
+        let kdcs = validators::parse_kdcs(&self.matches, &user.realm);
 
         return Arguments {
-            user: self.matches.value_of("user").unwrap().try_into().unwrap(),
+            user,
             user_key,
-            kdc_ip,
+            kdcs,
             credential_format,
             services,
             transport_protocol: self.parse_transport_protocol(),
@@ -164,11 +169,6 @@ impl<'a> ArgumentsParser<'a> {
         };
     }
 
-    fn parse_kdc_ip(&self) -> Option<IpAddr> {
-        let kdc_ip = self.matches.value_of("kdc-ip")?;
-        return Some(kdc_ip.parse::<IpAddr>().unwrap());
-    }
-
     fn parse_user_key(&self) -> Option<Key> {
         if let Some(password) = self.matches.value_of("password") {
             return Some(Key::Secret(password.to_string()));
@@ -176,7 +176,7 @@ impl<'a> ArgumentsParser<'a> {
             return Some(Key::from_rc4_key_string(ntlm).unwrap());
         } else if let Some(aes_key) = self.matches.value_of("aes") {
             if let Ok(key) = Key::from_aes_128_key_string(aes_key) {
-                return Some(key)
+                return Some(key);
             }
             return Some(Key::from_aes_256_key_string(aes_key).unwrap());
         }

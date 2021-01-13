@@ -1,9 +1,10 @@
+use crate::communication::Kdcs;
+use crate::core::KrbUser;
+use clap::ArgMatches;
 use kerberos_crypto::Key;
 use ms_pac::PISID;
-use std::net::IpAddr;
-use crate::core::KrbUser;
-
 use std::convert::TryFrom;
+use std::net::IpAddr;
 
 pub fn is_krb_user_or_username(v: String) -> Result<(), String> {
     if v.contains("/") {
@@ -44,12 +45,31 @@ pub fn is_aes_key(v: String) -> Result<(), String> {
     return Ok(());
 }
 
-pub fn is_kdc_domain_ip (v: String) -> Result<(), String> {
+pub fn is_kdc_domain_ip(v: String) -> Result<(), String> {
     let parts: Vec<String> = v.split(":").map(|s| s.into()).collect();
     is_ip(parts[parts.len() - 1].clone())?;
 
-    return Ok(())
+    return Ok(());
+}
 
+pub fn parse_kdcs(matches: &ArgMatches, default_realm: &str) -> Kdcs {
+    let mut kdcs = Kdcs::new();
+    if let Some(kdcs_str) = matches.values_of("kdc") {
+        for kdc_str in kdcs_str {
+            let mut parts: Vec<&str> = kdc_str.split(":").collect();
+
+            let kdc_ip_str = parts.pop().unwrap();
+            let kdc_ip = kdc_ip_str.parse::<IpAddr>().unwrap();
+            let kdc_realm;
+            if parts.is_empty() {
+                kdc_realm = default_realm.to_string();
+            } else {
+                kdc_realm = parts.join(":");
+            }
+            kdcs.insert(kdc_realm, kdc_ip);
+        }
+    }
+    return kdcs;
 }
 
 pub fn is_ip(v: String) -> Result<(), String> {

@@ -386,11 +386,8 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         Err(_) => vec![args.services],
     };
 
-    let kdc_ip = match args.kdc_ip {
-        Some(ip) => ip,
-        None => resolve_host(&args.user.realm, Vec::new())?
-    };
-    let channel = new_krb_channel(kdc_ip, args.transport_protocol);
+    let mut kdccomm = KdcComm::new(args.kdcs, args.transport_protocol);
+    let channel = kdccomm.create_channel(&args.user.realm)?;
 
 
     let creds_file = match args.creds_file {
