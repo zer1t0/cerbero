@@ -44,8 +44,8 @@ pub fn request_regular_tgs(
 
         debug!(
             "{} referral TGT for {}\n{}",
-            dst_realm,
             user,
+            dst_realm,
             ticket_cred_to_string(&referral_tgt, 0)
         );
 
@@ -63,8 +63,8 @@ pub fn request_regular_tgs(
 
     debug!(
         "{} TGS for {}\n{}",
-        service.to_string(),
         user,
+        service.to_string(),
         ticket_cred_to_string(&tgs, 0)
     );
 
@@ -104,9 +104,9 @@ pub fn request_s4u2self_tgs(
             .clone();
 
         debug!(
-            "{} inter-realm TGT for {}\n{}",
-            dst_realm,
+            "{} referral TGT for {}\n{}",
             user,
+            dst_realm,
             ticket_cred_to_string(&tgt, 0)
         );
 
@@ -129,9 +129,9 @@ pub fn request_s4u2self_tgs(
             .clone();
 
         debug!(
-            "{} inter-realm TGT for {}\n{}",
-            dst_realm,
+            "{} referral TGT for {}\n{}",
             user,
+            dst_realm,
             ticket_cred_to_string(&s4u2self_tgs, 0)
         );
 
@@ -149,8 +149,8 @@ pub fn request_s4u2self_tgs(
 
     debug!(
         "{} S4U2Self TGS for {}\n{}",
-        user,
         impersonate_user,
+        user,
         ticket_cred_to_string(&s4u2self_tgs, 0)
     );
 

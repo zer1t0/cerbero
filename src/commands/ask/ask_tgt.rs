@@ -18,12 +18,17 @@ pub fn ask_tgt(
 ) -> Result<()> {
     let channel = kdccomm.create_channel(&user.realm)?;
 
-    info!("Request TGT for {}", user);
+    info!("Request {} TGT for {}", user, user.realm);
     let tgt = request_tgt(user.clone(), user_key, None, &*channel)?;
 
-    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
+    debug!(
+        "{} TGT for {} info\n{}",
+        user,
+        user.realm,
+        ticket_cred_to_string(&tgt, 0)
+    );
 
-    info!("Save {} TGT in {}", user, vault.id());
+    info!("Save {} TGT for {} in {}", user, user.realm, vault.id());
     vault.add(tgt)?;
     vault.change_format(cred_format)?;
 

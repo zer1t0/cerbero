@@ -20,12 +20,24 @@ pub fn get_user_tgt(
 ) -> Result<TicketCred> {
     let tgt_result = get_user_tgt_from_file(&user, vault, etype);
 
-    if let Ok(tgt_info) = tgt_result {
-        info!("Get TGT for {} from {}", user, vault.id());
-        return Ok(tgt_info);
+    if let Ok(tgt) = tgt_result {
+        info!("Get {} TGT for {} from {}", user, user.realm, vault.id());
+        debug!(
+            "{} TGT for {} info\n{}",
+            user,
+            user.realm,
+            ticket_cred_to_string(&tgt, 0)
+        );
+        return Ok(tgt);
     }
     let err = tgt_result.unwrap_err();
-    warn!("No TGT found in {}: {}", vault.id(), err);
+    warn!(
+        "No {} TGT for {} found in {}: {}",
+        user,
+        user.realm,
+        vault.id(),
+        err
+    );
 
     let user_key =
         user_key.ok_or("Unable to request TGT without user credentials")?;
@@ -39,13 +51,20 @@ pub fn get_user_tgt(
         }
     }
 
-    info!("Request TGT for {}", user.name);
-    let tgt_info = request_tgt(user.clone(), user_key, etype, channel)?;
+    info!("Request {} TGT for {}", user, user.realm);
+    let tgt = request_tgt(user.clone(), user_key, etype, channel)?;
 
-    info!("Save TGT for {} in {}", user.name, vault.id());
-    vault.add(tgt_info.clone())?;
+    debug!(
+        "{} TGT for {} info\n{}",
+        user,
+        user.realm,
+        ticket_cred_to_string(&tgt, 0)
+    );
 
-    return Ok(tgt_info);
+    info!("Save {} TGT for {} in {}", user, user.realm, vault.id());
+    vault.add(tgt.clone())?;
+
+    return Ok(tgt);
 }
 
 /// Try to get the TGT user from the credentials file

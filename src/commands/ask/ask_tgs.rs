@@ -24,8 +24,8 @@ pub fn ask_tgs(
     let channel = kdccomm.create_channel(&user.realm)?;
 
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
-    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
-
+    
+    info!("Request {} TGS for {}", user, service);
     let tgs = request_regular_tgs(
         user.clone(),
         new_nt_srv_inst(&service),
@@ -53,10 +53,8 @@ pub fn ask_s4u2self(
     let channel = kdccomm.create_channel(&user.realm)?;
 
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
-    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
-    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
-
+    info!("Request {} S4U2Self TGS for {}", impersonate_user, user);
     let s4u2self_tgs = request_s4u2self_tgs(
         user.clone(),
         impersonate_user.clone(),
@@ -66,8 +64,8 @@ pub fn ask_s4u2self(
 
     info!(
         "Save {} S4U2Self TGS for {} in {}",
-        user,
         impersonate_user,
+        user,
         vault.id()
     );
     vault.add(s4u2self_tgs.clone())?;
@@ -89,7 +87,6 @@ pub fn ask_s4u2proxy(
     let channel = kdccomm.create_channel(&user.realm)?;
 
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
-    debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
     let s4u2self_tgs = get_impersonation_ticket(
         user.clone(),
@@ -99,7 +96,7 @@ pub fn ask_s4u2proxy(
         &mut kdccomm,
     )?;
 
-    info!("Request {} S4U2Proxy TGS for {}", service, impersonate_user);
+    info!("Request {} S4U2Proxy TGS for {}", impersonate_user, service);
     let mut tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
@@ -137,15 +134,15 @@ pub fn ask_s4u2proxy(
 
     debug!(
         "{} S4U2Proxy TGS for {}\n{}",
-        service,
         impersonate_user,
+        service,
         ticket_cred_to_string(&tgs_proxy, 0)
     );
 
     info!(
         "Save {} S4U2Proxy TGS for {} in {}",
-        service,
         impersonate_user,
+        service,
         vault.id()
     );
     vault.add(tgs_proxy)?;
