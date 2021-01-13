@@ -19,12 +19,12 @@ pub use ticket_cred::{TicketCred, TicketCreds};
 
 mod provider;
 pub use provider::{
-    get_impersonation_ticket, get_user_tgt, request_s4u2self_tgs,
+    get_impersonation_ticket, get_user_tgt,
 };
 
 mod requesters;
 pub use requesters::{
-    request_as_rep, request_regular_tgs, request_tgs, request_tgt,
+    request_as_rep, request_regular_tgs, request_tgs, request_tgt, request_s4u2self_tgs,
 };
 
 pub mod stringifier;

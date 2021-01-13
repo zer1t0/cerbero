@@ -55,8 +55,22 @@ pub fn ask_s4u2self(
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
     debug!("TGT for {} info\n{}", user, ticket_cred_to_string(&tgt, 0));
 
-    request_s4u2self_tgs(user, impersonate_user, tgt, vault, &mut kdccomm)?;
+    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
 
+    let s4u2self_tgs = request_s4u2self_tgs(
+        user.clone(),
+        impersonate_user.clone(),
+        tgt,
+        &mut kdccomm,
+    )?;
+
+    info!(
+        "Save {} S4U2Self TGS for {} in {}",
+        user,
+        impersonate_user,
+        vault.id()
+    );
+    vault.add(s4u2self_tgs.clone())?;
     vault.change_format(cred_format)?;
 
     return Ok(());

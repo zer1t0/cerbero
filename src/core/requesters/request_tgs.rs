@@ -1,6 +1,7 @@
 use crate::core::stringifier::ticket_cred_to_string;
 use super::senders::send_recv_tgs;
 use crate::core::forge::KrbUser;
+use crate::core::forge;
 use crate::core::forge::{
     build_tgs_req, extract_ticket_from_tgs_rep, S4u,
 };
@@ -69,6 +70,93 @@ pub fn request_regular_tgs(
 
     return Ok(tgs);
 }
+
+
+/// Request a S4U2Self ticket by handling the possible referrals across domains.
+pub fn request_s4u2self_tgs(
+    user: KrbUser,
+    impersonate_user: KrbUser,
+    mut tgt: TicketCred,
+    kdccomm: &mut KdcComm,
+) -> Result<TicketCred> {
+    let mut dst_realm = tgt
+        .service_host()
+        .ok_or("Unable to get the TGT domain")?
+        .clone();
+
+    let mut channel = kdccomm.create_channel(&user.realm)?;
+
+    let imp_user_krbtgt =
+        forge::new_nt_srv_inst(&format!("krbtgt/{}", impersonate_user.realm));
+    while !tgt.is_for_service(&imp_user_krbtgt) {
+        tgt = request_tgs(
+            user.clone(),
+            dst_realm.to_string(),
+            tgt,
+            S4u::None(imp_user_krbtgt.clone()),
+            None,
+            &*channel,
+        )?;
+
+        dst_realm = tgt
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&tgt, 0)
+        );
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+    }
+
+    let mut s4u2self_tgs = request_tgs(
+        user.clone(),
+        dst_realm,
+        tgt,
+        S4u::S4u2self(impersonate_user.clone()),
+        None,
+        &*channel,
+    )?;
+
+    while s4u2self_tgs.is_tgt() {
+        dst_realm = s4u2self_tgs
+            .service_host()
+            .ok_or("Unable to get the TGT domain")?
+            .clone();
+
+        debug!(
+            "{} inter-realm TGT for {}\n{}",
+            dst_realm,
+            user,
+            ticket_cred_to_string(&s4u2self_tgs, 0)
+        );
+
+        channel = kdccomm.create_channel(&dst_realm)?;
+
+        s4u2self_tgs = request_tgs(
+            user.clone(),
+            dst_realm,
+            s4u2self_tgs,
+            S4u::S4u2self(impersonate_user.clone()),
+            None,
+            &*channel,
+        )?;
+    }
+
+    debug!(
+        "{} S4U2Self TGS for {}\n{}",
+        user,
+        impersonate_user,
+        ticket_cred_to_string(&s4u2self_tgs, 0)
+    );
+
+    return Ok(s4u2self_tgs);
+}
+
 
 /// Use a TGT to request a TGS
 pub fn request_tgs(
