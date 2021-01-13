@@ -208,14 +208,17 @@ mod core;
 mod error;
 mod utils;
 
-use crate::communication::resolve_host;
 use crate::args::{args, Arguments, ArgumentsParser};
-use crate::communication::{KdcComm, new_krb_channel};
+use crate::communication::resolve_host;
+use crate::communication::{new_krb_channel, KdcComm};
 use crate::core::KrbUser;
 use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
-use crate::utils::read_file_lines;
+use crate::utils;
 use log::error;
+use std::convert::TryFrom;
+use std::fs::File;
+use std::io::BufRead;
 use stderrlog;
 
 fn init_log(verbosity: usize) {
@@ -341,7 +344,7 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
 
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
-        None => resolve_host(&args.realm, Vec::new())?
+        None => resolve_host(&args.realm, Vec::new())?,
     };
     let channel = new_krb_channel(kdc_ip, args.transport_protocol);
 
@@ -357,15 +360,14 @@ fn brute(args: args::brute::Arguments) -> Result<()> {
 fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let usernames = match read_file_lines(&args.users) {
+    let usernames = match utils::read_file_lines(&args.users) {
         Ok(users) => users,
         Err(_) => vec![args.users],
     };
 
-
     let kdc_ip = match args.kdc_ip {
         Some(ip) => ip,
-        None => resolve_host(&args.realm, Vec::new())?
+        None => resolve_host(&args.realm, Vec::new())?,
     };
     let channel = new_krb_channel(kdc_ip, args.transport_protocol);
 
@@ -381,14 +383,8 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
 fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let services = match read_file_lines(&args.services) {
-        Ok(users) => users,
-        Err(_) => vec![args.services],
-    };
-
     let mut kdccomm = KdcComm::new(args.kdcs, args.transport_protocol);
     let channel = kdccomm.create_channel(&args.user.realm)?;
-
 
     let creds_file = match args.creds_file {
         Some(filename) => Some(filename),
@@ -418,7 +414,7 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
 
     return commands::kerberoast(
         args.user,
-        services,
+        args.user_services_file,
         &mut *in_vault,
         out_ref_vault.map(|a| a as &dyn Vault),
         args.user_key.as_ref(),

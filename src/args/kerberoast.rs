@@ -26,11 +26,12 @@ pub fn command() -> App<'static, 'static> {
                 .validator(validators::is_krb_user),
         )
         .arg(
-            Arg::with_name("services")
-                .long("services")
+            Arg::with_name("users")
+                .long("users")
                 .short("s")
                 .takes_value(true)
-                .help("Services to request ticket for")
+                .value_name("path")
+                .help("File with users services to request")
                 .required(true),
         )
         .arg(
@@ -125,10 +126,10 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub user: KrbUser,
     pub user_key: Option<Key>,
+    pub user_services_file: String,
     pub kdcs: Kdcs,
     pub credential_format: CredFormat,
     pub crack_format: CrackFormat,
-    pub services: String,
     pub transport_protocol: TransportProtocol,
     pub verbosity: usize,
     pub etype: Option<i32>,
@@ -157,9 +158,9 @@ impl<'a> ArgumentsParser<'a> {
         return Arguments {
             user,
             user_key,
+            user_services_file: self.matches.value_of("users").unwrap().into(),
             kdcs,
             credential_format,
-            services,
             transport_protocol: self.parse_transport_protocol(),
             verbosity: self.matches.occurrences_of("verbosity") as usize,
             crack_format: self.parse_crack_format(),

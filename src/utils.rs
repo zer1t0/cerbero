@@ -4,9 +4,6 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-
-
-
 pub fn get_ticket_file(
     args_file: Option<String>,
     username: &String,
@@ -25,6 +22,39 @@ pub fn get_ticket_file(
 
 pub fn get_env_ticket_file() -> Option<String> {
     return env::var("KRB5CCNAME").ok();
+}
+
+pub fn open_file(filename: &str) -> Result<File> {
+    return Ok(File::open(filename).map_err(|error| {
+        format!("Unable to open the file '{}': {}", filename, error)
+    })?);
+}
+
+pub fn new_file_reader(filename: &str) -> Result<BufReader<File>> {
+    return Ok(BufReader::new(open_file(filename)?));
+}
+
+pub fn new_lines_reader(filename: &str) -> Result<LinesReader> {
+    return Ok(LinesReader::new(new_file_reader(filename)?));
+}
+
+pub struct LinesReader {
+    reader: BufReader<File>,
+}
+
+impl LinesReader {
+    fn new(reader: BufReader<File>) -> Self {
+        return Self { reader };
+    }
+
+    pub fn lines(self) -> impl Iterator<Item = String> {
+        return self
+            .reader
+            .lines()
+            .filter_map(std::result::Result::ok)
+            .filter(|l| !(l.is_empty() || l.starts_with("#")))
+            .into_iter();
+    }
 }
 
 pub fn read_file_lines(filename: &str) -> Result<Vec<String>> {
