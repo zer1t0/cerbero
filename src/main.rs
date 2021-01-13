@@ -207,7 +207,7 @@
 //! leia
 //! ```
 //!
-//! The tickets could be cracked by using the following [hashcat](https://hashcat.net/) command:
+//! The tickets could be cracked by using [hashcat](https://hashcat.net/) with a wordlist:
 //! ```shell
 //! $ hashcat -m 13100 /tmp/hashes.txt wordlist.txt
 //! ```
