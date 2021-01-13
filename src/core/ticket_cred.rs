@@ -253,19 +253,15 @@ impl TicketCred {
         return false;
     }
 
-    pub fn is_for_service(&self, service_str: &str) -> bool {
-        if let Some(s_str) = self.service_string() {
-            return service_str.to_lowercase() == s_str.to_lowercase();
+    pub fn is_for_service(&self, service: &PrincipalName) -> bool {
+        if let Some(srv) = self.service() {
+            return srv == service;
         }
         return false;
     }
 
     pub fn service(&self) -> Option<&PrincipalName> {
         return self.cred_info.sname.as_ref();
-    }
-
-    pub fn service_string(&self) -> Option<String> {
-        return self.service().map(|s| s.to_string());
     }
 
     pub fn service_host(&self) -> Option<&String> {

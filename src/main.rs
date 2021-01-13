@@ -214,11 +214,7 @@ use crate::communication::{new_krb_channel, KdcComm};
 use crate::core::KrbUser;
 use crate::core::{EmptyVault, FileVault, Vault};
 use crate::error::Result;
-use crate::utils;
 use log::error;
-use std::convert::TryFrom;
-use std::fs::File;
-use std::io::BufRead;
 use stderrlog;
 
 fn init_log(verbosity: usize) {
@@ -332,12 +328,12 @@ fn list(args: args::list::Arguments) -> Result<()> {
 fn brute(args: args::brute::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let usernames = match read_file_lines(&args.users) {
+    let usernames = match utils::read_file_lines(&args.users) {
         Ok(users) => users,
         Err(_) => vec![args.users],
     };
 
-    let passwords = match read_file_lines(&args.passwords) {
+    let passwords = match utils::read_file_lines(&args.passwords) {
         Ok(passwords) => passwords,
         Err(_) => vec![args.passwords],
     };
@@ -383,9 +379,8 @@ fn asreproast(args: args::asreproast::Arguments) -> Result<()> {
 fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
     init_log(args.verbosity);
 
-    let mut kdccomm = KdcComm::new(args.kdcs, args.transport_protocol);
-    let channel = kdccomm.create_channel(&args.user.realm)?;
-
+    let kdccomm = KdcComm::new(args.kdcs, args.transport_protocol);
+    
     let creds_file = match args.creds_file {
         Some(filename) => Some(filename),
         None => utils::get_env_ticket_file(),
@@ -418,9 +413,9 @@ fn kerberoast(args: args::kerberoast::Arguments) -> Result<()> {
         &mut *in_vault,
         out_ref_vault.map(|a| a as &dyn Vault),
         args.user_key.as_ref(),
-        &*channel,
         args.credential_format,
         args.crack_format,
         args.etype,
+        kdccomm,
     );
 }

@@ -1,11 +1,11 @@
 mod cipher;
 pub use cipher::{generate_cipher_and_key, Cipher};
 
-mod forge;
+pub mod forge;
 pub use forge::{
     craft_ticket_info, new_nt_principal, new_principal_name,
     new_principal_or_srv_inst, new_signed_pac, spn_to_service_parts, KrbUser,
-    S4u2options,
+    S4u,
 };
 
 mod cracking;
@@ -23,7 +23,9 @@ pub use provider::{
 };
 
 mod requesters;
-pub use requesters::{request_as_rep, request_tgs, request_tgt};
+pub use requesters::{
+    request_as_rep, request_regular_tgs, request_tgs, request_tgt,
+};
 
 pub mod stringifier;
 

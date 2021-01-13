@@ -8,7 +8,7 @@ use super::principal_name::{
 };
 use crate::core::forge::KrbUser;
 use crate::core::Cipher;
-use kerberos_asn1::{AsReq, TgsReq, Ticket};
+use kerberos_asn1::{AsReq, TgsReq, Ticket, PrincipalName};
 use kerberos_constants;
 use kerberos_constants::{kdc_options, pa_pac_options};
 
@@ -37,11 +37,12 @@ pub fn build_as_req(
     return as_req_builder.build_as_req();
 }
 
-pub enum S4u2options {
+pub enum S4u {
     S4u2proxy(Ticket, String),
     S4u2self(KrbUser),
-    Normal(String),
+    None(PrincipalName),
 }
+
 
 /// Helper to easily craft a TGS-REQ message for asking a TGS
 /// from user data and TGT
@@ -50,7 +51,7 @@ pub fn build_tgs_req(
     server_realm: String,
     tgt: Ticket,
     cipher: &Cipher,
-    s4u2options: S4u2options,
+    s4u2options: S4u,
     etypes: Option<Vec<i32>>,
 ) -> TgsReq {
     let mut tgs_req_builder = KdcReqBuilder::new(server_realm);
@@ -60,16 +61,16 @@ pub fn build_tgs_req(
     }
 
     match s4u2options {
-        S4u2options::Normal(service) => {
+        S4u::None(service) => {
             tgs_req_builder =
-                tgs_req_builder.sname(Some(new_nt_srv_inst(&service)));
+                tgs_req_builder.sname(Some(service));
         }
-        S4u2options::S4u2self(impersonate_user) => {
+        S4u::S4u2self(impersonate_user) => {
             tgs_req_builder = tgs_req_builder
                 .push_padata(new_pa_data_pa_for_user(impersonate_user, cipher))
                 .sname(Some(new_nt_enterprise(&user)));
         }
-        S4u2options::S4u2proxy(tgs, service) => {
+        S4u::S4u2proxy(tgs, service) => {
             tgs_req_builder = tgs_req_builder
                 .sname(Some(new_nt_srv_inst(&service)))
                 .push_ticket(tgs)

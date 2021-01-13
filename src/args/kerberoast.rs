@@ -150,7 +150,6 @@ impl<'a> ArgumentsParser<'a> {
     fn _parse(&self) -> Arguments {
         let user_key = self.parse_user_key();
         let credential_format = self.parse_ticket_format();
-        let services = self.parse_services();
         let user: KrbUser =
             self.matches.value_of("user").unwrap().try_into().unwrap();
         let kdcs = validators::parse_kdcs(&self.matches, &user.realm);
@@ -197,10 +196,6 @@ impl<'a> ArgumentsParser<'a> {
 
     fn parse_credentials_file(&self) -> Option<String> {
         return self.matches.value_of("cred-file").map(|s| s.into());
-    }
-
-    fn parse_services(&self) -> String {
-        return self.matches.value_of("services").unwrap().into();
     }
 
     fn parse_transport_protocol(&self) -> TransportProtocol {
