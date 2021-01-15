@@ -41,6 +41,7 @@ pub fn ask(
                 return ask_tgs(
                     user,
                     service,
+                    rename_service,
                     user_key.as_ref(),
                     credential_format,
                     vault,

@@ -16,6 +16,7 @@ use log::{debug, info};
 pub fn ask_tgs(
     user: KrbUser,
     service: String,
+    rename_service: Option<String>,
     user_key: Option<&Key>,
     cred_format: CredFormat,
     vault: &mut dyn Vault,
@@ -26,7 +27,7 @@ pub fn ask_tgs(
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
 
     info!("Request {} TGS for {}", user, service);
-    let tgs = request_regular_tgs(
+    let mut tgs = request_regular_tgs(
         user.clone(),
         new_nt_srv_inst(&service),
         tgt,
@@ -34,7 +35,24 @@ pub fn ask_tgs(
         &mut kdccomm,
     )?;
 
-    info!("Save {} TGS for {} in {}", user, service, vault.id());
+    let target_str;
+    if let Some(rename_service) = rename_service {
+        info!("Received {} TGS for {}", user, service);
+        info!("Rename service from {} to {}", service, rename_service);
+        tgs.change_sname(new_nt_srv_inst(&rename_service));
+
+        debug!(
+            "{} TGS for {}\n{}",
+            user,
+            rename_service,
+            ticket_cred_to_string(&tgs, 0)
+        );
+        target_str = rename_service;
+    } else {
+        target_str = service;
+    }
+
+    info!("Save {} TGS for {} in {}", user, target_str, vault.id());
     vault.add(tgs)?;
 
     vault.change_format(cred_format)?;
@@ -148,20 +166,22 @@ pub fn ask_s4u2proxy(
         ticket_cred_to_string(&tgs_proxy, 0)
     );
 
-
     let target_str;
     if let Some(rename_service) = rename_service {
-        info!("Received {} S4U2proxy TGS for {}", impersonate_user, service);
+        info!(
+            "Received {} S4U2proxy TGS for {}",
+            impersonate_user, service
+        );
         info!("Rename service from {} to {}", service, rename_service);
         tgs_proxy.change_sname(new_nt_srv_inst(&rename_service));
 
-        target_str = rename_service;
         debug!(
             "{} S4U2proxy TGS for {}\n{}",
             impersonate_user,
-            service,
+            rename_service,
             ticket_cred_to_string(&tgs_proxy, 0)
         );
+        target_str = rename_service;
     } else {
         target_str = service;
     }
