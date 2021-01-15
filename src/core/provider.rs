@@ -98,47 +98,56 @@ fn get_user_tgt_from_file(
 pub fn get_impersonation_ticket(
     user: KrbUser,
     impersonate_user: KrbUser,
+    user_service: Option<String>,
     tgt: TicketCred,
     vault: &mut dyn Vault,
     kdccomm: &mut KdcComm,
 ) -> Result<TicketCred> {
-    let tickets = vault.s4u2self_tgss(&user, &impersonate_user)?;
+    let target_str = user_service.clone().unwrap_or(user.to_string());
+    let tickets =
+        vault.s4u2self_tgss(&user, &impersonate_user, user_service.as_ref())?;
 
     if !tickets.is_empty() {
         info!(
             "Get {} S4U2Self TGS for {} from {}",
-            user,
             impersonate_user,
+            target_str,
             vault.id()
         );
         let s4u2self_tgs = tickets.get(0).unwrap();
 
         debug!(
             "{} S4U2Self TGS for {}\n{}",
-            user,
             impersonate_user,
+            target_str,
             ticket_cred_to_string(&s4u2self_tgs, 0)
         );
 
         return Ok(s4u2self_tgs.clone());
     }
 
-    warn!("No {} S4U2Self TGS for {} found", user, impersonate_user,);
+    warn!(
+        "No {} S4U2Self TGS for {} found",
+        impersonate_user, target_str
+    );
 
-    info!("Request {} S4U2Self TGS for {}", user, impersonate_user,);
+    info!(
+        "Request {} S4U2Self TGS for {}",
+        impersonate_user, target_str
+    );
 
     let s4u2self_tgs = request_s4u2self_tgs(
-        user.clone(),
+        user,
         impersonate_user.clone(),
-        None,
+        user_service,
         tgt,
         kdccomm,
     )?;
 
     info!(
         "Save {} S4U2Self TGS for {} in {}",
-        user,
         impersonate_user,
+        target_str,
         vault.id()
     );
     vault.add(s4u2self_tgs.clone())?;

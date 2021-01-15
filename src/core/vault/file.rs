@@ -54,10 +54,7 @@ impl Vault for FileVault {
         return save_file_creds(&self.file_path, creds, cred_format);
     }
 
-    fn change_format(
-        &self,
-        cred_format: CredFormat,
-    ) -> Result<()> {
+    fn change_format(&self, cred_format: CredFormat) -> Result<()> {
         return Ok(self.save_as(self.dump()?, cred_format)?);
     }
 
@@ -70,9 +67,10 @@ impl Vault for FileVault {
         &self,
         user: &KrbUser,
         impersonate_user: &KrbUser,
+        user_service: Option<&String>,
     ) -> Result<TicketCreds> {
         let tickets = self.dump()?;
-        return Ok(tickets.s4u2self_tgss(user, impersonate_user));
+        return Ok(tickets.s4u2self_tgss(user, impersonate_user, user_service));
     }
 }
 

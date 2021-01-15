@@ -150,13 +150,31 @@ impl TicketCreds {
         return self.tgt_realm(realm).user(user);
     }
 
+    /// Filter to return tickets for an user to an specific service
+    pub fn user_service(
+        &self,
+        client: &KrbUser,
+        sname: &PrincipalName,
+        srealm: &String,
+    ) -> Self {
+        return self.user(client).sname(sname).srealm(srealm);
+    }
+
     /// Returns the s4u2self tgss.
     pub fn s4u2self_tgss(
         &self,
         user: &KrbUser,
         impersonate_user: &KrbUser,
+        user_service: Option<&String>,
     ) -> Self {
-        return self.user(impersonate_user).sname(&new_nt_enterprise(&user));
+        let srealm = &user.realm;
+
+        let sname = match user_service {
+            Some(user_service) => new_nt_srv_inst(user_service),
+            None => new_nt_enterprise(user)
+        };
+
+        return self.user_service(impersonate_user, &sname, srealm);
     }
 }
 

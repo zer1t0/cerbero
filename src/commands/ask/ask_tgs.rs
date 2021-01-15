@@ -85,6 +85,7 @@ pub fn ask_s4u2proxy(
     user: KrbUser,
     impersonate_user: KrbUser,
     service: String,
+    user_service: Option<String>,
     vault: &mut dyn Vault,
     user_key: Option<&Key>,
     cred_format: CredFormat,
@@ -97,6 +98,7 @@ pub fn ask_s4u2proxy(
     let s4u2self_tgs = get_impersonation_ticket(
         user.clone(),
         impersonate_user.clone(),
+        user_service,
         tgt.clone(),
         vault,
         &mut kdccomm,

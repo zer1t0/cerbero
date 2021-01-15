@@ -42,5 +42,6 @@ pub trait Vault {
         &self,
         user: &KrbUser,
         impersonate_user: &KrbUser,
+        user_service: Option<&String>,
     ) -> Result<TicketCreds>;
 }

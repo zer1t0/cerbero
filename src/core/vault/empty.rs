@@ -53,7 +53,12 @@ impl Vault for EmptyVault {
         &self,
         user: &KrbUser,
         impersonate_user: &KrbUser,
+        user_service: Option<&String>,
     ) -> Result<TicketCreds> {
-        return Ok(self.ticket_creds.s4u2self_tgss(user, impersonate_user));
+        return Ok(self.ticket_creds.s4u2self_tgss(
+            user,
+            impersonate_user,
+            user_service,
+        ));
     }
 }

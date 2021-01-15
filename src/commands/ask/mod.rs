@@ -28,6 +28,7 @@ pub fn ask(
                     user,
                     impersonate_user,
                     service,
+                    user_service,
                     vault,
                     user_key.as_ref(),
                     credential_format,
