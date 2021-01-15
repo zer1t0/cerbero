@@ -131,7 +131,7 @@ checksum = "ae44d1a3d5a19df61dd0c8beb138458ac2a53a7ac09eba97d55592540004306b"
 
 [[package]]
 name = "cerbero"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "chrono",
  "clap",
