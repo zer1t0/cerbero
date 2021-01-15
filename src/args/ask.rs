@@ -82,7 +82,8 @@ pub fn command() -> App<'static, 'static> {
                 .long("user-service")
                 .visible_alias("user-spn")
                 .takes_value(true)
-                .value_name("SPN"),
+                .value_name("SPN")
+                .help("SPN of a user service to impersonate with S4U2self"),
         )
         .arg(
             Arg::with_name("cred-format")
