@@ -21,6 +21,10 @@ cargo install --path .
 
 ## Commands
 - [ask](#ask)
+    + [TGT](#tgt)
+    + [TGS](#tgs)
+    + [S4U2self](#S4U2self)
+    + [S4U2proxy](#S4U2proxy)
 - [asreproast](#asreproast)
 - [brute](#brute)
 - [convert](#convert)
@@ -31,46 +35,90 @@ cargo install --path .
 
 ### Ask
 The `ask` command allows to retrieve Kerberos tickets (TGT/TGS) from the KDC
-(Domain Controller in Active Directory environment). Moreover also
+(Domain Controller in Active Directory environment). Moreover, it also
 perform requests to obtain tickets by using the S4U2Self and S4U2Proxy
 Kerberos extensions.
 
+#### TGT
 Ask TGT:
 ```shell
-$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -vv
-INFO - Request TGT for Hades
-INFO - Save Hades TGT in Hades.ccache
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234!
+INFO - Request contoso.local/anakin TGT for contoso.local
+INFO - Save contoso.local/anakin TGT for contoso.local in anakin.ccache
 ```
 
+#### TGS
 Ask TGS:
 ```shell
-$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -s ldap/under.world -vv
-WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
-INFO - Request TGT for Hades
-INFO - Request ldap/dc01 TGS for Hades
-INFO - Save Hades TGS for ldap/dc01 in Hades.ccache
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -s ldap/dc01
+INFO - Get contoso.local/anakin TGT for contoso.local from anakin.ccache
+INFO - Request contoso.local/anakin TGS for ldap/dc01
+INFO - Save contoso.local/anakin TGS for ldap/dc01 in anakin.ccache
 ```
 
+Inter-realm TGS:
+```shell
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -s ldap/dc01.poke.mon
+```
+
+#### S4U2self
 Perform S4u2self:
 ```shell
-$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus
-WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
-INFO - Request TGT for Hades
-INFO - Request Zeus S4U2Self TGS for Hades
-INFO - Save Zeus S4U2Self TGS for Hades in Hades.ccache
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i han
+WARN - No contoso.local/anakin TGT for contoso.local found in anakin.ccache: No TGT found for 'anakin
+INFO - Request contoso.local/anakin TGT for contoso.local
+INFO - Save contoso.local/anakin TGT for contoso.local in anakin.ccache
+INFO - Request contoso.local/han S4U2Self TGS for contoso.local/anakin
+INFO - Save contoso.local/han S4U2Self TGS for contoso.local/anakin in anakin.ccache
 ```
 
+Inter-realm S4U2proxy:
+```shell
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i poke.mon/pikachu
+```
+
+Perform S4u2self for a given service of the user:
+```shell
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i han --user-service service/anakin
+INFO - Get contoso.local/anakin TGT for contoso.local from anakin.ccache
+INFO - Request contoso.local/han S4U2Self TGS for service/anakin
+INFO - Save contoso.local/han S4U2Self TGS for service/anakin in anakin.ccache
+```
+
+#### S4U2proxy
 Perform S4u2proxy:
 ```shell
-$ cerbero ask -u under.world/Hades -p 'IamtheKingofD34d!!' -i Zeus -s ldap/under.world -vv
-WARN - No TGT found in Hades.ccache: Unable to read the file 'Hades.ccache': No such file or directory (os error 2)
-INFO - Request TGT for Hades
-WARN - No Zeus S4U2Self TGS for Hades found
-INFO - Request Zeus S4U2Self TGS for Hades
-INFO - Request ldap/under.world S4U2Proxy TGS for Zeus
-INFO - Save Zeus S4U2Proxy TGS for ldap/under.world in Hades.ccache
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i han -s service2/leia
+WARN - No contoso.local/anakin TGT for contoso.local found in anakin.ccache: No TGT found for 'anakin
+INFO - Request contoso.local/anakin TGT for contoso.local
+INFO - Save contoso.local/anakin TGT for contoso.local in anakin.ccache
+WARN - No contoso.local/han S4U2Self TGS for contoso.local/anakin found
+INFO - Request contoso.local/han S4U2Self TGS for contoso.local/anakin
+INFO - Save contoso.local/han S4U2Self TGS for contoso.local/anakin in anakin.ccache
+INFO - Request contoso.local/han S4U2Proxy TGS for service2/leia
+INFO - Save contoso.local/han S4U2proxy TGS for service2/leia in anakin.ccache
 ```
 
+Inter-realm S4U2Proxy:
+```shell
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i han -s service/pikachu.poke.mon
+```
+
+You can also perform s4u2proxy by changing the target service in the final TGS for the user:
+```shell
+$ cerbero ask -vv -u contoso.local/anakin -p Vader1234! -i han -s HTTP/dc01 --rename-service ldap/dc01
+WARN - No contoso.local/anakin TGT for contoso.local found in anakin.ccache: No TGT found for 'anakin
+INFO - Request contoso.local/anakin TGT for contoso.local
+INFO - Save contoso.local/anakin TGT for contoso.local in anakin.ccache
+WARN - No contoso.local/han S4U2Self TGS for service/anakin found
+INFO - Request contoso.local/han S4U2Self TGS for contoso.local/anakin
+INFO - Save contoso.local/han S4U2Self TGS for contoso.local/anakin in anakin.ccache
+INFO - Request contoso.local/han S4U2Proxy TGS for HTTP/dc01
+INFO - Received contoso.local/han S4U2proxy TGS for HTTP/dc01
+INFO - Rename service from HTTP/dc01 to ldap/dc01
+INFO - Save contoso.local/han S4U2proxy TGS for ldap/dc01 in anakin.ccache
+
+```
 
 ### AsRepRoast
 `asreproast` can be used to discover users that do not require
