@@ -2,6 +2,8 @@
 
 # Cerbero
 
+![Crates.io](https://img.shields.io/crates/v/https://crates.io/crates/cerbero)
+
 Kerberos protocol attacker. Tool to perform several tasks
 related with Kerberos protocol in an Active Directory pentest.
 
