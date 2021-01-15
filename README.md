@@ -2,8 +2,8 @@
 
 # Cerbero
 
-![Crates.io](https://img.shields.io/crates/v/cerbero)
-![Language Rust](https://img.shields.io/badge/Language-Rust-blue)
+[![Crates.io](https://img.shields.io/crates/v/cerbero)](https://crates.io/crates/cerbero)
+[![Language Rust](https://img.shields.io/badge/Language-Rust-blue)](https://www.rust-lang.org/)
 
 Kerberos protocol attacker. Tool to perform several tasks
 related with Kerberos protocol in an Active Directory pentest.
