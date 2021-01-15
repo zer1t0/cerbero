@@ -296,6 +296,7 @@ fn ask(args: args::ask::Arguments) -> Result<()> {
         args.user_key,
         args.impersonate_user,
         args.service,
+        args.user_service,
         &mut vault,
         args.credential_format,
         kdccomm,

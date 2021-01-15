@@ -16,6 +16,7 @@ pub fn ask(
     user_key: Option<Key>,
     impersonate_user: Option<KrbUser>,
     service: Option<String>,
+    user_service: Option<String>,
     vault: &mut dyn Vault,
     credential_format: CredFormat,
     kdccomm: KdcComm,
@@ -49,6 +50,7 @@ pub fn ask(
                 return ask_s4u2self(
                     user,
                     impersonate_user,
+                    user_service,
                     vault,
                     user_key.as_ref(),
                     credential_format,

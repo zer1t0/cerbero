@@ -1,15 +1,13 @@
-use crate::core::stringifier::ticket_cred_to_string;
 use super::senders::send_recv_tgs;
-use crate::core::forge::KrbUser;
+use crate::communication::{KdcComm, KrbChannel};
 use crate::core::forge;
-use crate::core::forge::{
-    build_tgs_req, extract_ticket_from_tgs_rep, S4u,
-};
+use crate::core::forge::KrbUser;
+use crate::core::forge::{build_tgs_req, extract_ticket_from_tgs_rep, S4u};
+use crate::core::stringifier::ticket_cred_to_string;
 use crate::core::Cipher;
 use crate::core::TicketCred;
 use crate::error::Result;
-use crate::communication::{KrbChannel, KdcComm};
-use kerberos_asn1::{TgsRep, Ticket, PrincipalName};
+use kerberos_asn1::{PrincipalName, TgsRep, Ticket};
 use log::debug;
 
 /// Request a TGS for the desired service by handling the possible referral
@@ -71,11 +69,11 @@ pub fn request_regular_tgs(
     return Ok(tgs);
 }
 
-
 /// Request a S4U2Self ticket by handling the possible referrals across domains.
 pub fn request_s4u2self_tgs(
     user: KrbUser,
     impersonate_user: KrbUser,
+    user_service: Option<String>,
     mut tgt: TicketCred,
     kdccomm: &mut KdcComm,
 ) -> Result<TicketCred> {
@@ -117,7 +115,7 @@ pub fn request_s4u2self_tgs(
         user.clone(),
         dst_realm,
         tgt,
-        S4u::S4u2self(impersonate_user.clone()),
+        S4u::S4u2self(impersonate_user.clone(), user_service.clone()),
         None,
         &*channel,
     )?;
@@ -141,7 +139,7 @@ pub fn request_s4u2self_tgs(
             user.clone(),
             dst_realm,
             s4u2self_tgs,
-            S4u::S4u2self(impersonate_user.clone()),
+            S4u::S4u2self(impersonate_user.clone(), user_service.clone()),
             None,
             &*channel,
         )?;
@@ -156,7 +154,6 @@ pub fn request_s4u2self_tgs(
 
     return Ok(s4u2self_tgs);
 }
-
 
 /// Use a TGT to request a TGS
 pub fn request_tgs(

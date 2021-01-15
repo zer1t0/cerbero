@@ -130,6 +130,7 @@ pub fn get_impersonation_ticket(
     let s4u2self_tgs = request_s4u2self_tgs(
         user.clone(),
         impersonate_user.clone(),
+        None,
         tgt,
         kdccomm,
     )?;

@@ -24,7 +24,7 @@ pub fn ask_tgs(
     let channel = kdccomm.create_channel(&user.realm)?;
 
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
-    
+
     info!("Request {} TGS for {}", user, service);
     let tgs = request_regular_tgs(
         user.clone(),
@@ -45,19 +45,25 @@ pub fn ask_tgs(
 pub fn ask_s4u2self(
     user: KrbUser,
     impersonate_user: KrbUser,
+    user_service: Option<String>,
     vault: &mut dyn Vault,
     user_key: Option<&Key>,
     cred_format: CredFormat,
     mut kdccomm: KdcComm,
 ) -> Result<()> {
+    let target_str = user_service.clone().unwrap_or(user.to_string());
     let channel = kdccomm.create_channel(&user.realm)?;
 
     let tgt = get_user_tgt(user.clone(), user_key, None, vault, &*channel)?;
 
-    info!("Request {} S4U2Self TGS for {}", impersonate_user, user);
+    info!(
+        "Request {} S4U2Self TGS for {}",
+        impersonate_user, target_str
+    );
     let s4u2self_tgs = request_s4u2self_tgs(
         user.clone(),
         impersonate_user.clone(),
+        user_service,
         tgt,
         &mut kdccomm,
     )?;
@@ -65,7 +71,7 @@ pub fn ask_s4u2self(
     info!(
         "Save {} S4U2Self TGS for {} in {}",
         impersonate_user,
-        user,
+        target_str,
         vault.id()
     );
     vault.add(s4u2self_tgs.clone())?;

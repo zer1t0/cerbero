@@ -1,9 +1,9 @@
 use super::validators;
+use crate::communication::{Kdcs, TransportProtocol};
 use crate::core::{CredFormat, KrbUser};
-use crate::communication::{TransportProtocol, Kdcs};
 use clap::{App, Arg, ArgGroup, ArgMatches, SubCommand};
 use kerberos_crypto::Key;
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 use std::net::IpAddr;
 
 pub const COMMAND_NAME: &str = "ask";
@@ -40,7 +40,7 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("rc4")
                 .long("rc4")
-                .alias("ntlm")
+                .visible_alias("ntlm")
                 .takes_value(true)
                 .help("RC4 Kerberos key of user (NT hash)")
                 .validator(validators::is_rc4_key),
@@ -60,7 +60,7 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("kdc")
                 .long("kdc")
-                .alias("dc")
+                .visible_alias("dc")
                 .short("k")
                 .value_name("[domain:]ip")
                 .takes_value(true)
@@ -71,16 +71,23 @@ pub fn command() -> App<'static, 'static> {
         .arg(
             Arg::with_name("service")
                 .long("service")
-                .alias("spn")
+                .visible_alias("spn")
                 .short("s")
                 .takes_value(true)
-                .value_name("spn")
-                .help("SPN of the desired service"),
+                .value_name("SPN")
+                .help("SPN of the target service"),
+        )
+        .arg(
+            Arg::with_name("user-service")
+                .long("user-service")
+                .visible_alias("user-spn")
+                .takes_value(true)
+                .value_name("SPN"),
         )
         .arg(
             Arg::with_name("cred-format")
                 .long("cred-format")
-                .alias("ticket-format")
+                .visible_alias("ticket-format")
                 .takes_value(true)
                 .possible_values(&["krb", "ccache"])
                 .help("Format to save retrieved tickets.")
@@ -111,6 +118,7 @@ pub fn command() -> App<'static, 'static> {
 pub struct Arguments {
     pub user: KrbUser,
     pub user_key: Option<Key>,
+    pub user_service: Option<String>,
     pub kdcs: Kdcs,
     pub credential_format: CredFormat,
     pub out_file: Option<String>,
@@ -143,6 +151,10 @@ impl<'a> ArgumentsParser<'a> {
         return Arguments {
             user,
             user_key,
+            user_service: self
+                .matches
+                .value_of("user-service")
+                .map(|s| s.into()),
             kdcs,
             credential_format,
             out_file,
