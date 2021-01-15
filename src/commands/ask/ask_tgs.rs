@@ -86,6 +86,7 @@ pub fn ask_s4u2proxy(
     impersonate_user: KrbUser,
     service: String,
     user_service: Option<String>,
+    rename_service: Option<String>,
     vault: &mut dyn Vault,
     user_key: Option<&Key>,
     cred_format: CredFormat,
@@ -141,18 +142,37 @@ pub fn ask_s4u2proxy(
     }
 
     debug!(
-        "{} S4U2Proxy TGS for {}\n{}",
+        "{} S4U2proxy TGS for {}\n{}",
         impersonate_user,
         service,
         ticket_cred_to_string(&tgs_proxy, 0)
     );
 
+
+    let target_str;
+    if let Some(rename_service) = rename_service {
+        info!("Received {} S4U2proxy TGS for {}", impersonate_user, service);
+        info!("Rename service from {} to {}", service, rename_service);
+        tgs_proxy.change_sname(new_nt_srv_inst(&rename_service));
+
+        target_str = rename_service;
+        debug!(
+            "{} S4U2proxy TGS for {}\n{}",
+            impersonate_user,
+            service,
+            ticket_cred_to_string(&tgs_proxy, 0)
+        );
+    } else {
+        target_str = service;
+    }
+
     info!(
-        "Save {} S4U2Proxy TGS for {} in {}",
+        "Save {} S4U2proxy TGS for {} in {}",
         impersonate_user,
-        service,
+        target_str,
         vault.id()
     );
+
     vault.add(tgs_proxy)?;
     vault.change_format(cred_format)?;
 

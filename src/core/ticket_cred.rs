@@ -288,6 +288,12 @@ impl TicketCred {
         }
         return None;
     }
+
+    pub fn change_sname(&mut self, sname: PrincipalName) {
+        self.ticket.sname = sname.clone();
+        self.cred_info.sname = Some(sname);
+    }
+
 }
 
 impl From<(Ticket, KrbCredInfo)> for TicketCred {

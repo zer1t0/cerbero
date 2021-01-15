@@ -86,6 +86,13 @@ pub fn command() -> App<'static, 'static> {
                 .help("SPN of a user service to impersonate with S4U2self"),
         )
         .arg(
+            Arg::with_name("rename-service")
+                .long("rename-service")
+                .value_name("SPN")
+                .takes_value(true)
+                .help("change the target service of the received TGS, useful for S4U2proxy")
+        )
+        .arg(
             Arg::with_name("cred-format")
                 .long("cred-format")
                 .visible_alias("ticket-format")
@@ -124,6 +131,7 @@ pub struct Arguments {
     pub credential_format: CredFormat,
     pub out_file: Option<String>,
     pub service: Option<String>,
+    pub rename_service: Option<String>,
     pub transport_protocol: TransportProtocol,
     pub impersonate_user: Option<KrbUser>,
     pub verbosity: usize,
@@ -160,6 +168,10 @@ impl<'a> ArgumentsParser<'a> {
             credential_format,
             out_file,
             service,
+            rename_service: self
+                .matches
+                .value_of("rename-service")
+                .map(|s| s.into()),
             transport_protocol: self.parse_transport_protocol(),
             impersonate_user: imp_user,
             verbosity: self.matches.occurrences_of("verbosity") as usize,
