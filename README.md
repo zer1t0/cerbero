@@ -265,7 +265,7 @@ The tickets could be cracked by using the following [hashcat](https://hashcat.ne
 $ hashcat -m 13100 /tmp/hashes.txt wordlist.txt
 ```
 ### List
-`list` displays information of credentials files (ccache/krb) or keytabs. 
+`list` displays information of credentials files (ccache/krb) or keytabs.
 Similar to `klist` command.
 
 Show the credentials information of a ccache file:
@@ -294,9 +294,9 @@ Time: 01/17/2021 16:26:23
 Version: 1
 ```
 
-If no file is provided, it will try to search the default credential file set 
-in the `KRB5CCNAME` environment variable . However, if the option `-K` is 
-provided, it will try to show the keytab file specified in the `KRB5_KTNAME` 
+If no file is provided, it will try to search the default credential file set
+in the `KRB5CCNAME` environment variable . However, if the option `-K` is
+provided, it will try to show the keytab file specified in the `KRB5_KTNAME`
 environment variable.
 
 ## Credits
