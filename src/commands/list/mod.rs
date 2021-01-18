@@ -1,14 +1,12 @@
+use crate::core::keytab;
 use crate::core::stringifier::{
     etype_to_string, kerberos_flags_to_string, kerberos_time_to_string,
     octet_string_to_string, principal_name_type_to_string,
 };
 use crate::core::{load_file_ticket_creds, CredFormat, TicketCreds};
-use crate::error::Error;
 use crate::utils;
 use crate::Result;
 use chrono::{Local, TimeZone, Utc};
-use kerberos_keytab::Keytab;
-use std::fs;
 
 pub fn list(
     filepath: Option<String>,
@@ -38,7 +36,7 @@ fn list_from_file(
                 srealm,
             ));
         }
-        Err(_) => match load_file_keytab(&filepath) {
+        Err(_) => match keytab::load_file_keytab(&filepath) {
             Ok(keytab) => {
                 return Ok(list_keytab(keytab, &filepath));
             }
@@ -58,10 +56,10 @@ fn list_from_env(
     srealm: Option<String>,
 ) -> Result<()> {
     if search_keytab {
-        let filepath = utils::get_env_keytab_file()
-            .ok_or("Specify file or set KRB5_KTNAME")?;
+        let filepath = keytab::env_keytab_file()
+            .ok_or(format!("Specify file or set {}", keytab::KEYTAB_ENVVAR))?;
 
-        let keytab = load_file_keytab(&filepath)?;
+        let keytab = keytab::load_file_keytab(&filepath)?;
         list_keytab(keytab, &filepath);
     } else {
         let filepath = utils::get_env_ticket_file()
@@ -73,24 +71,7 @@ fn list_from_env(
     return Ok(());
 }
 
-fn load_file_keytab(filepath: &str) -> Result<Keytab> {
-    let data = fs::read(filepath).map_err(|err| {
-        let message = format!("Unable to read the file '{}'", filepath);
-        (message, err)
-    })?;
-
-    match Keytab::parse(&data) {
-        Ok((_, keytab)) => return Ok(keytab),
-        Err(_) => {
-            return Err(Error::DataError(format!(
-                "Error parsing keytab file '{}'",
-                filepath
-            )));
-        }
-    }
-}
-
-fn list_keytab(keytab: Keytab, filepath: &str) {
+fn list_keytab(keytab: keytab::Keytab, filepath: &str) {
     println!("Keytab: {}", filepath);
 
     for entry in keytab.entries {

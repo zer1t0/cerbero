@@ -24,10 +24,6 @@ pub fn get_env_ticket_file() -> Option<String> {
     return env::var("KRB5CCNAME").ok();
 }
 
-pub fn get_env_keytab_file() -> Option<String> {
-    return env::var("KRB5_KTNAME").ok();
-}
-
 pub fn open_file(filename: &str) -> Result<File> {
     return Ok(File::open(filename).map_err(|error| {
         format!("Unable to open the file '{}': {}", filename, error)

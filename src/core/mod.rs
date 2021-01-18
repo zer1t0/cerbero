@@ -14,6 +14,9 @@ pub use cracking::{as_rep_to_crack_string, tgs_to_crack_string, CrackFormat};
 mod cred_format;
 pub use cred_format::CredFormat;
 
+pub mod keytab;
+pub use keytab::{load_file_keytab, env_keytab_file, KEYTAB_ENVVAR};
+
 mod ticket_cred;
 pub use ticket_cred::{TicketCred, TicketCreds};
 
