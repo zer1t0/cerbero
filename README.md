@@ -265,9 +265,10 @@ The tickets could be cracked by using the following [hashcat](https://hashcat.ne
 $ hashcat -m 13100 /tmp/hashes.txt wordlist.txt
 ```
 ### List
-`list` shows the tickets information of a credentials file. Similar
-to `klist` command.
+`list` displays information of credentials files (ccache/krb) or keytabs. 
+Similar to `klist` command.
 
+Show the credentials information of a ccache file:
 ```shell
 $ cerbero list hades.ccache
 Ticket cache (ccache): FILE:hades.ccache
@@ -279,6 +280,24 @@ Renew until: 01/19/2021 12:08:09
 Flags: 0x40e10000 -> forwardable renewable initial pre_authent name_canonicalize
 Etype (skey, tkt): 18 -> aes256-cts-hmac-sha1-96, 18 -> aes256-cts-hmac-sha1-96
 ```
+
+Show the keys of a keytab file:
+```
+$ cerbero list user.keytab
+Keytab: user.keytab
+
+user@domain.com
+Name type: 1 -> nt-principal
+Key: 8846f7eaee8fb117ad06bdd830b7586c
+Key type: 23 -> rc4-hmac
+Time: 01/17/2021 16:26:23
+Version: 1
+```
+
+If no file is provided, it will try to search the default credential file set 
+in the `KRB5CCNAME` environment variable . However, if the option `-K` is 
+provided, it will try to show the keytab file specified in the `KRB5_KTNAME` 
+environment variable.
 
 ## Credits
 This work is based on great work of other people:
