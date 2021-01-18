@@ -149,7 +149,7 @@ pub fn load_file_krb_cred(creds_file: &str) -> Result<(KrbCred, CredFormat)> {
         Err(_) => {
             let (_, krb_cred) = KrbCred::parse(&data).map_err(|_| {
                 Error::DataError(format!(
-                    "Error parsing content of file '{}'",
+                    "Error parsing content of ccache/krb file '{}'",
                     creds_file
                 ))
             })?;

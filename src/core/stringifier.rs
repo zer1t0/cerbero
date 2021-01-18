@@ -1,13 +1,15 @@
 use crate::core::TicketCred;
 use chrono::Local;
 use kerberos_asn1::{
-    ApReq, AsRep, AsReq, Asn1Object, EncryptedData, EncryptionKey, EtypeInfo2,
-    EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime, KrbCredInfo,
-    KrbError, PaData, PaPacOptions, PrincipalName, TgsRep, TgsReq, Ticket, PaForUser, Checksum
+    ApReq, AsRep, AsReq, Asn1Object, Checksum, EncryptedData, EncryptionKey,
+    EtypeInfo2, EtypeInfo2Entry, KdcReqBody, KerbPaPacRequest, KerberosTime,
+    KrbCredInfo, KrbError, PaData, PaForUser, PaPacOptions, PrincipalName,
+    TgsRep, TgsReq, Ticket,
 };
 use kerberos_constants::{
-    ap_options, error_codes, etypes, kdc_options, message_types, pa_data_types,
-    pa_pac_options, principal_names, ticket_flags, checksum_types
+    ap_options, checksum_types, error_codes, etypes, kdc_options,
+    message_types, pa_data_types, pa_pac_options, principal_names,
+    ticket_flags,
 };
 
 const NONE: &str = "-";
@@ -528,7 +530,8 @@ pub fn padata_value_to_string(
             }
         }
         pa_data_types::PA_FOR_USER => {
-            if let Ok((_, pa_for_user)) = PaForUser::parse(&padata.padata_value) {
+            if let Ok((_, pa_for_user)) = PaForUser::parse(&padata.padata_value)
+            {
                 return Some(pa_for_user_to_string(&pa_for_user, indent_level));
             }
         }
@@ -582,7 +585,7 @@ fn checksum_type_name(ct: i32) -> &'static str {
         checksum_types::HMAC_SHA1_DES3_KD => "hmac-sha1-des3-kd",
         checksum_types::RSA_MD4_DES => "rsa-md4-des",
         checksum_types::RSA_MD5_DES => "rsa-md5-des",
-        _ => UNKNOWN
+        _ => UNKNOWN,
     }
 }
 
@@ -857,14 +860,17 @@ pub fn principal_name_to_string(
 ) -> String {
     let indentation = indent(indent_level);
     format!(
-        "{}name-type: {} -> {}\n\
+        "{}name-type: {}\n\
          {}name-string: {}",
         indentation,
-        pname.name_type,
-        name_type_name(pname.name_type),
+        principal_name_type_to_string(pname.name_type),
         indentation,
         pname.name_string.join("/")
     )
+}
+
+pub fn principal_name_type_to_string(name_type: i32) -> String {
+    format!("{} -> {}", name_type, name_type_name(name_type))
 }
 
 pub fn kerberos_time_to_string(krb_time: &KerberosTime) -> String {

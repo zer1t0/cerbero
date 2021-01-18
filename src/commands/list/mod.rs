@@ -1,9 +1,14 @@
 use crate::core::stringifier::{
     etype_to_string, kerberos_flags_to_string, kerberos_time_to_string,
+    octet_string_to_string, principal_name_type_to_string,
 };
 use crate::core::{load_file_ticket_creds, CredFormat, TicketCreds};
+use crate::error::Error;
 use crate::utils;
 use crate::Result;
+use chrono::{Local, TimeZone, Utc};
+use kerberos_keytab::Keytab;
+use std::fs;
 
 pub fn list(
     filepath: Option<String>,
@@ -21,9 +26,19 @@ pub fn list(
                     srealm,
                 ));
             }
-            Err(err) => {
-                return Err(err);
-            }
+            Err(_) => match load_file_keytab(&filepath) {
+                Ok(keytab) => {
+                    return Ok(list_keytab(keytab));
+                }
+                Err(_) => {
+                    return Err(
+                        format!(
+                            "Unable to parse file '{}', is not ccache, krb nor keytab.",
+                            filepath
+                        )
+                    )?;
+                }
+            },
         }
     }
 
@@ -33,6 +48,55 @@ pub fn list(
     list_ccache(ticket_creds, cred_format, &filepath, only_tgts, srealm);
 
     return Ok(());
+}
+
+fn load_file_keytab(filepath: &str) -> Result<Keytab> {
+    let data = fs::read(filepath).map_err(|err| {
+        let message = format!("Unable to read the file '{}'", filepath);
+        (message, err)
+    })?;
+
+    match Keytab::parse(&data) {
+        Ok((_, keytab)) => return Ok(keytab),
+        Err(_) => {
+            return Err(Error::DataError(format!(
+                "Error parsing keytab file '{}'",
+                filepath
+            )));
+        }
+    }
+}
+
+fn list_keytab(keytab: Keytab) {
+    for entry in keytab.entries {
+        let realm_str = String::from_utf8(entry.realm.data).unwrap();
+
+        let components_strs: Vec<String> = entry
+            .components
+            .into_iter()
+            .map(|c| String::from_utf8(c.data).unwrap())
+            .collect();
+
+        println!("{}@{}", components_strs.join("/"), realm_str);
+        println!(
+            "Name type: {}",
+            principal_name_type_to_string(entry.name_type as i32)
+        );
+
+        println!("Key: {}", octet_string_to_string(&entry.key.keyvalue));
+        println!("Key type: {}", etype_to_string(entry.key.keytype as i32));
+
+        println!(
+            "Time: {}",
+            Utc.timestamp(entry.timestamp as i64, 0)
+                .with_timezone(&Local)
+                .format("%m/%d/%Y %H:%M:%S")
+                .to_string()
+        );
+        println!("Version: {}", entry.vno.unwrap_or(entry.vno8 as u32));
+
+        println!("")
+    }
 }
 
 fn list_ccache(
