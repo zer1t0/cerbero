@@ -14,18 +14,27 @@ pub fn command() -> App<'static, 'static> {
             Arg::with_name("tgt")
                 .long("tgt")
                 .short("t")
-                .help("Only show TGTs"),
+                .help("Only show TGTs [ccache only]"),
         )
         .arg(
             Arg::with_name("srealm")
                 .long("srealm")
                 .takes_value(true)
-                .help("Only tickets for services in the given realm")
+                .help("Only tickets for services in the given realm [ccache only]")
+        )
+        .arg(
+            Arg::with_name("keytab")
+                .long("keytab")
+                .short("K")
+                .help(
+                    "Search keytab file in environment (KRB5_KTNAME) instead of ccache file (KRB5CCNAME)"
+                )
         )
 }
 
 pub struct Arguments {
     pub in_file: Option<String>,
+    pub search_keytab: bool,
     pub only_tgts: bool,
     pub srealm: Option<String>,
 }
@@ -43,6 +52,7 @@ impl<'a> ArgumentsParser<'a> {
     fn _parse(&self) -> Arguments {
         return Arguments {
             in_file: self.matches.value_of("in-file").map(|s| s.into()),
+            search_keytab: self.matches.is_present("keytab"),
             only_tgts: self.matches.is_present("tgt"),
             srealm: self.matches.value_of("srealm").map(|s| s.into()),
         };

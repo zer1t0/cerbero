@@ -12,40 +12,63 @@ use std::fs;
 
 pub fn list(
     filepath: Option<String>,
+    search_keytab: bool,
     only_tgts: bool,
     srealm: Option<String>,
 ) -> Result<()> {
     if let Some(filepath) = filepath {
-        match load_file_ticket_creds(&filepath) {
-            Ok((ticket_creds, cred_format)) => {
-                return Ok(list_ccache(
-                    ticket_creds,
-                    cred_format,
-                    &filepath,
-                    only_tgts,
-                    srealm,
-                ));
-            }
-            Err(_) => match load_file_keytab(&filepath) {
-                Ok(keytab) => {
-                    return Ok(list_keytab(keytab));
-                }
-                Err(_) => {
-                    return Err(
-                        format!(
-                            "Unable to parse file '{}', is not ccache, krb nor keytab.",
-                            filepath
-                        )
-                    )?;
-                }
-            },
-        }
+        return list_from_file(&filepath, only_tgts, srealm);
     }
 
-    let filepath =
-        utils::get_env_ticket_file().ok_or("Specify file or set KRB5CCNAME")?;
-    let (ticket_creds, cred_format) = load_file_ticket_creds(&filepath)?;
-    list_ccache(ticket_creds, cred_format, &filepath, only_tgts, srealm);
+    return list_from_env(search_keytab, only_tgts, srealm);
+}
+
+fn list_from_file(
+    filepath: &str,
+    only_tgts: bool,
+    srealm: Option<String>,
+) -> Result<()> {
+    match load_file_ticket_creds(&filepath) {
+        Ok((ticket_creds, cred_format)) => {
+            return Ok(list_ccache(
+                ticket_creds,
+                cred_format,
+                &filepath,
+                only_tgts,
+                srealm,
+            ));
+        }
+        Err(_) => match load_file_keytab(&filepath) {
+            Ok(keytab) => {
+                return Ok(list_keytab(keytab, &filepath));
+            }
+            Err(_) => {
+                return Err(format!(
+                    "Unable to parse file '{}', is not ccache, krb nor keytab.",
+                    filepath
+                ))?;
+            }
+        },
+    }
+}
+
+fn list_from_env(
+    search_keytab: bool,
+    only_tgts: bool,
+    srealm: Option<String>,
+) -> Result<()> {
+    if search_keytab {
+        let filepath = utils::get_env_keytab_file()
+            .ok_or("Specify file or set KRB5_KTNAME")?;
+
+        let keytab = load_file_keytab(&filepath)?;
+        list_keytab(keytab, &filepath);
+    } else {
+        let filepath = utils::get_env_ticket_file()
+            .ok_or("Specify file or set KRB5CCNAME")?;
+        let (ticket_creds, cred_format) = load_file_ticket_creds(&filepath)?;
+        list_ccache(ticket_creds, cred_format, &filepath, only_tgts, srealm);
+    }
 
     return Ok(());
 }
@@ -67,8 +90,11 @@ fn load_file_keytab(filepath: &str) -> Result<Keytab> {
     }
 }
 
-fn list_keytab(keytab: Keytab) {
+fn list_keytab(keytab: Keytab, filepath: &str) {
+    println!("Keytab: {}", filepath);
+
     for entry in keytab.entries {
+        println!("");
         let realm_str = String::from_utf8(entry.realm.data).unwrap();
 
         let components_strs: Vec<String> = entry
@@ -94,8 +120,6 @@ fn list_keytab(keytab: Keytab) {
                 .to_string()
         );
         println!("Version: {}", entry.vno.unwrap_or(entry.vno8 as u32));
-
-        println!("")
     }
 }
 

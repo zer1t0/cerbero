@@ -114,7 +114,12 @@ fn hash(args: args::hash::Arguments) -> Result<()> {
 
 fn list(args: args::list::Arguments) -> Result<()> {
     init_log(0);
-    return commands::list(args.in_file, args.only_tgts, args.srealm);
+    return commands::list(
+        args.in_file,
+        args.search_keytab,
+        args.only_tgts,
+        args.srealm,
+    );
 }
 
 fn brute(args: args::brute::Arguments) -> Result<()> {
