@@ -1,30 +1,64 @@
 use crate::core::stringifier::{
     etype_to_string, kerberos_flags_to_string, kerberos_time_to_string,
 };
-use crate::core::Vault;
+use crate::core::{load_file_ticket_creds, CredFormat, TicketCreds};
+use crate::utils;
 use crate::Result;
 
 pub fn list(
-    vault: &dyn Vault,
+    filepath: Option<String>,
     only_tgts: bool,
-    srealm: Option<&String>,
+    srealm: Option<String>,
 ) -> Result<()> {
-    let mut krb_creds = vault.dump()?;
+    if let Some(filepath) = filepath {
+        match load_file_ticket_creds(&filepath) {
+            Ok((ticket_creds, cred_format)) => {
+                return Ok(list_ccache(
+                    ticket_creds,
+                    cred_format,
+                    &filepath,
+                    only_tgts,
+                    srealm,
+                ));
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
 
+    let filepath =
+        utils::get_env_ticket_file().ok_or("Specify file or set KRB5CCNAME")?;
+    let (ticket_creds, cred_format) = load_file_ticket_creds(&filepath)?;
+    list_ccache(ticket_creds, cred_format, &filepath, only_tgts, srealm);
+
+    return Ok(());
+}
+
+fn list_ccache(
+    mut ticket_creds: TicketCreds,
+    format: CredFormat,
+    filepath: &str,
+    only_tgts: bool,
+    srealm: Option<String>,
+) {
     if only_tgts {
-        krb_creds = krb_creds.tgt();
+        ticket_creds = ticket_creds.tgt();
     }
 
     if let Some(srealm) = srealm {
-        krb_creds = krb_creds.srealm(srealm);
+        ticket_creds = ticket_creds.srealm(&srealm);
     }
 
-    let cred_format = vault
-        .support_cred_format()?
-        .ok_or("Unknown input file format: Maybe an empty file?")?;
+    print_ccache(ticket_creds, format, &filepath);
+}
 
-    println!("Ticket cache ({}): FILE:{}", cred_format, vault.id());
+fn print_ccache(ticket_creds: TicketCreds, format: CredFormat, filepath: &str) {
+    println!("Ticket cache ({}): FILE:{}", format, filepath);
+    print_ccache_creds(ticket_creds);
+}
 
+fn print_ccache_creds(krb_creds: TicketCreds) {
     for ticket_info in krb_creds.iter() {
         println!("");
         let ticket = &ticket_info.ticket;
@@ -60,6 +94,4 @@ pub fn list(
             etype_to_string(etype_tkt)
         )
     }
-
-    return Ok(());
 }

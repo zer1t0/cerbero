@@ -30,4 +30,4 @@ pub use requesters::{
 pub mod stringifier;
 
 mod vault;
-pub use vault::{save_file_creds, EmptyVault, FileVault, Vault};
+pub use vault::{save_file_creds, EmptyVault, FileVault, Vault, load_file_ticket_creds};

@@ -75,12 +75,8 @@ impl Vault for FileVault {
 }
 
 pub fn load_file_creds(creds_file: &str) -> Result<TicketCreds> {
-    match load_file_krb_cred(creds_file) {
-        Ok((krb_cred, _)) => {
-            // Kerberos credentials are usually stored in plain text so this
-            // should work.
-            return TicketCreds::try_from(krb_cred);
-        }
+    match load_file_ticket_creds(creds_file) {
+        Ok((ticket_creds, _)) => return Ok(ticket_creds),
         Err(err) => {
             if err.is_not_found_error() || err.is_data_error() {
                 return Ok(TicketCreds::empty());
@@ -120,6 +116,16 @@ pub fn get_cred_format_by_file_content(
             return Err(err);
         }
     }
+}
+
+/// Load the Ticket credentials from a file
+pub fn load_file_ticket_creds(creds_file: &str) -> Result<(TicketCreds, CredFormat)> {
+    let (krb_cred, format) = load_file_krb_cred(creds_file)?;
+
+    // Kerberos credentials are usually stored in plain text so this
+    // should work.
+    let ticket_creds = TicketCreds::try_from(krb_cred)?;
+    return Ok((ticket_creds, format));
 }
 
 /// Load the Kerberos credentials from a file.

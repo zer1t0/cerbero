@@ -114,14 +114,7 @@ fn hash(args: args::hash::Arguments) -> Result<()> {
 
 fn list(args: args::list::Arguments) -> Result<()> {
     init_log(0);
-    let in_file = match args.in_file {
-        Some(filename) => filename,
-        None => utils::get_env_ticket_file()
-            .ok_or("Specify file or set KRB5CCNAME")?,
-    };
-
-    let in_vault = FileVault::new(in_file);
-    return commands::list(&in_vault, args.only_tgts, args.srealm.as_ref());
+    return commands::list(args.in_file, args.only_tgts, args.srealm);
 }
 
 fn brute(args: args::brute::Arguments) -> Result<()> {
