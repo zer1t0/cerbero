@@ -124,6 +124,7 @@ pub fn ask_s4u2proxy(
     )?;
 
     info!("Request {} S4U2Proxy TGS for {}", impersonate_user, service);
+    let mut dst_realm = user.realm.clone();
     let mut tgs_proxy = request_tgs(
         user.clone(),
         user.realm.clone(),
@@ -133,11 +134,13 @@ pub fn ask_s4u2proxy(
         &*channel,
     )?;
 
-    if tgs_proxy.is_tgt() {
-        let dst_realm = tgs_proxy
+    if tgs_proxy.is_tgt() && !tgs_proxy.is_tgt_for_realm(&dst_realm) {
+        dst_realm = tgs_proxy
             .service_host()
             .ok_or("Unable to get the inter-realm TGT domain")?
             .clone();
+
+
 
         let inter_tgt = request_regular_tgs(
             user.clone(),

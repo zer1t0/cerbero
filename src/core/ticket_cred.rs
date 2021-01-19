@@ -271,6 +271,15 @@ impl TicketCred {
         return false;
     }
 
+    pub fn is_tgt_for_realm(&self, realm: &str) -> bool {
+        if self.is_tgt() {
+            if let Some(tgt_realm) = self.service_host() {
+                return tgt_realm.to_lowercase() == realm.to_lowercase();
+            }
+        }
+        return false;
+    }
+
     pub fn is_for_service(&self, service: &PrincipalName) -> bool {
         if let Some(srv) = self.service() {
             return srv == service;
