@@ -127,7 +127,7 @@ pub fn ask_s4u2proxy(
     let mut dst_realm = user.realm.clone();
     let mut tgs_proxy = request_tgs(
         user.clone(),
-        user.realm.clone(),
+        dst_realm.clone(),
         tgt.clone(),
         S4u::S4u2proxy(s4u2self_tgs.ticket.clone(), service.clone()),
         None,

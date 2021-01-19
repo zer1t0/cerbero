@@ -21,9 +21,10 @@ pub fn request_regular_tgs(
 ) -> Result<TicketCred> {
     let channel = kdccomm.create_channel(&user.realm)?;
 
+    let mut dst_realm = user.realm.clone();
     let mut tgs = request_tgs(
         user.clone(),
-        user.realm.clone(),
+        dst_realm.clone(),
         tgt,
         S4u::None(service.clone()),
         etypes.clone(),
@@ -32,10 +33,10 @@ pub fn request_regular_tgs(
 
     let max_hops = 5;
     let mut hops = 0;
-    while tgs.is_tgt() && !tgs.is_for_service(&service) && hops < max_hops {
+    while tgs.is_tgt() && !tgs.is_tgt_for_realm(&dst_realm) && hops < max_hops {
         hops += 1;
         let referral_tgt = tgs;
-        let dst_realm = referral_tgt
+        dst_realm = referral_tgt
             .service_host()
             .ok_or("Unable to get the referral TGT domain")?
             .clone();
